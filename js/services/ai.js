@@ -87,10 +87,7 @@ export const aiService = {
 
         if (apiKeys.length === 0) throw new AiError('invalidKey', 'ai.noKey');
 
-        let model = config.get('model');
-        if (!model || model === 'gemini-1.5-flash-latest') {
-            model = 'gemini-flash-latest';
-        }
+        const model = options.model || await aiService.resolveModel();
 
         const parts = [{ text: prompt }];
         if (imgBase64) {
@@ -109,6 +106,7 @@ export const aiService = {
 
         let lastError = null;
         let delay = 1500;
+        let modelFailed = false;
 
         // Порядок ключей: начинаем с того, который сработал в прошлый раз,
         // и пропускаем те, что недавно упёрлись в квоту. Без этого мёртвый
@@ -149,7 +147,8 @@ export const aiService = {
                     }
 
                     const text = aiService._extractText(data);
-                    aiService._keyState.preferred = keyIndex;   // этот ключ жив
+                    aiService._keyState.preferred = keyIndex;      // этот ключ жив
+                    aiService._modelState.resolved = model;        // и эта модель тоже
                     return text;
 
                 } catch (e) {
@@ -172,8 +171,17 @@ export const aiService = {
                     break;
                 }
 
+                if (error.kind === 'overloaded' || error.kind === 'modelMissing') {
+                    // Перегружена сама модель — ключи тут ни при чём.
+                    // Помечаем её и выходим из цикла ключей, чтобы взять другую.
+                    console.warn(`[ИИ] Модель ${model}: ${error.kind}. Пробуем другую.`);
+                    aiService._modelState.overloaded.add(model);
+                    if (aiService._modelState.resolved === model) aiService._modelState.resolved = null;
+                    modelFailed = true;
+                    break;
+                }
+
                 if (error.kind === 'network') {
-                    // Сеть и перегрузка — как раз тот случай, когда повтор помогает
                     const hasMoreAttempts = attempt < aiService.LIMITS.RETRIES_PER_KEY - 1;
                     if (hasMoreAttempts) {
                         console.warn(`[ИИ] Сбой связи на ключе №${keyIndex + 1}, повтор через ${delay} мс.`);
@@ -184,9 +192,37 @@ export const aiService = {
                     break;
                 }
 
-                // blocked / empty / unknown — смена ключа не поможет
+                // blocked / empty — смена ключа или модели не поможет
                 throw error;
             }
+
+            if (modelFailed) break;
+        }
+
+        // Модель не отвечает — перебираем остальные по рангу.
+        // Перебор делаем здесь, а не рекурсией: иначе после первой же
+        // неудачной замены цепочка обрывалась.
+        if (modelFailed && !options._noFallback) {
+            const ranked = await aiService.getRankedModels();
+
+            for (const next of ranked) {
+                if (aiService._modelState.overloaded.has(next)) continue;
+
+                console.log(`[ИИ] Переключаемся на модель ${next}.`);
+                try {
+                    const text = await aiService.callGemini(prompt, isJson, imgBase64, {
+                        ...options, model: next, _noFallback: true
+                    });
+                    config.set('model', next);   // запоминаем рабочую
+                    return text;
+                } catch (e) {
+                    lastError = e;
+                    if (e.kind === 'overloaded' || e.kind === 'modelMissing') continue;
+                    throw e;
+                }
+            }
+
+            throw new AiError('overloaded', 'ai.allModelsBusy');
         }
 
         throw lastError || new AiError('unknown', 'ai.unknown');
@@ -226,16 +262,16 @@ export const aiService = {
         const short = message.split('For more information')[0].trim();
 
         if (lower.includes('api key not valid') || lower.includes('api_key_invalid') || status === 400 && lower.includes('key')) {
-            return new AiError('invalidKey', 'ai.invalidKey');
+            return new AiError('invalidKey', 'ai.invalidKey', short);
         }
         if (status === 429 || lower.includes('quota') || lower.includes('rate limit') || lower.includes('resource_exhausted')) {
             return new AiError('quota', 'ai.quota');
         }
         if (status === 503 || lower.includes('overloaded') || lower.includes('high demand') || lower.includes('unavailable')) {
-            return new AiError('network', 'ai.overloaded');
+            return new AiError('overloaded', 'ai.overloaded');
         }
         if (lower.includes('not found') || lower.includes('is not supported')) {
-            return new AiError('unknown', 'ai.modelUnavailable', short);
+            return new AiError('modelMissing', 'ai.modelUnavailable', short);
         }
         return new AiError('unknown', 'ai.unknown', short);
     },
@@ -258,6 +294,110 @@ export const aiService = {
         ]`;
     },
 
+    // ======================================================
+    //  Выбор модели
+    // ======================================================
+
+    /**
+     * Модели не выбираются вручную: список доступных спрашивается у самого
+     * API и ранжируется. Причина — «high demand» на конкретной модели никак
+     * не связан с ключом, и пользователь не должен разбираться, какой
+     * идентификатор сейчас живой.
+     */
+    _modelState: {
+        resolved: null,          // модель, которая точно работает
+        available: null,         // что вернул listModels
+        overloaded: new Set()    // модели, ответившие «high demand» в этой сессии
+    },
+
+    /** Модели, которые нам не подходят: не текстовые или заведомо тяжёлые. */
+    _MODEL_EXCLUDE: /embedding|aqa|vision|image|imagen|tts|audio|veo|live/i,
+
+    /**
+     * Оценка пригодности модели. Чем больше, тем лучше.
+     * Хотим быструю flash-модель посвежее: она бесплатная и её лимиты выше.
+     */
+    _rankModel: (name) => {
+        if (!/gemini/i.test(name) || aiService._MODEL_EXCLUDE.test(name)) return -1;
+
+        let score = 0;
+        if (/flash/i.test(name)) score += 100;
+        if (/lite/i.test(name)) score -= 30;          // дешевле, но заметно слабее
+        if (/pro/i.test(name)) score += 20;
+        if (/preview|exp/i.test(name)) score -= 40;   // нестабильны и чаще перегружены
+        if (/latest/i.test(name)) score -= 10;        // алиас: непонятно, куда указывает
+
+        // Версия в имени: gemini-2.5-flash → 2.5
+        const version = name.match(/gemini-(\d+(?:\.\d+)?)/);
+        if (version) score += parseFloat(version[1]) * 10;
+
+        return score;
+    },
+
+    /** Список моделей, доступных конкретному ключу. */
+    listModels: async (apiKey) => {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const data = await response.json().catch(() => null);
+
+        if (!data) throw new AiError('network', 'ai.network', `HTTP ${response.status}`);
+        if (data.error) throw aiService._classifyApiError(data.error, response.status);
+
+        return (data.models || [])
+            .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+            .map(m => m.name.replace(/^models\//, ''));
+    },
+
+    /**
+     * Какую модель использовать прямо сейчас.
+     * Порядок: уже подтверждённая → сохранённая в настройках → лучшая
+     * из доступных ключу → запасной жёсткий список.
+     */
+    resolveModel: async () => {
+        const state = aiService._modelState;
+        if (state.resolved && !state.overloaded.has(state.resolved)) return state.resolved;
+
+        const saved = config.get('model');
+        if (saved && saved !== 'gemini-1.5-flash-latest' && !state.overloaded.has(saved)) {
+            return saved;
+        }
+
+        const candidates = await aiService.getRankedModels();
+        const usable = candidates.find(m => !state.overloaded.has(m));
+
+        return usable || candidates[0] || 'gemini-2.0-flash';
+    },
+
+    /** Доступные модели по убыванию пригодности. Список кэшируется на сессию. */
+    getRankedModels: async () => {
+        const state = aiService._modelState;
+        if (state.available) return state.available;
+
+        const keys = (config.get('api_key') || '').split(',').map(k => k.trim()).filter(Boolean);
+
+        for (const key of keys) {
+            try {
+                const models = await aiService.listModels(key);
+                const ranked = models
+                    .map(name => ({ name, score: aiService._rankModel(name) }))
+                    .filter(m => m.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .map(m => m.name);
+
+                if (ranked.length) {
+                    state.available = ranked;
+                    console.log('[ИИ] Доступные модели:', ranked.slice(0, 5).join(', '));
+                    return ranked;
+                }
+            } catch (e) {
+                console.warn('[ИИ] Не удалось получить список моделей:', e.message);
+            }
+        }
+
+        // Ключи не отвечают — идём по жёсткому списку
+        state.available = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+        return state.available;
+    },
+
     /**
      * Проверка подключения: гоняет каждый ключ по отдельности и собирает отчёт.
      *
@@ -266,7 +406,12 @@ export const aiService = {
      */
     diagnose: async (onStep = null) => {
         const keys = (config.get('api_key') || '').split(',').map(k => k.trim()).filter(Boolean);
-        const model = config.get('model') || 'gemini-flash-latest';
+        // Диагностика не должна зависеть от того, что записано в настройках:
+        // спрашиваем модель тем же способом, каким её выбирает приложение
+        aiService._modelState.available = null;
+        aiService._modelState.overloaded.clear();
+        const model = await aiService.resolveModel();
+
         const mask = (k) => k.length > 10 ? `${k.slice(0, 6)}…${k.slice(-4)}` : '***';
 
         const report = {
@@ -288,45 +433,81 @@ export const aiService = {
             const entry = { ключ: mask(key), статус: '', деталь: '', мс: 0 };
             const started = performance.now();
 
+            // Сначала спрашиваем список моделей: это дешёвый запрос, который
+            // сразу отвечает, настоящий ли это ключ Gemini API
+            let ranked = [];
             try {
-                const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ role: 'user', parts: [{ text: 'Верни JSON: [{"word":"der Test","translation":"тест"}]' }] }],
-                            generationConfig: {
-                                temperature: 0,
-                                maxOutputTokens: 256,
-                                responseMimeType: 'application/json'
-                            }
-                        })
-                    }
-                );
-
+                const models = await aiService.listModels(key);
+                entry.моделей = models.length;
+                ranked = models
+                    .map(n => ({ n, s: aiService._rankModel(n) }))
+                    .filter(m => m.s > 0)
+                    .sort((a, b) => b.s - a.s)
+                    .map(m => m.n);
+                entry.лучшие = ranked.slice(0, 3).join(', ') || '—';
+            } catch (e) {
+                entry.статус = e.kind === 'invalidKey' ? 'ключ не принят' : (e.kind || 'ошибка');
+                entry.деталь = `список моделей: ${e.details || e.message}`.slice(0, 200);
                 entry.мс = Math.round(performance.now() - started);
-                const data = await response.json().catch(() => null);
+                report.результаты.push(entry);
+                continue;
+            }
 
-                if (!data) {
-                    entry.статус = 'ошибка';
-                    entry.деталь = `HTTP ${response.status}, ответ не JSON`;
-                } else if (data.error) {
-                    const classified = aiService._classifyApiError(data.error, response.status);
-                    entry.статус = classified.kind;
-                    entry.деталь = data.error.message.split('For more information')[0].trim().slice(0, 160);
-                } else {
+            // Пробуем сгенерировать: перебираем модели так же, как приложение,
+            // иначе одна перегруженная модель выглядела бы как нерабочий ключ
+            const toTry = [model, ...ranked.filter(m => m !== model)].slice(0, 4);
+
+            for (const candidateModel of toTry) {
+                try {
+                    const response = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent?key=${key}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ role: 'user', parts: [{ text: 'Верни JSON: [{"word":"der Test","translation":"тест"}]' }] }],
+                                generationConfig: {
+                                    temperature: 0,
+                                    maxOutputTokens: 256,
+                                    responseMimeType: 'application/json'
+                                }
+                            })
+                        }
+                    );
+
+                    entry.мс = Math.round(performance.now() - started);
+                    entry.модель = candidateModel;
+                    const data = await response.json().catch(() => null);
+
+                    if (!data) {
+                        entry.статус = 'ошибка';
+                        entry.деталь = `HTTP ${response.status}, ответ не JSON`;
+                        break;
+                    }
+
+                    if (data.error) {
+                        const classified = aiService._classifyApiError(data.error, response.status);
+                        entry.статус = classified.kind;
+                        entry.деталь = data.error.message.split('For more information')[0].trim().slice(0, 160);
+                        // Перегруженную модель пропускаем и пробуем следующую
+                        if (classified.kind === 'overloaded' || classified.kind === 'modelMissing') continue;
+                        break;
+                    }
+
                     const candidate = data.candidates?.[0];
                     entry.статус = candidate ? 'ок' : 'пустой ответ';
                     entry.деталь = candidate ? `finishReason=${candidate.finishReason}` : JSON.stringify(data.promptFeedback || {});
                     if (data.usageMetadata) {
                         entry.токены = `вход ${data.usageMetadata.promptTokenCount}, выход ${data.usageMetadata.candidatesTokenCount}`;
                     }
+                    break;
+
+                } catch (e) {
+                    entry.мс = Math.round(performance.now() - started);
+                    entry.статус = 'сеть';
+                    entry.деталь = String(e.message).slice(0, 160);
+                    break;
                 }
-            } catch (e) {
-                entry.мс = Math.round(performance.now() - started);
-                entry.статус = 'сеть';
-                entry.деталь = String(e.message).slice(0, 160);
             }
 
             report.результаты.push(entry);

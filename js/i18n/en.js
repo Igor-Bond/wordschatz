@@ -197,6 +197,7 @@ export const en = {
         emptyResponse: 'The model returned an empty response. Please try again.',
         badJson: 'The model’s response could not be parsed. Please try again.',
         modelUnavailable: 'The selected model is not available for your key.',
+        allModelsBusy: 'Every available model is busy right now. Try again in a few minutes.',
         unknown: 'Unknown AI error.'
     },
 
