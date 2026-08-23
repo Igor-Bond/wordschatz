@@ -234,6 +234,9 @@ const control = {
             await dbService.addXP(xpEarned);
         }
 
+        // Сданный контроль — тоже день занятий
+        await scheduler.registerLessonCompleted();
+
         // 4. РЕНДЕР РЕЗУЛЬТАТОВ
         let gradeColor = 'text-green-500';
         let gradeText = 'Отличный результат!';

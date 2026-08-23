@@ -367,22 +367,21 @@ const profile = {
         }
     },
 
+    /**
+     * Полная резервная копия: словарь вместе с прогрессом SRS, темами,
+     * планами, XP, лигой и стриком. API-ключ в копию не входит.
+     */
     exportData: async () => {
-        const allWords = await dbService.getAllWords();
-        if (allWords.length === 0) return alert('Словарь пуст, нечего экспортировать!');
+        const backup = await dbService.exportAll();
 
-        const cleanData = allWords.map(w => {
-            const { id, interval, ease, repetitions, isDifficult, nextReview, createdAt, ...rest } = w;
-            return rest;
-        });
+        if (backup.words.length === 0) return alert('Словарь пуст, нечего экспортировать!');
 
-        const dataStr = JSON.stringify(cleanData, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
-        a.download = `wortschatz_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `wortschatz_backup_${dateUtils.today()}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -397,18 +396,72 @@ const profile = {
         reader.onload = async (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                if (!Array.isArray(data)) throw new Error("Неверный формат JSON");
-                
-                const { count } = await dbService.saveMultipleWords(data);
-                alert(`Успешно импортировано ${count} новых слов!`);
-                
+
+                if (dbService.isFullBackup(data)) {
+                    await profile.importFullBackup(data);
+                } else if (Array.isArray(data)) {
+                    // Копии старого формата — просто список слов
+                    await profile.importLegacyWords(data);
+                } else {
+                    throw new Error('Неизвестный формат файла');
+                }
+
                 profile.renderDictionary();
                 profile.renderStats();
             } catch (err) {
-                alert('Ошибка чтения файла. Убедитесь, что это валидный JSON от WortSchatz.');
+                console.error('Импорт не удался:', err);
+                alert('Не удалось прочитать файл. Убедитесь, что это резервная копия WortSchatz.\n\n' + err.message);
             }
         };
         reader.readAsText(file);
         event.target.value = '';
+    },
+
+    importFullBackup: async (data) => {
+        const when = data.exportedAt ? data.exportedAt.slice(0, 10) : 'неизвестно когда';
+        const replace = confirm(
+            `Резервная копия от ${when}: слов — ${data.words.length}, тем — ${data.cycles?.length || 0}.\n\n` +
+            `ОК — полное восстановление: текущие словарь и прогресс будут заменены копией.\n` +
+            `Отмена — только добавить слова из копии к текущему словарю.`
+        );
+
+        if (replace) {
+            const result = await dbService.restoreFromBackup(data);
+
+            // Профиль из копии поднимаем в localStorage, ключ остаётся местный
+            if (data.profile) {
+                const map = { name: 'name', level: 'level', dailyGoal: 'daily_goal',
+                              interests: 'interests', model: 'model', uiLang: 'ui_lang' };
+                for (const [field, key] of Object.entries(map)) {
+                    if (data.profile[field] !== undefined && data.profile[field] !== null) {
+                        localStorage.setItem(`ws_${key}`, data.profile[field]);
+                    }
+                }
+            }
+
+            alert(
+                `Восстановлено:\n` +
+                `• слов — ${result.words}\n` +
+                `• тем — ${result.cycles}\n` +
+                `• дней плана — ${result.dayPlans}\n\n` +
+                `Прогресс, XP и лига восстановлены. Приложение перезагрузится.`
+            );
+            location.reload();
+            return;
+        }
+
+        // Слияние: чужие темы и планы не переносим, слова остаются вне тем
+        const words = data.words.map(({ id, cycleId, ...w }) => ({ ...w, cycleId: null }));
+        const { count } = await dbService.saveMultipleWords(words);
+        alert(`Добавлено новых слов: ${count}. Прогресс по ним сохранён из копии.`);
+    },
+
+    importLegacyWords: async (words) => {
+        const { count } = await dbService.saveMultipleWords(words);
+        alert(
+            `Импортировано слов: ${count}.\n\n` +
+            `Это копия старого формата — в ней нет данных о прогрессе, ` +
+            `слова добавлены как новые.`
+        );
     }
 };

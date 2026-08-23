@@ -93,6 +93,8 @@ const dbService = {
 
     addWord: async (wordObj) => {
         const now = Date.now();
+        const { id, ...rest } = wordObj;   // чужой id не переносим: его назначит база
+
         return await db.words.add({
             interval: 0,
             ease: 2.5,
@@ -102,10 +104,10 @@ const dbService = {
             status: 'new',
             mastery: 0,
             cycleId: null,
-            ...wordObj,          // переданные поля важнее значений по умолчанию
-            createdAt: now,
+            ...rest,                       // переданные поля важнее значений по умолчанию
+            createdAt: rest.createdAt || now,   // при импорте дата создания сохраняется
             updatedAt: now,
-            deletedAt: null
+            deletedAt: rest.deletedAt ?? null
         });
     },
 
@@ -328,6 +330,91 @@ const dbService = {
 
     updateLessonState: async (id, changes) => {
         return await db.lessonState.update(parseInt(id), dbService._stamp(changes));
+    },
+
+    // ======================================================
+    //  Резервная копия (§29 ТЗ)
+    // ======================================================
+
+    BACKUP_FORMAT: 'wortschatz-backup',
+    BACKUP_VERSION: 2,
+
+    /**
+     * Полный слепок данных пользователя.
+     *
+     * Прежний экспорт выбрасывал interval, ease, repetitions и nextReview
+     * и не включал XP, лигу и стрик: перенос на другое устройство означал
+     * потерю всего прогресса и обучение с нуля.
+     */
+    exportAll: async () => {
+        const [allWords, cycles, dayPlans, stats, user] = await Promise.all([
+            db.words.toArray(),
+            db.cycles.toArray(),
+            db.dayPlans.toArray(),
+            db.stats.toArray(),
+            db.user.get(1)
+        ]);
+
+        return {
+            format: dbService.BACKUP_FORMAT,
+            version: dbService.BACKUP_VERSION,
+            app: 'WortSchatz Pro',
+            exportedAt: new Date().toISOString(),
+            profile: user?.profile || null,     // API-ключ сюда не попадает
+            user: user ? {
+                totalXP: user.totalXP || 0,
+                league: user.league || null,
+                currentStreak: user.currentStreak || 0,
+                lastActiveDate: user.lastActiveDate || null
+            } : null,
+            words: allWords.filter(dbService._alive),   // удалённые в копию не идут
+            cycles: cycles,
+            dayPlans: dayPlans,
+            stats: stats
+        };
+    },
+
+    /** Копия ли это нового формата. */
+    isFullBackup: (data) => !!data && data.format === dbService.BACKUP_FORMAT && Array.isArray(data.words),
+
+    /**
+     * Полное восстановление: текущие данные заменяются копией.
+     * Идентификаторы сохраняются, поэтому связи слов с темами и планами
+     * не рвутся.
+     */
+    restoreFromBackup: async (data) => {
+        const now = Date.now();
+
+        await db.transaction('rw', db.words, db.cycles, db.dayPlans, db.stats, db.user, async () => {
+            await Promise.all([db.words.clear(), db.cycles.clear(), db.dayPlans.clear(), db.stats.clear()]);
+
+            if (data.words?.length) {
+                await db.words.bulkPut(data.words.map(w => ({
+                    ...w,
+                    updatedAt: w.updatedAt || now,
+                    deletedAt: w.deletedAt ?? null
+                })));
+            }
+            if (data.cycles?.length) await db.cycles.bulkPut(data.cycles);
+            if (data.dayPlans?.length) await db.dayPlans.bulkPut(data.dayPlans);
+            if (data.stats?.length) await db.stats.bulkPut(data.stats);
+
+            const existing = await db.user.get(1);
+            await db.user.put({
+                ...DEFAULT_USER,
+                ...existing,
+                ...(data.user || {}),
+                profile: data.profile || existing?.profile || null,
+                id: 1,
+                updatedAt: now
+            });
+        });
+
+        return {
+            words: data.words?.length || 0,
+            cycles: data.cycles?.length || 0,
+            dayPlans: data.dayPlans?.length || 0
+        };
     },
 
     // ======================================================

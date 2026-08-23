@@ -75,6 +75,9 @@ const training = {
 
         const dayPlanId = training.state?.data?.dayPlanId;
         if (dayPlanId) await scheduler.completeDayPlan(dayPlanId);
+
+        // Серия дней растёт по факту пройденного урока, а не от захода в приложение
+        await scheduler.registerLessonCompleted();
     },
 
     nextStep: async () => {
@@ -186,19 +189,19 @@ const training = {
 
                 <div id="controls-back" class="mt-auto hidden grid-cols-4 gap-2">
                     <button onclick="training.rate(1)" class="flex flex-col items-center justify-center py-3.5 bg-[#3a2024] border border-[#522a2f] text-[#ff7171] rounded-xl active:scale-95 transition-transform hover:bg-[#47272c]">
-                        <span class="text-[10px] opacity-70 mb-0.5">&lt; 10м</span>
+                        <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(1, word)}</span>
                         <span class="font-bold">Снова</span>
                     </button>
                     <button onclick="training.rate(2)" class="flex flex-col items-center justify-center py-3.5 bg-[#3b271d] border border-[#553625] text-[#ff9e5e] rounded-xl active:scale-95 transition-transform hover:bg-[#4d3326]">
-                        <span class="text-[10px] opacity-70 mb-0.5">1д</span>
+                        <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(2, word)}</span>
                         <span class="font-bold">Трудно</span>
                     </button>
                     <button onclick="training.rate(3)" class="flex flex-col items-center justify-center py-3.5 bg-[#1d3528] border border-[#264b38] text-[#5cd589] rounded-xl active:scale-95 transition-transform hover:bg-[#254433]">
-                        <span class="text-[10px] opacity-70 mb-0.5">3д</span>
+                        <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(3, word)}</span>
                         <span class="font-bold">Хорошо</span>
                     </button>
                     <button onclick="training.rate(4)" class="flex flex-col items-center justify-center py-3.5 bg-[#1e2a45] border border-[#293d68] text-[#719fff] rounded-xl active:scale-95 transition-transform hover:bg-[#263556]">
-                        <span class="text-[10px] opacity-70 mb-0.5">5д</span>
+                        <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(4, word)}</span>
                         <span class="font-bold">Легко</span>
                     </button>
                 </div>
@@ -231,18 +234,21 @@ const training = {
     rate: async (quality) => {
         let word = training.currentWord;
         
-        const srsData = srs.calculate(quality, word.interval, word.ease);
+        const srsData = srs.calculate(quality, word);
         word.interval = srsData.interval;
         word.ease = srsData.ease;
+        word.phase = srsData.phase;
+        word.stepIndex = srsData.stepIndex;
+        word.nextReview = srsData.nextReview;
         word.repetitions += 1;
-        
+
         if (word.mastery !== undefined && word.mastery < 100) {
             word.mastery = Math.min(100, word.mastery + (quality * 5));
         }
-        
-        const msPerDay = 1000 * 60 * 60 * 24;
-        word.nextReview = Date.now() + (word.interval * msPerDay);
-        
+
+        // Слово тронули — оно больше не «ждёт своего дня»
+        if (word.status === 'pending' || word.status === 'new') word.status = 'learning';
+
         await dbService.putWord(word);
 
         const xpMap = { 1: 1, 2: 3, 3: 5, 4: 8 };

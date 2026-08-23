@@ -3,14 +3,12 @@ const dashboard = {
         const main = document.getElementById('main-content');
         main.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div></div>`;
 
-        await scheduler.updateStreak();
+        // Счётчик в шапке обновляет refreshStreak: он же гасит прерванную серию
+        await scheduler.refreshStreak();
 
         const user = await dbService.getUser();
         const profile = config.getProfile();
         const plan = await scheduler.getDailyPlan();
-
-        const headerStreak = document.getElementById('header-streak');
-        if (headerStreak) headerStreak.innerText = user.currentStreak || 0;
 
         const cycleProgress = plan.cycle ? await scheduler.getCycleProgress(plan.cycle.id) : null;
         const isReadyForExam = !!(cycleProgress && cycleProgress.isFinished);
@@ -169,6 +167,11 @@ const dashboard = {
                         </div>
                         <span class="text-xl font-bold text-blue-400">${plan.review.length}</span>
                     </div>
+                    ${plan.postponedReviews > 0 ? `
+                        <p class="text-[11px] text-slate-500 -mt-2 pl-1">
+                            Ещё ${plan.postponedReviews} на очереди — перенесены, чтобы урок не был бесконечным
+                        </p>
+                    ` : ''}
 
                     <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
                         <div class="flex items-center gap-3">
