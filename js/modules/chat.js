@@ -1,3 +1,4 @@
+import { speech } from '../core/speech.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t } from '../i18n/i18n.js';
@@ -178,33 +179,22 @@ export const chat = {
         }
     },
 
-    playAudio: (btn, text) => {
+    playAudio: async (btn, text) => {
         // Очищаем текст от русского языка, оставляя только немецкий
         const germanText = text.replace(/[А-Яа-яЁёІіЇїЄєҐґ]/g, '').trim();
-        
         if (!germanText) return;
-        
-        // 1. Принудительно сбрасываем очередь (помогает от зависаний)
-        window.speechSynthesis.cancel();
-        
-        const icon = btn.querySelector('i');
-        icon.className = 'fa-solid fa-spinner fa-spin text-amber-500';
-        
-        const utterance = new SpeechSynthesisUtterance(germanText);
-        utterance.lang = 'de-DE';
-        
-        // 2. Сохраняем в глобальную область видимости, чтобы сборщик мусора не удалил объект
-        window.currentSpeechUtterance = utterance;
-        
-        utterance.onend = () => {
-            icon.className = 'fa-solid fa-volume-high';
-        };
-        
-        utterance.onerror = () => {
-            icon.className = 'fa-solid fa-volume-high';
-        };
 
-        // 3. Запускаем озвучку
-        window.speechSynthesis.speak(utterance);
+        const icon = btn.querySelector('i');
+        const idle = () => { icon.className = 'fa-solid fa-volume-high'; };
+
+        const spoken = await speech.speak(germanText, {
+            onStart: () => { icon.className = 'fa-solid fa-spinner fa-spin text-amber-500'; },
+            onEnd: idle
+        });
+
+        if (!spoken) {
+            idle();
+            await dialog.alert(t('speech.noVoiceHint'), { title: t('speech.noVoiceTitle') });
+        }
     }
 };

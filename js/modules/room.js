@@ -1,4 +1,5 @@
 import { dialog } from '../core/dialog.js';
+import { speech } from '../core/speech.js';
 import { masteryUtils } from '../core/mastery.js';
 import { quiz } from '../core/quiz.js';
 import { dbService } from '../services/db.js';
@@ -90,6 +91,12 @@ export const room = {
 
         if (allWords.length === 0) {
             await dialog.alert(t('room.nothingStudied'));
+            return;
+        }
+
+        // Аудирование без немецкого голоса — это просьба записать тишину
+        if (allowedModes.includes('listening') && !(await speech.isAvailable())) {
+            await dialog.alert(t('speech.noVoiceHint'), { title: t('speech.noVoiceTitle') });
             return;
         }
 

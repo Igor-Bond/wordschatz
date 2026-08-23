@@ -54,6 +54,16 @@ export const uk = {
         model: 'Модель ШІ',
         reset: 'СКИНУТИ ВСЕ',
         checkConnection: 'ПЕРЕВІРИТИ ПІДКЛЮЧЕННЯ',
+        interests: 'Інтереси',
+        interestsHint: 'За ними ШІ добирає приклади в картках',
+        getKey: 'отримати ключ',
+        about: 'Інформація',
+        aboutCache: 'Версія кешу',
+        aboutStorage: 'Дані',
+        aboutModel: 'Модель ШІ',
+        aboutVoice: 'Німецький голос',
+        aboutSources: 'Джерело форм',
+        aboutNoCache: 'не кешовано',
         checking: 'Перевіряємо...',
         createdBy: 'Created by Igor Bondarenko'
     },
@@ -243,6 +253,13 @@ export const uk = {
         permissionDenied: 'Доступ заборонено. Перевірте правила безпеки Firestore.',
         quota: 'Вичерпано денну квоту Firestore. Спробуйте завтра.'
     },
+    speech: {
+        noVoiceTitle: 'Немає німецького голосу',
+        noVoiceHint: 'На пристрої не встановлено голос для німецької мови, тому озвучення мовчить.\n\nAndroid: Налаштування → Система → Мови та введення → Синтез мовлення → «Синтезатор мовлення Google» → Установити голосові дані → Deutsch.\n\niPhone: Налаштування → Доступність → Усний контент → Голоси → Deutsch.',
+        missing: 'не встановлено',
+        unsupported: 'браузер не підтримує'
+    },
+
     fields: {
         gender: 'Артикль (рід)',
         plural: 'Множина',

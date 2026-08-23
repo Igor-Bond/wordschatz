@@ -3,6 +3,8 @@ import { dbService } from '../services/db.js';
 import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
 import { germanUtils } from '../core/german.js';
+import { speech } from '../core/speech.js';
+import { dialog } from '../core/dialog.js';
 import { masteryUtils } from '../core/mastery.js';
 import { srs } from '../core/srs.js';
 import { lessonStateManager } from '../core/lessonState.js';
@@ -292,18 +294,21 @@ export const training = {
         `;
     },
 
-    playAudio: (text) => {
-        window.speechSynthesis.cancel();
+    playAudio: async (text) => {
         const btn = document.getElementById('training-audio-btn');
-        if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-lg"></i>`;
+        const idle = () => { if (btn) btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`; };
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'de-DE';
-        window.currentSpeechUtterance = utterance;
+        const spoken = await speech.speak(text, {
+            onStart: () => { if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-lg"></i>`; },
+            onEnd: idle
+        });
 
-        utterance.onend = () => { if (btn) btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`; };
-        utterance.onerror = () => { if (btn) btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`; };
-        window.speechSynthesis.speak(utterance);
+        // Молчание без объяснения выглядит как поломка кнопки, а причина
+        // в системе: немецкого голоса на устройстве может просто не быть
+        if (!spoken) {
+            idle();
+            await dialog.alert(t('speech.noVoiceHint'), { title: t('speech.noVoiceTitle') });
+        }
     },
 
     flipCard: () => {

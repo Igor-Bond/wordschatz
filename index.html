@@ -74,7 +74,8 @@
                 <button onclick="app.closeSettings()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
-            <div class="p-5 space-y-4">
+            <!-- Настроек стало больше, чем помещается на телефоне -->
+            <div class="p-5 space-y-4 overflow-y-auto max-h-[65vh] hide-scrollbar">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.language">Язык интерфейса</label>
                     <select id="settings-lang" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
@@ -105,17 +106,57 @@
                     </div>
                 </div>
 
+                <!-- §22 ТЗ: интересы задаются при первом запуске, но меняться они могут -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.apiKey">API Ключ (Gemini)</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.interests">Интересы</label>
+                    <textarea id="settings-interests" rows="2" placeholder="музыка, походы, автомобили"
+                        class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm resize-none"></textarea>
+                    <p class="text-[10px] text-slate-500 mt-1" data-i18n="settings.interestsHint">По ним ИИ подбирает примеры в карточках</p>
+                </div>
+
+                <div>
+                    <div class="flex items-baseline justify-between mb-1.5 gap-2">
+                        <label class="block text-xs font-bold text-slate-400" data-i18n="settings.apiKey">API Ключ (Gemini)</label>
+                        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+                           class="text-[10px] font-bold text-amber-500 hover:text-amber-400 shrink-0">
+                            <span data-i18n="settings.getKey">получить ключ</span> <i class="fa-solid fa-arrow-up-right-from-square ml-0.5"></i>
+                        </a>
+                    </div>
                     <input type="text" id="settings-api-key" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                     <button onclick="app.runDiagnostics()" id="diagnose-btn" class="w-full mt-2 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all" data-i18n="settings.checkConnection">ПРОВЕРИТЬ ПОДКЛЮЧЕНИЕ</button>
                     <pre id="diagnose-result" class="hidden mt-2 p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-400 whitespace-pre-wrap break-all max-h-40 overflow-y-auto"></pre>
                 </div>
 
+                <!-- §35 ТЗ: раздел «Информация» -->
                 <div class="pt-1">
-                    <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700 text-center shadow-inner">
-                        <p class="text-xs font-bold text-slate-300">WortSchatz Pro <span class="text-amber-500">v1.0</span></p>
-                        <p class="text-[9px] text-slate-500 mt-0.5 uppercase tracking-wider" data-i18n="settings.createdBy">Created by Igor Bondarenko</p>
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1" data-i18n="settings.about">Информация</h4>
+                    <div class="bg-slate-900/50 rounded-lg border border-slate-700 shadow-inner divide-y divide-slate-700/60">
+                        <div class="p-3 text-center">
+                            <p class="text-xs font-bold text-slate-300">WortSchatz Pro <span class="text-amber-500" id="about-version">v1.0</span></p>
+                            <p class="text-[9px] text-slate-500 mt-0.5 uppercase tracking-wider" data-i18n="settings.createdBy">Created by Igor Bondarenko</p>
+                        </div>
+                        <div class="p-3 space-y-1.5 text-[10px] text-slate-500">
+                            <div class="flex justify-between gap-2">
+                                <span data-i18n="settings.aboutCache">Версия кэша</span>
+                                <span class="text-slate-300 font-bold" id="about-cache">—</span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span data-i18n="settings.aboutStorage">Данные</span>
+                                <span class="text-slate-300 font-bold" id="about-storage">—</span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span data-i18n="settings.aboutModel">Модель ИИ</span>
+                                <span class="text-slate-300 font-bold truncate max-w-[55%]" id="about-model">—</span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span data-i18n="settings.aboutVoice">Немецкий голос</span>
+                                <span class="text-slate-300 font-bold truncate max-w-[55%]" id="about-voice">—</span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span data-i18n="settings.aboutSources">Источник форм</span>
+                                <a href="https://de.wiktionary.org" target="_blank" rel="noopener noreferrer" class="text-amber-500 font-bold hover:text-amber-400">de.wiktionary.org</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

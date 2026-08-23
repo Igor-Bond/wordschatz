@@ -19,7 +19,13 @@ export const profile = {
             <div class="fade-in max-w-lg mx-auto mt-2 pb-10">
                 <div class="flex justify-between items-center mb-6 px-1">
                     <h2 class="text-2xl font-bold text-slate-100">${t('profile.title')}</h2>
-                    <button onclick="document.getElementById('settings-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('settings-modal').classList.remove('opacity-0'), 10);" class="w-10 h-10 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shadow">
+                    <!--
+                        Именно app.openSettings(), а не показ окна руками:
+                        раньше кнопка просто снимала «hidden», поля оставались
+                        со значениями по умолчанию из разметки, и сохранение
+                        затирало выбранные при первом запуске уровень и норму.
+                    -->
+                    <button onclick="app.openSettings()" class="w-10 h-10 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shadow">
                         <i class="fa-solid fa-gear"></i>
                     </button>
                 </div>

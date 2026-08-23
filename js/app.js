@@ -1,5 +1,6 @@
 import { auth } from './services/auth.js';
 import { sync } from './services/sync.js';
+import { speech } from './core/speech.js';
 import { dialog } from './core/dialog.js';
 import { config } from './config.js';
 import { aiService } from './services/ai.js';
@@ -97,13 +98,23 @@ export const app = {
         
         document.getElementById('settings-api-key').value = savedKey;
         document.getElementById('settings-lang').value = prof.uiLang || 'ru';
-        document.getElementById('settings-level').value = prof.level || 'A1';
+
+        // Если сохранённого уровня нет в списке (пришёл из облака или из
+        // старой версии), select остаётся пустым и сохранение записало бы
+        // пустоту — откатываемся на значение по умолчанию
+        const levelSelect = document.getElementById('settings-level');
+        levelSelect.value = prof.level || 'B1';
+        if (!levelSelect.value) levelSelect.value = 'B1';
+
         // Подписи «5 слов / 10 слов…» зависят от языка, поэтому собираем список здесь
         const goalSelect = document.getElementById('settings-goal');
         goalSelect.innerHTML = [5, 10, 15, 20]
             .map(n => `<option value="${n}">${plural('common.word', n)}</option>`)
             .join('');
         goalSelect.value = prof.dailyGoal || '10';
+        document.getElementById('settings-interests').value = prof.interests || '';
+
+        app.fillAbout();
 
         const modal = document.getElementById('settings-modal');
         const content = document.getElementById('settings-modal-content');
@@ -113,6 +124,44 @@ export const app = {
             modal.classList.remove('opacity-0');
             content.classList.remove('scale-95');
         }, 10);
+    },
+
+    /**
+     * Раздел «Информация» (§35 ТЗ).
+     *
+     * Версия кэша и объём данных нужны не из любопытства: по ним видно,
+     * доехало ли обновление и сколько места занял словарь. Раньше это можно
+     * было узнать только через консоль браузера, которой на телефоне нет.
+     */
+    fillAbout: async () => {
+        const model = document.getElementById('about-model');
+        if (model) model.textContent = config.getProfile().model || '—';
+
+        const cache = document.getElementById('about-cache');
+        if (cache) {
+            try {
+                const names = await caches.keys();
+                const ours = names.find(n => n.startsWith('wortschatz-'));
+                cache.textContent = ours ? ours.replace('wortschatz-', '') : t('settings.aboutNoCache');
+            } catch (e) {
+                cache.textContent = '—';
+            }
+        }
+
+        const voice = document.getElementById('about-voice');
+        if (voice) voice.textContent = await speech.describe();
+
+        const storage = document.getElementById('about-storage');
+        if (storage) {
+            try {
+                const words = await dbService.countWords();
+                const estimate = navigator.storage?.estimate ? await navigator.storage.estimate() : null;
+                const mb = estimate?.usage ? ` · ${(estimate.usage / 1048576).toFixed(1)} МБ` : '';
+                storage.textContent = `${plural('common.word', words)}${mb}`;
+            } catch (e) {
+                storage.textContent = '—';
+            }
+        }
     },
 
     closeSettings: () => {
@@ -129,6 +178,7 @@ export const app = {
         const lang = document.getElementById('settings-lang').value;
         const level = document.getElementById('settings-level').value;
         const goal = parseInt(document.getElementById('settings-goal').value);
+        const interests = document.getElementById('settings-interests').value.trim();
 
         const previousGoal = config.getProfile().dailyGoal;
 
@@ -136,6 +186,7 @@ export const app = {
         config.set('ui_lang', lang);
         config.set('level', level);
         config.set('daily_goal', goal);
+        config.set('interests', interests);
 
         // §3 ТЗ: при смене дневной нормы оставшиеся дни темы пересчитываются
         if (goal !== previousGoal) {

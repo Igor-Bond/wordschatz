@@ -54,6 +54,16 @@ export const en = {
         model: 'AI model',
         reset: 'RESET EVERYTHING',
         checkConnection: 'TEST CONNECTION',
+        interests: 'Interests',
+        interestsHint: 'The AI builds card examples around them',
+        getKey: 'get a key',
+        about: 'About',
+        aboutCache: 'Cache version',
+        aboutStorage: 'Data',
+        aboutModel: 'AI model',
+        aboutVoice: 'German voice',
+        aboutSources: 'Form source',
+        aboutNoCache: 'not cached',
         checking: 'Testing...',
         createdBy: 'Created by Igor Bondarenko'
     },
@@ -243,6 +253,13 @@ export const en = {
         permissionDenied: 'Access denied. Check your Firestore security rules.',
         quota: 'Firestore daily quota exhausted. Try again tomorrow.'
     },
+    speech: {
+        noVoiceTitle: 'No German voice',
+        noVoiceHint: 'This device has no German speech voice installed, so playback stays silent.\n\nAndroid: Settings → System → Languages & input → Text-to-speech → Google Speech Services → Install voice data → Deutsch.\n\niPhone: Settings → Accessibility → Spoken Content → Voices → Deutsch.',
+        missing: 'not installed',
+        unsupported: 'browser does not support it'
+    },
+
     fields: {
         gender: 'Article (gender)',
         plural: 'Plural',

@@ -1,4 +1,5 @@
 import { quiz } from '../core/quiz.js';
+import { speech } from '../core/speech.js';
 import { masteryUtils } from '../core/mastery.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -133,7 +134,11 @@ export const exercises = {
 
         if ((!hasRequested || requested.includes('fill_blanks')) && word.example_de) validModes.push('fill_blanks');
         if ((!hasRequested || requested.includes('sentence_builder')) && word.example_de) validModes.push('sentence_builder');
-        if ((!hasRequested || requested.includes('listening')) && word.word) validModes.push('listening');
+        // Аудирование только если есть чем читать: без немецкого голоса
+        // задание превращается в «запишите тишину»
+        if ((!hasRequested || requested.includes('listening')) && word.word && await speech.isAvailable()) {
+            validModes.push('listening');
+        }
         if ((!hasRequested || requested.includes('translation_ru_de_input')) && word.word) validModes.push('translation_ru_de_input');
 
         if (validModes.length === 0) validModes.push('translation_de_ru');
@@ -167,6 +172,11 @@ export const exercises = {
             const input = document.querySelector('input[type="text"]:not([disabled])');
             if (input) input.focus();
         }, 100);
+
+        // Аудирование само произносит слово. Раньше это делал <script> внутри
+        // строки разметки — такие теги при вставке через innerHTML браузер
+        // не выполняет, и автопроизношение никогда не работало
+        if (exType === 'listening') setTimeout(() => training.playAudio(word.word), 300);
     },
 
     // ==========================================
@@ -487,7 +497,6 @@ export const exercises = {
                 <button onclick="exercises.checkInput('${word.word.replace(/'/g, "\\'")}', 'listening')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
                 
-                <script>setTimeout(() => training.playAudio('${word.word.replace(/'/g, "\\'")}'), 300);</script>
             </div>
         `;
     },

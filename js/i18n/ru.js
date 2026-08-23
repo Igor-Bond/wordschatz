@@ -54,6 +54,16 @@ export const ru = {
         model: 'Модель ИИ',
         reset: 'СБРОСИТЬ ВСЁ',
         checkConnection: 'ПРОВЕРИТЬ ПОДКЛЮЧЕНИЕ',
+        interests: 'Интересы',
+        interestsHint: 'По ним ИИ подбирает примеры в карточках',
+        getKey: 'получить ключ',
+        about: 'Информация',
+        aboutCache: 'Версия кэша',
+        aboutStorage: 'Данные',
+        aboutModel: 'Модель ИИ',
+        aboutVoice: 'Немецкий голос',
+        aboutSources: 'Источник форм',
+        aboutNoCache: 'не кэшировано',
         checking: 'Проверяем...',
         createdBy: 'Created by Igor Bondarenko'
     },
@@ -243,6 +253,13 @@ export const ru = {
         permissionDenied: 'Доступ запрещён. Проверьте правила безопасности Firestore.',
         quota: 'Исчерпана дневная квота Firestore. Попробуйте завтра.'
     },
+    speech: {
+        noVoiceTitle: 'Нет немецкого голоса',
+        noVoiceHint: 'На устройстве не установлен голос для немецкого языка, поэтому озвучка молчит.\n\nAndroid: Настройки → Система → Языки и ввод → Синтез речи → «Речевой синтезатор Google» → Установить голосовые данные → Deutsch.\n\niPhone: Настройки → Универсальный доступ → Устный контент → Голоса → Deutsch.',
+        missing: 'не установлен',
+        unsupported: 'браузер не поддерживает'
+    },
+
     fields: {
         gender: 'Артикль (род)',
         plural: 'Множественное число',
