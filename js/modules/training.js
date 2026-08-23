@@ -137,6 +137,9 @@ export const training = {
             return;
         }
 
+        // Занятие идёт — шапка приложения уступает место карточке
+        document.body.classList.add('lesson-mode');
+
         training.currentWord = training.queue[training.currentIndex];
         const progress = ((training.currentIndex) / training.queue.length) * 100;
         const word = training.currentWord;
@@ -176,19 +179,21 @@ export const training = {
             // время пропало с экрана вовсе — при том что данные есть
             const conjugation = germanUtils.getConjugation(word);
             if (conjugation) {
+                // Местоимение и форма в одну строку: в две строки на ячейку
+                // блок занимал 127 px из 354, отведённых карточке на телефоне
                 const cells = germanUtils.PERSONS
                     .filter(p => conjugation[p])
                     .map(p => `
-                        <div class="flex flex-col">
-                            <span class="text-[10px] text-slate-500">${germanUtils.PERSON_LABELS[p]}</span>
+                        <div class="flex items-baseline gap-1.5 min-w-0">
+                            <span class="text-[10px] text-slate-500 shrink-0">${germanUtils.PERSON_LABELS[p]}</span>
                             <span class="text-sm font-bold text-slate-100 break-words">${conjugation[p]}</span>
                         </div>`)
                     .join('');
 
                 conjugationBlock = `
-                    <div class="bg-[#1b2234] rounded-xl px-4 py-3 mb-5 border border-slate-700/70 shadow-inner">
-                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Präsens</div>
-                        <div class="grid grid-cols-3 gap-x-3 gap-y-2">${cells}</div>
+                    <div class="bg-[#1b2234] rounded-xl px-4 py-2.5 mb-4 border border-slate-700/70 shadow-inner">
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Präsens</div>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">${cells}</div>
                     </div>`;
             }
         } else if (word.type === 'adjective') {
@@ -212,11 +217,11 @@ export const training = {
                 приходилось долистывать.
             -->
             <div class="max-w-lg mx-auto h-full flex flex-col pt-2 fade-in">
-                <div class="flex items-center justify-between mb-2 shrink-0">
+                <div class="flex items-center justify-between mb-1.5 shrink-0">
                     <span class="text-[10px] font-bold text-${stepColor} uppercase tracking-wider bg-${stepColor}/10 px-2 py-1 rounded border border-${stepColor}/20 shadow-sm">${stepTitle}</span>
                     <span class="text-xs font-bold text-slate-500">${t('training.wordOf', { current: training.currentIndex + 1, total: training.queue.length })}</span>
                 </div>
-                <div class="w-full bg-slate-800 rounded-full h-2 mb-4 border border-slate-700 overflow-hidden shrink-0 mt-1">
+                <div class="w-full bg-slate-800 rounded-full h-2 mb-3 border border-slate-700 overflow-hidden shrink-0">
                     <div class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                 </div>
 
@@ -231,8 +236,10 @@ export const training = {
                     ровно та жалоба, ради которой подсказку и добавляли.
                 -->
                 <div class="flex-1 min-h-0 relative">
-                    <div id="card-scroll" class="h-full overflow-y-auto hide-scrollbar pb-3">
-                        <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative">
+                    <div id="card-scroll" class="h-full overflow-y-auto hide-scrollbar pb-1">
+                        <!-- overflow-hidden здесь нет намеренно: он ломает прилипание слова
+                                 к верху при прокрутке. Скругление углов держат сами блоки -->
+                            <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative">
                             <div id="card-front" class="p-8 flex flex-col items-center justify-center text-center relative z-10 min-h-[200px] transition-all duration-200">
                                 <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4" id="card-type">${word.type}</span>
                                 <div class="flex items-center justify-center gap-4 mb-2 w-full">
@@ -243,12 +250,12 @@ export const training = {
                                 </div>
                             </div>
 
-                            <div id="card-back" class="hidden flex-col p-4 bg-[#171d2b] border-t border-slate-700/50">
-                                <h3 class="text-3xl font-bold text-amber-500 text-center mb-4 drop-shadow-md">${word.translation}</h3>
+                            <div id="card-back" class="hidden flex-col p-4 bg-[#171d2b] border-t border-slate-700/50 rounded-b-2xl">
+                                <h3 class="text-2xl font-bold text-amber-500 text-center mb-3 drop-shadow-md">${word.translation}</h3>
                                 ${grammarBlock}
-                                <div class="bg-[#1b2234] p-4 rounded-xl border border-slate-700/70 shadow-inner">
-                                    <p class="text-slate-200 font-bold italic mb-2">"${word.example_de || ''}"</p>
-                                    <p class="text-slate-400 text-sm">${word.example_ru || ''}</p>
+                                <div class="bg-[#1b2234] p-3 rounded-xl border border-slate-700/70 shadow-inner">
+                                    <p class="text-slate-200 text-sm font-bold italic mb-1.5">"${word.example_de || ''}"</p>
+                                    <p class="text-slate-400 text-xs">${word.example_ru || ''}</p>
                                 </div>
                             </div>
                         </div>
@@ -323,7 +330,20 @@ export const training = {
         // После ответа эти двести пикселей нужнее грамматике
         const front = document.getElementById('card-front');
         front.classList.remove('p-8', 'min-h-[200px]');
-        front.classList.add('p-4', 'min-h-0');
+
+        // Слово прилипает к верху прокручиваемой области: пока читаешь
+        // грамматику и пример, само слово уезжало вверх, и на экране
+        // оставался только его пустой нижний край
+        front.classList.add('p-3', 'min-h-0', 'sticky', 'top-0', 'z-20', 'bg-[#21293c]', 'rounded-t-2xl', 'border-b', 'border-slate-700/50');
+
+        // Кнопка озвучки задавала высоту закреплённой полосы — уменьшаем
+        // вместе с ней
+        const audio = document.getElementById('training-audio-btn');
+        if (audio) {
+            audio.classList.replace('w-12', 'w-10');
+            audio.classList.replace('h-12', 'h-10');
+        }
+
         document.getElementById('card-type').classList.add('hidden');
         document.getElementById('card-word').classList.replace('text-3xl', 'text-2xl');
 
@@ -405,6 +425,7 @@ export const training = {
     },
 
     showCompletedScreen: async () => {
+        document.body.classList.remove('lesson-mode');
         const user = await dbService.getUser();
         const main = document.getElementById('main-content');
         const stateData = training.state?.data || { newWords: 0, reviewed: 0, xpEarned: 0 };

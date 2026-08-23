@@ -108,6 +108,7 @@ export const exercises = {
     },
 
     renderCurrent: async () => {
+        document.body.classList.add('lesson-mode');
         const main = document.getElementById('main-content');
         const word = exercises.queue[exercises.currentIndex];
         const progress = (exercises.currentIndex / exercises.queue.length) * 100;

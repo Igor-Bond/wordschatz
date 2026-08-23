@@ -61,6 +61,7 @@ export const app = {
         // Уход с экрана прекращает начатое упражнение. Без сброса режим
         // экзамена или Комнаты пережил бы переход, и ответы следующего урока
         // уходили бы в чужой обработчик — без опыта и с чужим набором заданий
+        document.body.classList.remove('lesson-mode');
         exercises.exam = null;
         exercises.isRoomMode = false;
         exercises.allowedModes = null;
