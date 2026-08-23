@@ -1,5 +1,7 @@
 import { config } from '../config.js';
 import { dbService } from '../services/db.js';
+import { dialog } from './dialog.js';
+import { t, plural } from '../i18n/i18n.js';
 import { dateUtils } from './dates.js';
 
 /**
@@ -49,10 +51,51 @@ export const scheduler = {
             await dbService.saveUser({ ...user, currentStreak: 0 });
         }
 
+        scheduler._paintStreak(value);
+        return value;
+    },
+
+    /**
+     * Показ значения в шапке.
+     *
+     * Потухшая серия раньше выглядела как живая: тот же оранжевый огонёк,
+     * только цифра ноль. Гасим его, чтобы разница была видна не вчитываясь.
+     */
+    _paintStreak: (value) => {
         const headerStreak = document.getElementById('header-streak');
         if (headerStreak) headerStreak.innerText = value;
 
-        return value;
+        const icon = document.getElementById('header-streak-icon');
+        if (icon) {
+            icon.classList.toggle('text-orange-500', value > 0);
+            icon.classList.toggle('text-slate-600', value === 0);
+        }
+    },
+
+    /**
+     * Что означает огонёк. Правило «пропустил день — серия сгорела» нигде
+     * не написано, и пользователю остаётся догадываться, почему цифра
+     * обнулилась.
+     */
+    explainStreak: async () => {
+        const user = await dbService.getUser();
+        const value = scheduler.getStreakValue(user);
+        const last = scheduler._normalizeDate(user.lastActiveDate);
+
+        const когда = last
+            ? (dateUtils.diffDays(last, dateUtils.today()) === 0
+                ? t('streak.today')
+                : dateUtils.format(last))
+            : t('streak.never');
+
+        const строки = [
+            t('streak.current', { days: plural('common.day', value) }),
+            t('streak.last', { when: когда }),
+            '',
+            value > 0 ? t('streak.keepHint') : t('streak.startHint')
+        ];
+
+        await dialog.alert(строки.join('\n'), { title: t('streak.title') });
     },
 
     /**
@@ -71,9 +114,7 @@ export const scheduler = {
 
         await dbService.saveUser({ ...user, currentStreak: streak, lastActiveDate: today });
 
-        const headerStreak = document.getElementById('header-streak');
-        if (headerStreak) headerStreak.innerText = streak;
-
+        scheduler._paintStreak(streak);
         return streak;
     },
 

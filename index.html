@@ -30,10 +30,16 @@
         <header class="p-4 flex justify-between items-center bg-slate-900/90 backdrop-blur-md sticky top-0 z-10 border-b border-slate-800 pt-[max(env(safe-area-inset-top),16px)]">
             <h1 class="text-2xl font-bold text-slate-100 tracking-wide">🇩🇪 <span class="text-amber-500">Wort</span>Schatz</h1>
             <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 shadow-sm cursor-pointer hover:bg-slate-700 transition">
-                    <i class="fa-solid fa-fire text-orange-500"></i>
+                <!--
+                    Плашка выглядела нажимаемой (cursor-pointer, подсветка при
+                    наведении), но обработчика не имела. Теперь по нажатию
+                    объясняет, что такое серия и жива ли она.
+                -->
+                <button onclick="scheduler.explainStreak()" id="header-streak-btn"
+                        class="flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 shadow-sm cursor-pointer hover:bg-slate-700 active:scale-95 transition">
+                    <i class="fa-solid fa-fire text-orange-500" id="header-streak-icon"></i>
                     <span id="header-streak" class="font-bold text-slate-200">0</span>
-                </div>
+                </button>
             </div>
         </header>
 

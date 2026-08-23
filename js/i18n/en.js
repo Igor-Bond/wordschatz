@@ -253,6 +253,16 @@ export const en = {
         permissionDenied: 'Access denied. Check your Firestore security rules.',
         quota: 'Firestore daily quota exhausted. Try again tomorrow.'
     },
+    streak: {
+        title: 'Day streak',
+        current: 'Now: {days} in a row',
+        last: 'Last session: {when}',
+        today: 'today',
+        never: 'none yet',
+        keepHint: 'The streak grows for a finished daily plan or a passed topic exam. Miss a day and it resets.',
+        startHint: 'Finish the daily plan to start a streak. Missing a day resets it.'
+    },
+
     speech: {
         noVoiceTitle: 'No German voice',
         noVoiceHint: 'This device has no German speech voice installed, so playback stays silent.\n\nAndroid: Settings → System → Languages & input → Text-to-speech → Google Speech Services → Install voice data → Deutsch.\n\niPhone: Settings → Accessibility → Spoken Content → Voices → Deutsch.',

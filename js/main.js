@@ -100,9 +100,14 @@ window.addEventListener('load', registerServiceWorker);
  * «ухода», его и ловим.
  */
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') return;
-    if (!auth.isSignedIn || sync.inProgress) return;
+    if (document.visibilityState === 'visible') {
+        // Приложение могли не закрывать сутки: за полночь серия сгорает,
+        // а цифра в шапке осталась бы вчерашней
+        scheduler.refreshStreak().catch(() => {});
+        return;
+    }
 
+    if (!auth.isSignedIn || sync.inProgress) return;
     sync.run({ silent: true }).catch(() => {});
 });
 
