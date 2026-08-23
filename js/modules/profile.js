@@ -13,6 +13,7 @@ import { dateUtils } from '../core/dates.js';
 
 export const profile = {
     render: async () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         
         main.innerHTML = `

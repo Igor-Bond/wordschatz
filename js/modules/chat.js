@@ -17,6 +17,7 @@ export const chat = {
     CONTEXT_MESSAGES: 20,
 
     render: async () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         
         main.innerHTML = `

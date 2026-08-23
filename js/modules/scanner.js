@@ -9,6 +9,7 @@ export const scanner = {
     currentResults: [],
 
     render: () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         
         main.innerHTML = `

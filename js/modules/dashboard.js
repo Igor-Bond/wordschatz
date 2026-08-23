@@ -9,6 +9,7 @@ import { app } from '../app.js';
 
 export const dashboard = {
     render: async () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         main.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div></div>`;
 

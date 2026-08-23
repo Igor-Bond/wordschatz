@@ -44,6 +44,7 @@ export const cycle = {
     // ======================================================
 
     renderTopicPicker: () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         const profile = config.getProfile();
         const wordsCount = cycle.state.days * profile.dailyGoal;

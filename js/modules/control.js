@@ -114,6 +114,7 @@ export const control = {
     },
 
     finishTest: async () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         const total = control.state.questions.length;
         const correct = control.state.correctCount;

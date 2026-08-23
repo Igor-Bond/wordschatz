@@ -9,6 +9,7 @@ import { exercises } from './exercises.js';
 
 export const room = {
     render: () => {
+        document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         
         main.innerHTML = `
