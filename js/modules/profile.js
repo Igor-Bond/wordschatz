@@ -256,58 +256,218 @@ export const profile = {
         }
     },
 
-    renderDictionary: async () => {
-        const container = document.getElementById('prof-mode-dict');
-        const allWords = await dbService.getAllWords();
+    /**
+     * Состояние поиска и фильтров словаря (§28 ТЗ).
+     * Держим в модуле, чтобы переключение вкладок не сбрасывало запрос.
+     */
+    dictFilters: { query: '', type: 'all', status: 'all', sort: 'recent' },
 
-        let html = `
-            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-4 flex justify-between gap-2">
+    /** Все слова держим в памяти: фильтрация по сотням записей мгновенна. */
+    _dictCache: [],
+
+    WORD_TYPES: ['noun', 'verb', 'adjective', 'phrase'],
+
+    STATUSES: ['all', 'difficult', 'learning', 'mastered'],
+
+    SORTS: ['recent', 'alphabet', 'mastery'],
+
+    /**
+     * @param {boolean} reload перечитывать ли словарь из базы.
+     *   При переключении фильтров данные те же — читать заново незачем.
+     */
+    renderDictionary: async (reload = true) => {
+        const container = document.getElementById('prof-mode-dict');
+        if (reload || !profile._dictCache.length) {
+            profile._dictCache = await dbService.getAllWords();
+        }
+
+        const f = profile.dictFilters;
+        const chip = (active) => active
+            ? 'bg-amber-500 text-slate-900 border-amber-500'
+            : 'bg-slate-900 text-slate-400 border-slate-600 hover:border-slate-500';
+
+        container.innerHTML = `
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg mb-4 space-y-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                    <input type="text" id="dict-search" value="${profile.escapeAttr(f.query)}"
+                        class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-xl pl-10 pr-10 py-2.5 outline-none focus:border-amber-500 text-sm transition-colors"
+                        placeholder="${profile.escapeAttr(t('profile.searchPlaceholder'))}"
+                        oninput="profile.onSearchInput(this.value)">
+                    <button id="dict-search-clear" onclick="profile.onSearchInput('')"
+                        class="${f.query ? '' : 'hidden'} absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5">
+                    <button onclick="profile.setDictFilter('type','all')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors ${chip(f.type === 'all')}">${t('profile.filterAll')}</button>
+                    ${profile.WORD_TYPES.map(type => `
+                        <button onclick="profile.setDictFilter('type','${type}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors ${chip(f.type === type)}">${t('wordTypes.' + type)}</button>
+                    `).join('')}
+                </div>
+
+                <div class="flex flex-wrap gap-1.5">
+                    ${profile.STATUSES.map(status => `
+                        <button onclick="profile.setDictFilter('status','${status}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors ${chip(f.status === status)}">${t('profile.status.' + status)}</button>
+                    `).join('')}
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <span id="dict-count" class="text-[11px] text-slate-500"></span>
+                    <select onchange="profile.setDictFilter('sort', this.value)"
+                        class="bg-slate-900 border border-slate-600 text-slate-300 rounded-lg px-2 py-1 text-[11px] outline-none focus:border-amber-500">
+                        ${profile.SORTS.map(s => `<option value="${s}" ${f.sort === s ? 'selected' : ''}>${t('profile.sort.' + s)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg mb-4 flex justify-between gap-2">
                 <button onclick="profile.exportData()" class="flex-1 py-3 bg-slate-900 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:text-amber-500 hover:border-amber-500 active:scale-95 transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-download"></i> ${t('profile.export')}
                 </button>
-                
+
                 <input type="file" id="import-file" accept=".json" class="hidden" onchange="profile.importData(event)">
                 <button onclick="document.getElementById('import-file').click()" class="flex-1 py-3 bg-slate-900 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:text-green-500 hover:border-green-500 active:scale-95 transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-upload"></i> ${t('profile.import')}
                 </button>
             </div>
-            
-            <div class="space-y-3">
+
+            <div id="dict-list" class="space-y-3"></div>
         `;
 
-        if (allWords.length === 0) {
-            html += `<p class="text-center text-slate-500 py-6">${t('profile.emptyDict')}</p>`;
-        } else {
-            allWords.forEach(w => {
-                const safeWordStr = (w.word || '').replace(/'/g, "\\'"); 
-                html += `
-                    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center group relative overflow-hidden">
-                        <div class="absolute left-0 top-0 bottom-0 w-1 ${w.mastery === 100 ? 'bg-green-500' : (w.isDifficult ? 'bg-red-500' : 'bg-slate-600')}"></div>
-                        
-                        <div class="pl-2 flex-1 mr-4 cursor-pointer" onclick="profile.openEditModal(${w.id})">
-                            <h4 class="text-lg font-bold text-slate-100">${w.word}</h4>
-                            <p class="text-sm text-amber-500 truncate">${w.translation}</p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <p class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</p>
-                                ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
-                            </div>
-                        </div>
-                        
-                        <div class="flex gap-2">
-                            <button onclick="profile.openEditModal(${w.id})" class="w-10 h-10 bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center border border-transparent hover:border-slate-500 transition-colors active:scale-95">
-                                <i class="fa-solid fa-pen"></i>
-                            </button>
-                            <button onclick="profile.deleteWord(${w.id}, '${safeWordStr}')" class="w-10 h-10 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center border border-transparent hover:border-red-900 transition-colors active:scale-95">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+        profile.renderDictList();
+    },
+
+    /** Экранирование для подстановки в атрибут. */
+    escapeAttr: (str) => String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+
+    onSearchInput: (value) => {
+        profile.dictFilters.query = value;
+
+        const input = document.getElementById('dict-search');
+        if (input && input.value !== value) input.value = value;
+
+        const clear = document.getElementById('dict-search-clear');
+        if (clear) clear.classList.toggle('hidden', !value);
+
+        profile.renderDictList();
+    },
+
+    setDictFilter: (key, value) => {
+        profile.dictFilters[key] = value;
+        // Перерисовываем и панель (подсветка активной кнопки), и список,
+        // но без повторного чтения базы
+        return profile.renderDictionary(false);
+    },
+
+    /** Отбор и сортировка по текущим фильтрам. */
+    getFilteredWords: () => {
+        const { query, type, status, sort } = profile.dictFilters;
+        const needle = query.trim().toLowerCase();
+
+        let words = profile._dictCache.filter(w => {
+            if (type !== 'all' && w.type !== type) return false;
+
+            if (status === 'difficult' && !w.isDifficult) return false;
+            if (status === 'mastered' && (w.mastery || 0) < 100) return false;
+            if (status === 'learning' && (!(w.repetitions > 0) || (w.mastery || 0) >= 100)) return false;
+
+            if (!needle) return true;
+
+            // Ищем и по немецкому, и по переводу, и по теме
+            return [w.word, w.translation, w.topic, w.synonym, w.gegenteil]
+                .some(field => String(field ?? '').toLowerCase().includes(needle));
+        });
+
+        if (sort === 'alphabet') {
+            words = words.sort((a, b) => String(a.word).localeCompare(String(b.word), 'de'));
+        } else if (sort === 'mastery') {
+            words = words.sort((a, b) => (a.mastery || 0) - (b.mastery || 0));
+        }
+        // 'recent' — порядок уже такой, getAllWords отдаёт свежие первыми
+
+        return words;
+    },
+
+    renderDictList: () => {
+        const list = document.getElementById('dict-list');
+        const counter = document.getElementById('dict-count');
+        if (!list) return;
+
+        const words = profile.getFilteredWords();
+
+        if (counter) {
+            counter.innerText = t('profile.shownCount', { shown: words.length, total: profile._dictCache.length });
         }
 
-        html += `</div>`;
-        container.innerHTML = html;
+        if (profile._dictCache.length === 0) {
+            list.innerHTML = `<p class="text-center text-slate-500 py-6">${t('profile.emptyDict')}</p>`;
+            return;
+        }
+
+        if (words.length === 0) {
+            list.innerHTML = `
+                <div class="text-center text-slate-500 py-10">
+                    <i class="fa-solid fa-magnifying-glass text-3xl mb-3 opacity-40"></i>
+                    <p class="text-sm">${t('profile.nothingFound')}</p>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = words.map(w => {
+            const safeWordStr = (w.word || '').replace(/'/g, "\\'");
+            const accent = w.mastery === 100 ? 'bg-green-500' : (w.isDifficult ? 'bg-red-500' : 'bg-slate-600');
+
+            return `
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center group relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 ${accent}"></div>
+
+                    <div class="pl-2 flex-1 mr-3 cursor-pointer min-w-0" onclick="profile.openEditModal(${w.id})">
+                        <h4 class="text-lg font-bold text-slate-100 truncate">${w.word}</h4>
+                        <p class="text-sm text-amber-500 truncate">${w.translation}</p>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <span class="text-[10px] text-slate-500 uppercase">${t('wordTypes.' + (profile.WORD_TYPES.includes(w.type) ? w.type : 'phrase'))}</span>
+                            <span class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</span>
+                            ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="flex gap-1.5 shrink-0">
+                        <button onclick="profile.toggleDifficult(${w.id})" title="${profile.escapeAttr(t('profile.toggleHard'))}"
+                            class="w-9 h-9 rounded-lg flex items-center justify-center border border-transparent transition-colors active:scale-95 ${
+                                w.isDifficult ? 'bg-red-900/30 text-red-500 hover:border-red-900' : 'bg-slate-700 text-slate-400 hover:text-red-400'
+                            }">
+                            <i class="fa-solid fa-fire"></i>
+                        </button>
+                        <button onclick="profile.openEditModal(${w.id})" class="w-9 h-9 bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center border border-transparent hover:border-slate-500 transition-colors active:scale-95">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="profile.deleteWord(${w.id}, '${safeWordStr}')" class="w-9 h-9 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center border border-transparent hover:border-red-900 transition-colors active:scale-95">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Пометка слова сложным вручную (§16 ТЗ).
+     * Раньше признак ставился только автоматически по итогам контроля,
+     * а «Только сложные» в Комнате опиралось именно на него.
+     */
+    toggleDifficult: async (id) => {
+        const word = profile._dictCache.find(w => w.id === id);
+        if (!word) return;
+
+        const next = word.isDifficult ? 0 : 1;
+        await dbService.updateWord(id, { isDifficult: next });
+        word.isDifficult = next;
+
+        profile.renderDictList();
     },
 
     openEditModal: async (id) => {

@@ -349,6 +349,13 @@ export const ru = {
 
     profile: {
         title: 'Профиль и данные',
+        searchPlaceholder: 'Поиск по слову, переводу, теме...',
+        filterAll: 'Все',
+        shownCount: 'Показано {shown} из {total}',
+        nothingFound: 'Ничего не найдено',
+        toggleHard: 'Отметить как сложное',
+        status: { all: 'Все', difficult: 'Сложные', learning: 'В изучении', mastered: 'Выучено' },
+        sort: { recent: 'Сначала новые', alphabet: 'По алфавиту', mastery: 'Сначала слабые' },
         tabStats: 'Статистика',
         tabDict: 'Мой словарь',
         defaultName: 'Студент',

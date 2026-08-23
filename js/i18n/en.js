@@ -349,6 +349,13 @@ export const en = {
 
     profile: {
         title: 'Profile and data',
+        searchPlaceholder: 'Search by word, translation, topic...',
+        filterAll: 'All',
+        shownCount: 'Showing {shown} of {total}',
+        nothingFound: 'Nothing found',
+        toggleHard: 'Mark as hard',
+        status: { all: 'All', difficult: 'Hard', learning: 'Learning', mastered: 'Mastered' },
+        sort: { recent: 'Newest first', alphabet: 'Alphabetical', mastery: 'Weakest first' },
         tabStats: 'Statistics',
         tabDict: 'My dictionary',
         defaultName: 'Student',

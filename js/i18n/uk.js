@@ -349,6 +349,13 @@ export const uk = {
 
     profile: {
         title: 'Профіль і дані',
+        searchPlaceholder: 'Пошук за словом, перекладом, темою...',
+        filterAll: 'Усі',
+        shownCount: 'Показано {shown} з {total}',
+        nothingFound: 'Нічого не знайдено',
+        toggleHard: 'Позначити як складне',
+        status: { all: 'Усі', difficult: 'Складні', learning: 'У вивченні', mastered: 'Вивчено' },
+        sort: { recent: 'Спочатку нові', alphabet: 'За абеткою', mastery: 'Спочатку слабкі' },
         tabStats: 'Статистика',
         tabDict: 'Мій словник',
         defaultName: 'Студент',
