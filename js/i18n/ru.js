@@ -253,6 +253,7 @@ export const ru = {
         newWords: 'НОВЫЕ СЛОВА',
         wordOf: 'Слово {current} из {total}',
         showAnswer: 'ПОКАЗАТЬ ОТВЕТ',
+        scrollHint: 'Ниже есть ещё',
         again: 'Снова',
         hard: 'Трудно',
         good: 'Хорошо',
@@ -370,12 +371,12 @@ export const ru = {
         newStory: 'Новая история',
         addWord: 'Добавить',
         added: 'Добавлено!',
+        adding: 'Разбираю…',
         showTranslation: 'ПОКАЗАТЬ ПЕРЕВОД ТЕКСТА',
         hideTranslation: 'СКРЫТЬ ПЕРЕВОД ТЕКСТА',
         searching: 'Ищем «{word}»...',
         alreadyInDict: '(уже в словаре)',
-        translateFailed: 'Не удалось перевести «{word}»',
-        usedExample: 'Он использовал {word}.'
+        translateFailed: 'Не удалось перевести «{word}»'
     },
 
     scanner: {
@@ -450,6 +451,11 @@ export const ru = {
         completenessGaps: 'Не хватает форм: {words}. Их можно дополнить вручную или перегенерировать тему.',
         completenessFull: 'Все карточки заполнены полностью.',
         completenessShow: 'ПОКАЗАТЬ НЕПОЛНЫЕ',
+        completeOne: 'Дозаполнить карточку',
+        completeAllHint: 'Дозаполнить все неполные карточки',
+        completeAllConfirm: 'Запросить у ИИ недостающие поля? Слов: {words}. Заполненное и правки не изменятся.',
+        completeDone: 'Дозаполнено: {words}.',
+        completeNothing: 'ИИ не вернул недостающих форм. Возможно, у слова их и нет — тогда допишите вручную.',
         incompleteBadge: 'нет {count} полей',
         masteredHint: 'Слово держится в памяти дольше трёх недель',
         difficult: 'Сложные',

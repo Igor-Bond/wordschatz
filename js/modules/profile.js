@@ -6,6 +6,7 @@ import { dialog } from '../core/dialog.js';
 import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
 import { i18n, t, plural } from '../i18n/i18n.js';
+import { aiService } from '../services/ai.js';
 import { dbService } from '../services/db.js';
 import { dateUtils } from '../core/dates.js';
 
@@ -426,28 +427,152 @@ export const profile = {
         );
 
         const color = percent >= 90 ? 'text-green-400' : (percent >= 70 ? 'text-amber-500' : 'text-red-400');
+        const bar = percent >= 90 ? 'bg-green-500' : (percent >= 70 ? 'bg-amber-500' : 'bg-red-500');
 
+        // Одна строка вместо отдельной карточки: на телефоне экран статистики
+        // и без того длинный, а тут достаточно числа и способа посмотреть, где
+        // именно дыры
         return `
-            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-bold text-slate-200">${t('profile.completeness')}</span>
-                    <span class="text-lg font-black ${color}">${percent}%</span>
+            <div class="bg-slate-800 px-4 py-3 rounded-2xl border border-slate-700 shadow-md flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <span class="text-xs font-bold text-slate-300">${t('profile.completeness')}</span>
+                        <span class="text-sm font-black ${color}">${percent}%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-1.5 border border-slate-700 overflow-hidden mt-1.5">
+                        <div class="h-full rounded-full ${bar}" style="width: ${percent}%"></div>
+                    </div>
                 </div>
-                <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-700 overflow-hidden mb-3">
-                    <div class="h-full rounded-full ${percent >= 90 ? 'bg-green-500' : (percent >= 70 ? 'bg-amber-500' : 'bg-red-500')}" style="width: ${percent}%"></div>
-                </div>
-                <p class="text-xs text-slate-500">
-                    ${incomplete.length
-                        ? t('profile.completenessGaps', { words: plural('common.word', incomplete.length) })
-                        : t('profile.completenessFull')}
-                </p>
                 ${incomplete.length ? `
-                    <button onclick="profile.showIncomplete()"
-                        class="mt-3 w-full py-2.5 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
-                        ${t('profile.completenessShow')}
+                    <button onclick="profile.showIncomplete()" title="${profile.escapeAttr(t('profile.completenessGaps', { words: plural('common.word', incomplete.length) }))}"
+                        class="shrink-0 px-3 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                        ${incomplete.length} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i>
+                    </button>
+                    <button onclick="profile.completeAll()" id="prof-complete-all" title="${profile.escapeAttr(t('profile.completeAllHint'))}"
+                        class="shrink-0 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold rounded-xl active:scale-95 transition-all">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
                     </button>` : ''}
             </div>
         `;
+    },
+
+    /**
+     * Дозаполнение карточек через ИИ.
+     *
+     * Просим только недостающие поля и записываем только их: ручные правки
+     * и уже заполненное не трогаем. Порциями по восемь — в один ответ
+     * больше не влезает, а обрыв JSON стоит целой порции.
+     *
+     * @param {Array} words слова из базы
+     * @param {Function} onProgress (обработано, всего)
+     * @returns {Promise<number>} сколько карточек изменилось
+     */
+    completeCards: async (words, onProgress = null) => {
+        const BATCH = 8;
+        let updated = 0;
+
+        for (let i = 0; i < words.length; i += BATCH) {
+            const batch = words.slice(i, i + BATCH);
+
+            const request = batch.map(w => ({
+                word: w.word,
+                type: w.type,
+                missing: germanUtils.missingFields(w)
+            }));
+
+            let filled = [];
+            try {
+                filled = await aiService.completeCards(request);
+            } catch (e) {
+                console.error('[Словарь] Порция не дозаполнилась:', e);
+                if (onProgress) onProgress(Math.min(i + BATCH, words.length), words.length);
+                continue;
+            }
+
+            for (const local of batch) {
+                const key = String(local.word).toLowerCase().trim();
+                const remote = filled.find(f => String(f.word).toLowerCase().trim() === key);
+                if (!remote) continue;
+
+                // Пишем только то, чего не было: ответ модели не должен
+                // затирать ни правки пользователя, ни удачные прошлые поля
+                const changes = {};
+                for (const field of germanUtils.missingFields(local)) {
+                    const value = remote[field];
+                    if (value === undefined || value === null) continue;
+                    if (typeof value === 'string' && !value.trim()) continue;
+                    changes[field] = value;
+                }
+
+                if (Object.keys(changes).length) {
+                    await dbService.updateWord(local.id, changes);
+                    updated++;
+                }
+            }
+
+            if (onProgress) onProgress(Math.min(i + BATCH, words.length), words.length);
+        }
+
+        return updated;
+    },
+
+    /** Дозаполнить все неполные карточки словаря. */
+    completeAll: async () => {
+        const btn = document.getElementById('prof-complete-all');
+        const all = await dbService.getAllWords();
+        const incomplete = all.filter(w => germanUtils.missingFields(w).length > 0);
+
+        if (!incomplete.length) return;
+
+        const ok = await dialog.confirm(
+            t('profile.completeAllConfirm', { words: plural('common.word', incomplete.length) })
+        );
+        if (!ok) return;
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+        }
+
+        try {
+            const updated = await profile.completeCards(incomplete, (done, total) => {
+                if (btn) btn.innerHTML = `<span class="text-[10px]">${done}/${total}</span>`;
+            });
+
+            profile._dictCache = [];
+            await profile.renderStats();
+            await profile.renderDictionary();
+            await dialog.alert(t('profile.completeDone', { words: plural('common.word', updated) }));
+        } catch (e) {
+            console.error('[Словарь] Дозаполнение не удалось:', e);
+            await dialog.alert(e?.message || t('common.error'));
+            await profile.renderStats();
+        }
+    },
+
+    /** Дозаполнить одну карточку. */
+    completeOne: async (id) => {
+        const btn = document.getElementById(`complete-${id}`);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+        }
+
+        const word = (await dbService.getAllWords()).find(w => w.id === id);
+        if (!word) return;
+
+        try {
+            const updated = await profile.completeCards([word]);
+            profile._dictCache = [];
+            await profile.renderDictionary();
+            await profile.renderStats();
+
+            if (!updated) await dialog.alert(t('profile.completeNothing'));
+        } catch (e) {
+            console.error('[Словарь] Дозаполнение не удалось:', e);
+            await dialog.alert(e?.message || t('common.error'));
+            await profile.renderDictionary();
+        }
     },
 
     /** Переход в словарь с фильтром по неполным карточкам. */
@@ -587,7 +712,6 @@ export const profile = {
 
         const week = activity.slice(-7);
         const xpWeek = week.reduce((s, d) => s + d.xp, 0);
-        const xpMonth = activity.reduce((s, d) => s + d.xp, 0);
         const activeDays = activity.filter(d => d.xp > 0).length;
 
         const bars = activity.map(day => {
@@ -617,14 +741,15 @@ export const profile = {
                     <span>${t('profile.today')}</span>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-700">
+                <!--
+                    XP за месяц убран: он повторял то, что уже нарисовано
+                    столбиками прямо над ним, и на телефоне лишняя цифра
+                    отъедала строку у полезного
+                -->
+                <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-700">
                     <div class="text-center">
                         <div class="text-lg font-black text-amber-500">${xpWeek}</div>
                         <div class="text-[10px] text-slate-500 uppercase mt-0.5">${t('profile.xpWeek')}</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-lg font-black text-amber-500">${xpMonth}</div>
-                        <div class="text-[10px] text-slate-500 uppercase mt-0.5">${t('profile.xpMonth')}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-lg font-black text-slate-100">${activeDays}<span class="text-slate-500 text-sm">/30</span></div>
@@ -736,8 +861,8 @@ export const profile = {
                     <div class="absolute left-0 top-0 bottom-0 w-1 ${accent}"></div>
 
                     <div class="pl-2 flex-1 mr-3 cursor-pointer min-w-0" onclick="profile.openEditModal(${w.id})">
-                        <h4 class="text-lg font-bold text-slate-100 truncate">${profile.renderWordWithGender(w)}</h4>
-                        <p class="text-sm text-amber-500 truncate">${w.translation}</p>
+                        <h4 class="text-lg font-bold text-slate-100 break-words">${profile.renderWordWithGender(w)}</h4>
+                        <p class="text-sm text-amber-500 break-words">${w.translation}</p>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <span class="text-[10px] text-slate-500 uppercase">${t('wordTypes.' + (profile.WORD_TYPES.includes(w.type) ? w.type : 'phrase'))}</span>
                             <span class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</span>
@@ -747,6 +872,11 @@ export const profile = {
                     </div>
 
                     <div class="flex gap-1.5 shrink-0">
+                        ${gaps.length ? `
+                            <button onclick="profile.completeOne(${w.id})" id="complete-${w.id}" title="${profile.escapeAttr(t('profile.completeOne'))}"
+                                class="w-9 h-9 bg-amber-500/15 text-amber-500 rounded-lg flex items-center justify-center border border-amber-500/30 hover:bg-amber-500/25 transition-colors active:scale-95">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </button>` : ''}
                         <button onclick="profile.toggleDifficult(${w.id})" title="${profile.escapeAttr(t('profile.toggleHard'))}"
                             class="w-9 h-9 rounded-lg flex items-center justify-center border border-transparent transition-colors active:scale-95 ${
                                 w.isDifficult ? 'bg-red-900/30 text-red-500 hover:border-red-900' : 'bg-slate-700 text-slate-400 hover:text-red-400'

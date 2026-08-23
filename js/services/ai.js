@@ -570,6 +570,67 @@ export const aiService = {
     },
 
     /**
+     * Полная карточка для одного слова.
+     *
+     * Нужна там, где слово приходит по одному — например, кликом по слову
+     * в ИИ-рассказе. Раньше такие слова сохранялись с одним переводом и
+     * выдуманным примером «Er hat X verwendet», то есть заведомо неполными
+     * и с бесполезным контекстом.
+     *
+     * @param {string} word немецкое слово как оно встретилось в тексте
+     * @param {string} topic тема, под которой сохранить
+     * @returns {Promise<Object|null>} карточка по общей схеме
+     */
+    describeWord: async (word, topic = null) => {
+        const profile = config.getProfile();
+
+        const prompt = `Разбери немецкое слово или фразу "${word}" уровня ${profile.level}.
+        Если это словоформа, приведи её к словарной: существительное — с артиклем в именительном падеже, глагол — в инфинитиве.
+        ${aiService._getFieldRules()}
+        Верни ТОЛЬКО JSON массив из одного объекта. Формат: \n${aiService._getJsonFormat()}`;
+
+        const responseText = await aiService.callGemini(prompt, true);
+        const parsed = aiService._parseJsonResponse(responseText, profile.level, topic || word);
+
+        return parsed[0] || null;
+    },
+
+    /**
+     * Дозаполнение уже существующих карточек.
+     *
+     * Просим только недостающие поля, а не карточку целиком: так ответ
+     * короче (в одну порцию влезает больше слов), а главное — не затираются
+     * правки, сделанные вручную.
+     *
+     * @param {Array} cards [{ word, type, missing: ['dativ', ...] }]
+     * @returns {Promise<Array>} объекты с полем word и запрошенными полями
+     */
+    completeCards: async (cards) => {
+        if (!cards.length) return [];
+
+        const profile = config.getProfile();
+
+        const list = cards.map((c, i) =>
+            `${i + 1}. "${c.word}" (тип: ${c.type || 'phrase'}) — не хватает: ${c.missing.join(', ')}`
+        ).join('\n');
+
+        const prompt = `Дополни карточки немецких слов уровня ${profile.level} недостающими полями.
+        Для каждого слова верни объект с полем "word" — ровно в том виде, как оно дано в списке, — и только перечисленными для него полями.
+        Ничего не выдумывай: если формы у слова не существует, поле пропусти.
+
+        Слова:
+        ${list}
+
+        ${aiService._getFieldRules()}
+        Верни ТОЛЬКО плоский JSON массив. Формат полей: \n${aiService._getJsonFormat()}`;
+
+        // Разбираем без обычной проверки на перевод: его как раз просить
+        // не нужно, если он уже есть
+        const responseText = await aiService.callGemini(prompt, true);
+        return aiService._parseJsonArray(responseText).filter(w => w.word);
+    },
+
+    /**
      * Набор слов по теме.
      *
      * Для больших наборов (тема на неделю — это 50–140 слов) генерируем
@@ -711,7 +772,8 @@ export const aiService = {
             .filter(obj => obj && typeof obj === 'object');
     },
 
-    _parseJsonResponse: (rawText, defaultLevel, defaultTopic) => {
+    /** Массив объектов из ответа модели, без проверки содержимого. */
+    _parseJsonArray: (rawText) => {
         const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
         let parsed = null;
@@ -735,8 +797,12 @@ export const aiService = {
             if (!Array.isArray(parsed)) parsed = [parsed];
         }
 
-        return parsed
-            .filter(w => w && typeof w === 'object' && w.word && w.translation)
+        return parsed.filter(w => w && typeof w === 'object');
+    },
+
+    _parseJsonResponse: (rawText, defaultLevel, defaultTopic) => {
+        return aiService._parseJsonArray(rawText)
+            .filter(w => w.word && w.translation)
             .map(w => ({
                 ...w,
                 level: w.level || defaultLevel,

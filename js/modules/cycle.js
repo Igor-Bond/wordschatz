@@ -249,10 +249,10 @@ export const cycle = {
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
-                                    <span class="font-bold text-slate-100 truncate">${cycle.esc(w.word)}</span>
+                                    <span class="font-bold text-slate-100 break-words">${cycle.esc(w.word)}</span>
                                     <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${badgeColors[type]}">${t('wordTypes.' + type)}</span>
                                 </div>
-                                <div class="text-sm text-amber-500/90 truncate">${cycle.esc(w.translation)}</div>
+                                <div class="text-sm text-amber-500/90 break-words">${cycle.esc(w.translation)}</div>
                             </div>
                         </div>`;
                     }).join('')}

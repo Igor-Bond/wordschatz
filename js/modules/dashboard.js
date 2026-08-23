@@ -92,7 +92,7 @@ export const dashboard = {
                 <div class="flex justify-between items-start mb-3">
                     <div class="min-w-0">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">${t('dashboard.topic')}</p>
-                        <h3 class="text-lg font-bold text-slate-100 truncate">${cycle.esc(activeCycle.title)}</h3>
+                        <h3 class="text-lg font-bold text-slate-100 break-words">${cycle.esc(activeCycle.title)}</h3>
                     </div>
                     <span class="text-xs font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg shrink-0">
                         ${t('dashboard.dayOf', { current: progress.currentDay, total: progress.totalDays })}

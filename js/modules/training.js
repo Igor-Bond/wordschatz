@@ -218,27 +218,43 @@ export const training = {
                     <div class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                 </div>
 
-                <div id="card-scroll" class="flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-4">
-                <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative">
-                    <div class="p-8 flex flex-col items-center justify-center text-center relative z-10 min-h-[200px]">
-                        <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">${word.type}</span>
-                        <div class="flex items-center justify-center gap-4 mb-2 w-full">
-                            <h2 class="text-3xl font-black text-slate-100 break-words">${word.word}</h2>
-                            <button onclick="training.playAudio('${word.word.replace(/'/g, "\'")}')" class="w-12 h-12 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-amber-500 transition-colors shrink-0 shadow-lg" id="training-audio-btn">
-                                <i class="fa-solid fa-volume-high text-lg"></i>
-                            </button>
+                <!--
+                    Карточка прокручивается внутри себя, и на телефоне это
+                    читалось как обрезанный текст: содержимое просто упиралось
+                    в кнопки. Поэтому снизу лежит затемнение, а рядом с ним —
+                    подсказка, что ниже есть ещё; и то и другое исчезает,
+                    когда прокручивать больше некуда.
+                -->
+                <div class="flex-1 min-h-0 relative">
+                    <div id="card-scroll" class="h-full overflow-y-auto hide-scrollbar pb-4">
+                        <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative">
+                            <div id="card-front" class="p-8 flex flex-col items-center justify-center text-center relative z-10 min-h-[200px] transition-all duration-200">
+                                <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4" id="card-type">${word.type}</span>
+                                <div class="flex items-center justify-center gap-4 mb-2 w-full">
+                                    <h2 class="text-3xl font-black text-slate-100 break-words" id="card-word">${word.word}</h2>
+                                    <button onclick="training.playAudio('${word.word.replace(/'/g, "\'")}')" class="w-12 h-12 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-amber-500 transition-colors shrink-0 shadow-lg" id="training-audio-btn">
+                                        <i class="fa-solid fa-volume-high text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="card-back" class="hidden flex-col p-5 bg-[#171d2b] border-t border-slate-700/50">
+                                <h3 class="text-3xl font-bold text-amber-500 text-center mb-6 drop-shadow-md">${word.translation}</h3>
+                                ${grammarBlock}
+                                <div class="bg-[#1b2234] p-4 rounded-xl border border-slate-700/70 shadow-inner">
+                                    <p class="text-slate-200 font-bold italic mb-2">"${word.example_de || ''}"</p>
+                                    <p class="text-slate-400 text-sm">${word.example_ru || ''}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div id="card-back" class="hidden flex-col p-5 bg-[#171d2b] border-t border-slate-700/50">
-                        <h3 class="text-3xl font-bold text-amber-500 text-center mb-6 drop-shadow-md">${word.translation}</h3>
-                        ${grammarBlock}
-                        <div class="bg-[#1b2234] p-4 rounded-xl border border-slate-700/70 shadow-inner">
-                            <p class="text-slate-200 font-bold italic mb-2">"${word.example_de || ''}"</p>
-                            <p class="text-slate-400 text-sm">${word.example_ru || ''}</p>
-                        </div>
+                    <div id="card-fade" class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-slate-900 to-transparent opacity-0 transition-opacity duration-200"></div>
+                    <div id="card-more" class="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center opacity-0 transition-opacity duration-200">
+                        <span class="text-[10px] font-bold text-amber-500/90 bg-slate-900/80 border border-amber-500/30 rounded-full px-2.5 py-1">
+                            <i class="fa-solid fa-chevron-down mr-1"></i>${t('training.scrollHint')}
+                        </span>
                     </div>
-                </div>
                 </div>
 
                 <div id="controls-front" class="shrink-0 pb-2">
@@ -289,6 +305,45 @@ export const training = {
         document.getElementById('controls-front').classList.add('hidden');
         document.getElementById('controls-back').classList.remove('hidden');
         document.getElementById('controls-back').classList.add('grid');
+
+        // Пока слово было вопросом, ему полагалась половина экрана.
+        // После ответа эти двести пикселей нужнее грамматике
+        const front = document.getElementById('card-front');
+        front.classList.remove('p-8', 'min-h-[200px]');
+        front.classList.add('p-4', 'min-h-0');
+        document.getElementById('card-type').classList.add('hidden');
+        document.getElementById('card-word').classList.replace('text-3xl', 'text-2xl');
+
+        training.updateScrollHint();
+    },
+
+    /**
+     * Подсказка о прокрутке карточки.
+     *
+     * Без неё содержимое просто упиралось в кнопки, и это читалось как
+     * обрезанный текст — на телефоне под ответ остаётся около 400 px,
+     * а полная карточка занимает вдвое больше.
+     */
+    updateScrollHint: () => {
+        const scroll = document.getElementById('card-scroll');
+        const fade = document.getElementById('card-fade');
+        const more = document.getElementById('card-more');
+        if (!scroll || !fade || !more) return;
+
+        const apply = () => {
+            const остаток = scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop;
+            const показать = остаток > 8;
+            fade.classList.toggle('opacity-0', !показать);
+            more.classList.toggle('opacity-0', !показать);
+        };
+
+        if (!scroll.dataset.hintBound) {
+            scroll.addEventListener('scroll', apply, { passive: true });
+            scroll.dataset.hintBound = '1';
+        }
+
+        // Разметка только что вставлена — размеры появятся на следующем кадре
+        requestAnimationFrame(apply);
     },
 
     rate: async (quality) => {

@@ -251,16 +251,28 @@ export const room = {
                 addBtn.classList.remove('hidden');
                 addBtn.onclick = async () => {
                     addBtn.disabled = true;
-                    addBtn.innerText = t('room.added');
-                    
+                    addBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> ${t('room.adding')}`;
+
+                    // Быстрый перевод годится для подсказки, но не для словаря:
+                    // карточка без грамматики и с выдуманным примером
+                    // «Er hat X verwendet» ломала половину упражнений
+                    let card = null;
+                    try {
+                        card = await aiService.describeWord(cleanWord, t('room.storyHeader'));
+                    } catch (e) {
+                        console.error('[Комната] Не удалось разобрать слово:', e);
+                    }
+
                     await dbService.addWord({
-                        word: wordData.word,
-                        translation: wordData.translation,
-                        type: wordData.type || 'phrase',
-                        topic: t('room.storyHeader'),
-                        example_de: `Er hat ${wordData.word} verwendet.`,
-                        example_ru: t('room.usedExample', { word: wordData.translation })
+                        ...(card || {
+                            word: wordData.word,
+                            translation: wordData.translation,
+                            type: wordData.type || 'phrase'
+                        }),
+                        topic: t('room.storyHeader')
                     });
+
+                    addBtn.innerText = t('room.added');
                 };
             } catch (e) {
                 textSpan.innerText = t('room.translateFailed', { word: cleanWord });

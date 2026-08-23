@@ -253,6 +253,7 @@ export const uk = {
         newWords: 'НОВІ СЛОВА',
         wordOf: 'Слово {current} з {total}',
         showAnswer: 'ПОКАЗАТИ ВІДПОВІДЬ',
+        scrollHint: 'Нижче є ще',
         again: 'Знову',
         hard: 'Важко',
         good: 'Добре',
@@ -370,12 +371,12 @@ export const uk = {
         newStory: 'Нова історія',
         addWord: 'Додати',
         added: 'Додано!',
+        adding: 'Розбираю…',
         showTranslation: 'ПОКАЗАТИ ПЕРЕКЛАД ТЕКСТУ',
         hideTranslation: 'СХОВАТИ ПЕРЕКЛАД ТЕКСТУ',
         searching: 'Шукаємо «{word}»...',
         alreadyInDict: '(вже у словнику)',
-        translateFailed: 'Не вдалося перекласти «{word}»',
-        usedExample: 'Він використав {word}.'
+        translateFailed: 'Не вдалося перекласти «{word}»'
     },
 
     scanner: {
@@ -450,6 +451,11 @@ export const uk = {
         completenessGaps: 'Бракує форм: {words}. Їх можна доповнити вручну або перегенерувати тему.',
         completenessFull: 'Усі картки заповнені повністю.',
         completenessShow: 'ПОКАЗАТИ НЕПОВНІ',
+        completeOne: 'Доповнити картку',
+        completeAllHint: 'Доповнити всі неповні картки',
+        completeAllConfirm: 'Запитати в ШІ відсутні поля? Слів: {words}. Заповнене та правки не зміняться.',
+        completeDone: 'Доповнено: {words}.',
+        completeNothing: 'ШІ не повернув відсутніх форм. Можливо, у слова їх немає — тоді допишіть вручну.',
         incompleteBadge: 'немає {count} полів',
         masteredHint: 'Слово тримається в пам’яті довше трьох тижнів',
         difficult: 'Складні',

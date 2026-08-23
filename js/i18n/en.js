@@ -253,6 +253,7 @@ export const en = {
         newWords: 'NEW WORDS',
         wordOf: 'Word {current} of {total}',
         showAnswer: 'SHOW ANSWER',
+        scrollHint: 'More below',
         again: 'Again',
         hard: 'Hard',
         good: 'Good',
@@ -370,12 +371,12 @@ export const en = {
         newStory: 'New story',
         addWord: 'Add',
         added: 'Added!',
+        adding: 'Analysing…',
         showTranslation: 'SHOW TEXT TRANSLATION',
         hideTranslation: 'HIDE TEXT TRANSLATION',
         searching: 'Looking up “{word}”...',
         alreadyInDict: '(already in dictionary)',
-        translateFailed: 'Could not translate “{word}”',
-        usedExample: 'He used {word}.'
+        translateFailed: 'Could not translate “{word}”'
     },
 
     scanner: {
@@ -450,6 +451,11 @@ export const en = {
         completenessGaps: 'Missing forms: {words}. Fill them in by hand or regenerate the topic.',
         completenessFull: 'Every card is fully filled in.',
         completenessShow: 'SHOW INCOMPLETE',
+        completeOne: 'Fill in this card',
+        completeAllHint: 'Fill in every incomplete card',
+        completeAllConfirm: 'Ask the AI for the missing fields? Words: {words}. Existing values and your edits stay untouched.',
+        completeDone: 'Filled in: {words}.',
+        completeNothing: 'The AI returned no missing forms. The word may simply not have them — add them by hand if needed.',
         incompleteBadge: '{count} fields missing',
         masteredHint: 'Recalled after more than three weeks',
         difficult: 'Hard',
