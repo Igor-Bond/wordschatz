@@ -37,8 +37,15 @@ while ($listener.IsListening) {
         if ([string]::IsNullOrWhiteSpace($rel)) { $rel = 'index.html' }
         $path = Join-Path $Root ($rel -replace '/', '\')
 
+        # Каталог -> index.html внутри него: без этого /tests/ отдавал
+        # приложение вместо страницы проверок
+        if (Test-Path $path -PathType Container) {
+            $path = Join-Path $path 'index.html'
+        }
+
         if (-not (Test-Path $path -PathType Leaf)) {
-            # SPA fallback, как в Netlify _redirects
+            # Отсутствующий файл -> корневая страница. Так же ведёт себя
+            # правило SPA на хостинге; заодно видно опечатки в путях
             $path = Join-Path $Root 'index.html'
         }
 
