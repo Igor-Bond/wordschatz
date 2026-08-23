@@ -2,12 +2,21 @@ import { speech } from '../core/speech.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t } from '../i18n/i18n.js';
+import { dbService } from '../services/db.js';
 import { aiService } from '../services/ai.js';
 
 export const chat = {
     history: [],
 
-    render: () => {
+    /**
+     * Сколько последних реплик уходит в промпт.
+     *
+     * История теперь переживает перезагрузки и за месяц вырастет до сотен
+     * сообщений: слать её целиком дорого и бессмысленно.
+     */
+    CONTEXT_MESSAGES: 20,
+
+    render: async () => {
         const main = document.getElementById('main-content');
         
         main.innerHTML = `
@@ -48,18 +57,19 @@ export const chat = {
         `;
         
         const profile = config.getProfile();
-        
-        // Если история пуста, выводим приветствие
+
+        // Разговор жил в памяти вкладки: перезагрузка стирала и разобранные
+        // ошибки, и объяснения. Теперь он читается из базы
+        chat.history = await dbService.getChatHistory();
+
         if (chat.history.length === 0) {
-            chat.history.push({ 
-                role: 'ai', 
-                text: t('chat.greeting', { name: profile.name })
-            });
+            const greeting = { role: 'ai', text: t('chat.greeting', { name: profile.name }) };
+            chat.history.push(greeting);
+            await dbService.addChatMessage(greeting.role, greeting.text);
         }
-        
-        // Отрисовываем историю
+
         chat.history.forEach(msg => chat.renderMessage(msg.role, msg.text));
-        
+
         // Обработка клавиши Enter (без Shift)
         document.getElementById('chat-input').addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -126,16 +136,20 @@ export const chat = {
         // Отрисовываем сообщение юзера
         chat.history.push({ role: 'user', text: text });
         chat.renderMessage('user', text);
-        
+        await dbService.addChatMessage('user', text);
+
         const typingId = chat.showTypingIndicator();
-        
+
         try {
             const profile = config.getProfile();
-            
-            // Формируем историю для контекста ИИ
-            const conversationHistory = chat.history.map(msg => 
-                `${msg.role === 'ai' ? t('chat.roleTutor') : t('chat.roleStudent')}: ${msg.text}`
-            ).join('\n');
+
+            // В промпт уходит хвост разговора, а не вся история: она теперь
+            // переживает перезагрузки и за месяц вырастет до сотен реплик —
+            // это и дорого, и уводит модель от последнего вопроса
+            const conversationHistory = chat.history
+                .slice(-chat.CONTEXT_MESSAGES)
+                .map(msg => `${msg.role === 'ai' ? t('chat.roleTutor') : t('chat.roleStudent')}: ${msg.text}`)
+                .join('\n');
             
             const prompt = `Ты — дружелюбный и поддерживающий ИИ-репетитор немецкого языка. 
             Твой студент (имя: ${profile.name}, уровень: ${profile.level}).
@@ -158,13 +172,19 @@ export const chat = {
             
             document.getElementById(typingId).remove();
             
-            chat.history.push({ role: 'ai', text: responseText.trim() });
-            chat.renderMessage('ai', responseText.trim());
-            
+            const answer = responseText.trim();
+            chat.history.push({ role: 'ai', text: answer });
+            chat.renderMessage('ai', answer);
+            await dbService.addChatMessage('ai', answer);
+
         } catch (error) {
             document.getElementById(typingId).remove();
             chat.renderMessage('ai', t('chat.networkError') + ' (' + error.message + ')');
-            chat.history.pop(); 
+
+            // Вопрос остался без ответа — убираем его и из истории, и из базы,
+            // иначе при следующем заходе он повиснет репликой в пустоту
+            chat.history.pop();
+            await dbService.dropLastChatMessage();
         } finally {
             inputEl.disabled = false;
             btn.disabled = false;
@@ -175,7 +195,8 @@ export const chat = {
     clearHistory: async () => {
         if (await dialog.confirm(t('chat.clearConfirm'), { danger: true, okLabel: t('common.delete') })) {
             chat.history = [];
-            chat.render();
+            await dbService.clearChatHistory();
+            await chat.render();
         }
     },
 

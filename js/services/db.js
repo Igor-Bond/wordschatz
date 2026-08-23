@@ -127,6 +127,21 @@ db.version(5).stores({
     console.log('[DB] Миграция 5 завершена: освоенность пересчитана из интервалов.');
 });
 
+// Версия 6 (история переписки с ИИ-репетитором)
+db.version(6).stores({
+    words: '++id, word, translation, type, topic, interval, ease, repetitions, isDifficult, nextReview, createdAt, cycleId, status, mastery, updatedAt, gender, verified',
+    cycles: '++id, title, status, updatedAt',
+    dayPlans: '++id, cycleId, date, dailyGoal, status, updatedAt',
+    lessonState: '++id, date, status, currentStep, data, updatedAt',
+    mistakes: '++id, wordId, taskType, userInput, timestamp',
+    stats: '++id, date, xp, reviewsCount, newWordsCount, updatedAt',
+    user: 'id, league, totalXP, currentStreak, lastActiveDate, updatedAt',
+
+    // Разговор с репетитором жил в памяти вкладки и пропадал при
+    // перезагрузке — вместе с разобранными ошибками и объяснениями
+    chat: '++id, role, createdAt'
+});
+
 /**
  * Расчёт освоенности для миграции.
  *
@@ -557,7 +572,7 @@ export const dbService = {
     // ======================================================
 
     BACKUP_FORMAT: 'wortschatz-backup',
-    BACKUP_VERSION: 2,
+    BACKUP_VERSION: 3,
 
     /**
      * Полный слепок данных пользователя.
@@ -567,12 +582,13 @@ export const dbService = {
      * потерю всего прогресса и обучение с нуля.
      */
     exportAll: async () => {
-        const [allWords, cycles, dayPlans, stats, user] = await Promise.all([
+        const [allWords, cycles, dayPlans, stats, user, chat] = await Promise.all([
             db.words.toArray(),
             db.cycles.toArray(),
             db.dayPlans.toArray(),
             db.stats.toArray(),
-            db.user.get(1)
+            db.user.get(1),
+            db.chat.toArray()
         ]);
 
         return {
@@ -590,7 +606,11 @@ export const dbService = {
             words: allWords.filter(dbService._alive),   // удалённые в копию не идут
             cycles: cycles,
             dayPlans: dayPlans,
-            stats: stats
+            stats: stats,
+
+            // Разговор с репетитором — тоже часть накопленного: при переезде
+            // на другое устройство терять разобранные ошибки незачем
+            chat: chat
         };
     },
 
@@ -605,8 +625,8 @@ export const dbService = {
     restoreFromBackup: async (data) => {
         const now = Date.now();
 
-        await db.transaction('rw', db.words, db.cycles, db.dayPlans, db.stats, db.user, async () => {
-            await Promise.all([db.words.clear(), db.cycles.clear(), db.dayPlans.clear(), db.stats.clear()]);
+        await db.transaction('rw', db.words, db.cycles, db.dayPlans, db.stats, db.user, db.chat, async () => {
+            await Promise.all([db.words.clear(), db.cycles.clear(), db.dayPlans.clear(), db.stats.clear(), db.chat.clear()]);
 
             if (data.words?.length) {
                 await db.words.bulkPut(data.words.map(w => ({
@@ -618,6 +638,10 @@ export const dbService = {
             if (data.cycles?.length) await db.cycles.bulkPut(data.cycles);
             if (data.dayPlans?.length) await db.dayPlans.bulkPut(data.dayPlans);
             if (data.stats?.length) await db.stats.bulkPut(data.stats);
+
+            // Копии, снятые до появления переписки, поля chat не имеют —
+            // восстанавливаем только если оно есть
+            if (data.chat?.length) await db.chat.bulkPut(data.chat);
 
             const existing = await db.user.get(1);
             await db.user.put({
@@ -659,6 +683,67 @@ export const dbService = {
             return await db.mistakes.toArray();
         } catch (e) {
             return [];
+        }
+    },
+
+    // ======================================================
+    //  Переписка с ИИ-репетитором (§21 ТЗ)
+    // ======================================================
+
+    /**
+     * Сколько сообщений храним.
+     *
+     * Разговор с репетитором может идти месяцами, а ценность старых реплик
+     * быстро падает. Держим последние двести: этого хватает, чтобы вернуться
+     * к вчерашнему разбору, и база не растёт бесконечно.
+     */
+    CHAT_LIMIT: 200,
+
+    getChatHistory: async () => {
+        try {
+            return await db.chat.orderBy('id').toArray();
+        } catch (e) {
+            console.error('[База] Не удалось прочитать историю чата:', e);
+            return [];
+        }
+    },
+
+    addChatMessage: async (role, text) => {
+        try {
+            const id = await db.chat.add({ role, text, createdAt: Date.now() });
+
+            // Подрезаем хвост, а не всю таблицу: удаление лишнего дешевле
+            // проверки размера при каждом чтении
+            const count = await db.chat.count();
+            if (count > dbService.CHAT_LIMIT) {
+                const лишние = await db.chat.orderBy('id')
+                    .limit(count - dbService.CHAT_LIMIT)
+                    .primaryKeys();
+                await db.chat.bulkDelete(лишние);
+            }
+
+            return id;
+        } catch (e) {
+            console.error('[База] Не удалось сохранить сообщение:', e);
+            return null;
+        }
+    },
+
+    /** Удаление последнего сообщения — например, когда ответ ИИ не пришёл. */
+    dropLastChatMessage: async () => {
+        try {
+            const last = await db.chat.orderBy('id').last();
+            if (last) await db.chat.delete(last.id);
+        } catch (e) {
+            console.error('[База] Не удалось удалить сообщение:', e);
+        }
+    },
+
+    clearChatHistory: async () => {
+        try {
+            await db.chat.clear();
+        } catch (e) {
+            console.error('[База] Не удалось очистить историю чата:', e);
         }
     }
 };
