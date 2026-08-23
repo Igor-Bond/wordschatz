@@ -1,3 +1,7 @@
+import { config } from '../config.js';
+import { dbService } from '../services/db.js';
+import { dateUtils } from './dates.js';
+
 /**
  * Планировщик учебного цикла: раскладка темы по дням, план на сегодня,
  * стрик и прогресс по циклу.
@@ -6,7 +10,7 @@
  * создавал: getDailyPlan просто брал первые N слов из словаря. Теперь план
  * дня читается из dayPlans активной темы.
  */
-const scheduler = {
+export const scheduler = {
 
     // ======================================================
     //  Стрик
@@ -186,17 +190,17 @@ const scheduler = {
             .slice(0, reviewLimit);
         const postponedReviews = allDue.length - review.length;
 
-        const cycle = await dbService.getActiveCycle();
+        const activeCycle = await dbService.getActiveCycle();
         let dayPlan = null;
         let newWords = [];
 
-        if (cycle) {
+        if (activeCycle) {
             const today = dateUtils.today();
-            dayPlan = await dbService.getPlanForDate(cycle.id, today);
+            dayPlan = await dbService.getPlanForDate(activeCycle.id, today);
 
             // Пропущенные дни не сгорают: подтягиваем самый ранний невыполненный
             if (!dayPlan || dayPlan.status === 'completed') {
-                const pending = await dbService.getEarliestPendingPlan(cycle.id);
+                const pending = await dbService.getEarliestPendingPlan(activeCycle.id);
                 if (pending && pending.date <= today) dayPlan = pending;
                 else if (dayPlan && dayPlan.status === 'completed') dayPlan = null;
             }
@@ -221,7 +225,7 @@ const scheduler = {
             review: review,
             newWords: newWords,
             dayPlan: dayPlan,
-            cycle: cycle,
+            cycle: activeCycle,
             postponedReviews: postponedReviews,
             total: review.length + newWords.length
         };

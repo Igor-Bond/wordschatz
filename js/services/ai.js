@@ -1,4 +1,7 @@
-const aiService = {
+import { config } from '../config.js';
+import { dbService } from './db.js';
+
+export const aiService = {
     callGemini: async (prompt, isJson = true, imgBase64 = null) => {
         const rawKeyConfig = config.get('api_key') || "";
         // Разбиваем строку по запятым на случай, если указано несколько ключей

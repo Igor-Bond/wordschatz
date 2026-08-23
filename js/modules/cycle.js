@@ -1,3 +1,9 @@
+import { config } from '../config.js';
+import { dbService } from '../services/db.js';
+import { aiService } from '../services/ai.js';
+import { scheduler } from '../core/scheduler.js';
+import { dashboard } from './dashboard.js';
+
 /**
  * Учебный цикл: выбор темы → генерация набора → предпросмотр и утверждение →
  * раскладка по дням (§2, §4, §5 ТЗ).
@@ -5,7 +11,7 @@
  * Это то место, которого раньше не было: таблицы cycles и dayPlans читались,
  * но никто их не создавал.
  */
-const cycle = {
+export const cycle = {
 
     state: {
         topic: '',

@@ -1,6 +1,9 @@
-const lessonStateManager = {
+import { dbService } from '../services/db.js';
+import { dateUtils } from './dates.js';
+
+export const lessonStateManager = {
     getCurrentState: async () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = dateUtils.today();
         let state = await dbService.getLessonStateByDate(today);
 
         if (!state) {

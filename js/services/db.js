@@ -1,3 +1,5 @@
+import Dexie from '../../vendor/dexie.min.mjs';
+
 /**
  * Единственная точка работы с хранилищем (§39 ТЗ).
  *
@@ -11,7 +13,7 @@
  *   - слова удаляются мягко (deletedAt), иначе удаление не доедет до облака.
  */
 
-const db = new Dexie("WortSchatzProDB");
+export const db = new Dexie("WortSchatzProDB");
 
 // Версия 1 (историческая схема)
 db.version(1).stores({
@@ -69,7 +71,7 @@ const DEFAULT_USER = {
     lastActiveDate: null
 };
 
-const dbService = {
+export const dbService = {
 
     // ======================================================
     //  Служебное

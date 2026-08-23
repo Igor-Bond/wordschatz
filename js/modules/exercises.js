@@ -1,4 +1,8 @@
-const exercises = {
+import { dbService } from '../services/db.js';
+import { lessonStateManager } from '../core/lessonState.js';
+import { training } from './training.js';
+
+export const exercises = {
     queue: [],
     currentIndex: 0,
     onFinish: null,

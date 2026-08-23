@@ -1,4 +1,8 @@
-const scanner = {
+import { config } from '../config.js';
+import { dbService } from '../services/db.js';
+import { aiService } from '../services/ai.js';
+
+export const scanner = {
     currentResults: [],
 
     render: () => {

@@ -20,7 +20,6 @@
     <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css">
     <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <script src="vendor/dexie.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-300 font-sans antialiased selection:bg-amber-500 selection:text-slate-900 h-[100dvh] overflow-hidden flex flex-col">
 
@@ -125,59 +124,7 @@
         </div>
     </div>
 
-    <script src="js/config.js"></script>
-    <script src="js/services/db.js"></script>
-    <script src="js/services/ai.js"></script>
-    <script src="js/core/dates.js"></script>
-    <script src="js/core/srs.js"></script>
-    <script src="js/core/lessonState.js"></script>
-    <script src="js/core/scheduler.js"></script>
-    <script src="js/modules/onboarding.js"></script>
-    <script src="js/modules/dashboard.js"></script>
-    <script src="js/modules/cycle.js"></script>
-    <script src="js/modules/scanner.js"></script>
-    <script src="js/modules/exercises.js"></script>
-    <script src="js/modules/training.js"></script>
-    <script src="js/modules/profile.js"></script>
-    <script src="js/modules/room.js"></script>
-    <script src="js/modules/chat.js"></script>
-    <script src="js/modules/control.js"></script>
-    <script src="js/app.js"></script>
-
-    <!-- Регистрация Service Worker (офлайн-режим и установка PWA) -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Была ли страница уже под управлением SW до этой загрузки.
-                // Без этой проверки первая же установка вызвала бы лишнюю перезагрузку.
-                const hadController = !!navigator.serviceWorker.controller;
-
-                navigator.serviceWorker.register('sw.js')
-                    .then((reg) => {
-                        console.log('[PWA] Service Worker зарегистрирован:', reg.scope);
-
-                        // Если появилась новая версия — сообщаем приложению
-                        reg.addEventListener('updatefound', () => {
-                            const sw = reg.installing;
-                            if (!sw) return;
-                            sw.addEventListener('statechange', () => {
-                                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                                    if (typeof app !== 'undefined' && app.showUpdateBanner) app.showUpdateBanner();
-                                }
-                            });
-                        });
-                    })
-                    .catch((err) => console.error('[PWA] Ошибка регистрации Service Worker:', err));
-
-                // Перезагружаем страницу, когда новый SW взял управление
-                let reloading = false;
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (!hadController || reloading) return;
-                    reloading = true;
-                    location.reload();
-                });
-            });
-        }
-    </script>
+    <!-- Единственная точка входа: зависимости объявлены через import -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

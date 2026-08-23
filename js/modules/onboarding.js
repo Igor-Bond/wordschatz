@@ -1,4 +1,7 @@
-const onboarding = {
+import { config } from '../config.js';
+import { app } from '../app.js';
+
+export const onboarding = {
     step: 1,
     data: { name: '', level: 'B1', dailyGoal: 10, interests: '', apiKey: '' },
     

@@ -1,4 +1,8 @@
-const control = {
+import { dbService } from '../services/db.js';
+import { scheduler } from '../core/scheduler.js';
+import { dashboard } from './dashboard.js';
+
+export const control = {
     state: {
         cycleId: null, // Добавлено для закрытия темы
         questions: [],

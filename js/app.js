@@ -1,4 +1,16 @@
-const app = {
+import { config } from './config.js';
+import { dbService } from './services/db.js';
+import { scheduler } from './core/scheduler.js';
+import { onboarding } from './modules/onboarding.js';
+import { dashboard } from './modules/dashboard.js';
+import { cycle } from './modules/cycle.js';
+import { scanner } from './modules/scanner.js';
+import { training } from './modules/training.js';
+import { profile } from './modules/profile.js';
+import { room } from './modules/room.js';
+import { chat } from './modules/chat.js';
+
+export const app = {
     init: async () => {
         // Если localStorage пуст, а база уже есть — поднимаем профиль оттуда
         await config.hydrateFromDb();
@@ -186,5 +198,3 @@ const app = {
         });
     }
 };
-
-document.addEventListener('DOMContentLoaded', app.init);

@@ -1,4 +1,12 @@
-const dashboard = {
+import { config } from '../config.js';
+import { dbService } from '../services/db.js';
+import { dateUtils } from '../core/dates.js';
+import { scheduler } from '../core/scheduler.js';
+import { cycle } from './cycle.js';
+import { control } from './control.js';
+import { app } from '../app.js';
+
+export const dashboard = {
     render: async () => {
         const main = document.getElementById('main-content');
         main.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div></div>`;

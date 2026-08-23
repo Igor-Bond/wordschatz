@@ -1,4 +1,7 @@
-const chat = {
+import { config } from '../config.js';
+import { aiService } from '../services/ai.js';
+
+export const chat = {
     history: [],
 
     render: () => {

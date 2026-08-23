@@ -1,4 +1,10 @@
-const training = {
+import { dbService } from '../services/db.js';
+import { srs } from '../core/srs.js';
+import { lessonStateManager } from '../core/lessonState.js';
+import { scheduler } from '../core/scheduler.js';
+import { exercises } from './exercises.js';
+
+export const training = {
     state: null,
     queue: [],
     currentIndex: 0,

@@ -1,4 +1,8 @@
-const profile = {
+import { config } from '../config.js';
+import { dbService } from '../services/db.js';
+import { dateUtils } from '../core/dates.js';
+
+export const profile = {
     render: async () => {
         const main = document.getElementById('main-content');
         

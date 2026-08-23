@@ -1,4 +1,8 @@
-const room = {
+import { dbService } from '../services/db.js';
+import { aiService } from '../services/ai.js';
+import { exercises } from './exercises.js';
+
+export const room = {
     render: () => {
         const main = document.getElementById('main-content');
         
