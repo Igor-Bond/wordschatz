@@ -1,3 +1,4 @@
+import { dateUtils } from '../core/dates.js';
 import Dexie from '../../vendor/dexie.min.mjs';
 
 /**
@@ -297,16 +298,85 @@ export const dbService = {
         return user?.profile || null;
     },
 
-    addXP: async (points) => {
-        // Тоже в транзакции: между чтением и записью сюда может вклиниться
+    /**
+     * @param {number} points начисляемый опыт
+     * @param {Object} activity что именно сделали: { reviews } или { newWords }
+     */
+    addXP: async (points, activity = {}) => {
+        // Транзакция: между чтением и записью сюда может вклиниться
         // сохранение профиля.
-        return await db.transaction('rw', db.user, async () => {
-            const user = await dbService.getUser();
-            user.totalXP = (user.totalXP || 0) + points;
-            user.league = dbService.getLeagueForXP(user.totalXP);
-            await db.user.put(dbService._stamp({ ...DEFAULT_USER, ...user, id: 1 }));
-            return user;
+        const user = await db.transaction('rw', db.user, async () => {
+            const current = await dbService.getUser();
+            current.totalXP = (current.totalXP || 0) + points;
+            current.league = dbService.getLeagueForXP(current.totalXP);
+            await db.user.put(dbService._stamp({ ...DEFAULT_USER, ...current, id: 1 }));
+            return current;
         });
+
+        // Дневная активность пишется здесь: все три места, где начисляется
+        // опыт, проходят через addXP
+        await dbService.recordActivity({ xp: points, ...activity });
+
+        return user;
+    },
+
+    // ======================================================
+    //  Дневная активность (§30 ТЗ)
+    // ======================================================
+
+    /**
+     * Копит показатели за сегодняшний день.
+     *
+     * Таблица stats была в схеме с самого начала и даже попадала в бэкап,
+     * но в неё никто не писал — поэтому графика активности построить
+     * было не из чего.
+     */
+    recordActivity: async ({ xp = 0, reviews = 0, newWords = 0 } = {}) => {
+        const date = dateUtils.today();
+
+        return await db.transaction('rw', db.stats, async () => {
+            const row = await db.stats.where('date').equals(date).first();
+
+            if (row) {
+                await db.stats.update(row.id, {
+                    xp: (row.xp || 0) + xp,
+                    reviewsCount: (row.reviewsCount || 0) + reviews,
+                    newWordsCount: (row.newWordsCount || 0) + newWords,
+                    updatedAt: Date.now()
+                });
+            } else {
+                await db.stats.add({
+                    date,
+                    xp,
+                    reviewsCount: reviews,
+                    newWordsCount: newWords,
+                    updatedAt: Date.now()
+                });
+            }
+        });
+    },
+
+    /**
+     * Активность за последние N дней, включая дни без занятий —
+     * график должен показывать и пропуски.
+     */
+    getActivity: async (days = 30) => {
+        const rows = await db.stats.toArray();
+        const byDate = new Map(rows.map(r => [r.date, r]));
+        const today = dateUtils.today();
+
+        const result = [];
+        for (let i = days - 1; i >= 0; i--) {
+            const date = dateUtils.addDays(today, -i);
+            const row = byDate.get(date);
+            result.push({
+                date,
+                xp: row?.xp || 0,
+                reviews: row?.reviewsCount || 0,
+                newWords: row?.newWordsCount || 0
+            });
+        }
+        return result;
     },
 
     /**

@@ -110,6 +110,8 @@ export const profile = {
                 userProfile = config.getProfile() || userProfile;
             }
 
+            const activity = await dbService.getActivity(30);
+
             // Статистика словаря
             const allWords = await dbService.getAllWords();
             const totalWords = allWords.length;
@@ -223,6 +225,8 @@ export const profile = {
                 </div>
 
                 <!-- Аналитика словаря -->
+                ${profile.renderActivityChart(activity)}
+
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1">${t('profile.dictStats')}</h3>
                 <div class="grid grid-cols-3 gap-3">
                     <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center flex flex-col justify-center shadow-md">
@@ -338,6 +342,67 @@ export const profile = {
         `;
 
         profile.renderDictList();
+    },
+
+    /**
+     * График активности за 30 дней (§30 ТЗ) плюс недельный и месячный срез.
+     *
+     * Столбцы рисуются обычными div-ами: подключать библиотеку графиков
+     * ради тридцати прямоугольников незачем, а офлайн она стоила бы
+     * лишних сотен килобайт в прекэше.
+     */
+    renderActivityChart: (activity) => {
+        const maxXP = Math.max(...activity.map(d => d.xp), 1);
+        const today = dateUtils.today();
+
+        const week = activity.slice(-7);
+        const xpWeek = week.reduce((s, d) => s + d.xp, 0);
+        const xpMonth = activity.reduce((s, d) => s + d.xp, 0);
+        const activeDays = activity.filter(d => d.xp > 0).length;
+
+        const bars = activity.map(day => {
+            const height = day.xp > 0 ? Math.max(6, Math.round((day.xp / maxXP) * 100)) : 2;
+            const isToday = day.date === today;
+
+            const color = day.xp === 0
+                ? 'bg-slate-700'
+                : (isToday ? 'bg-amber-400' : 'bg-amber-500/70');
+
+            const tip = day.xp > 0
+                ? `${dateUtils.format(day.date)}: ${day.xp} XP, ${t('dashboard.newWords')} ${day.newWords}, ${t('dashboard.review')} ${day.reviews}`
+                : `${dateUtils.format(day.date)}: ${t('profile.noActivity')}`;
+
+            return `<div class="flex-1 flex items-end h-full" title="${profile.escapeAttr(tip)}">
+                        <div class="w-full rounded-sm ${color} transition-all" style="height: ${height}%"></div>
+                    </div>`;
+        }).join('');
+
+        return `
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1">${t('profile.activity')}</h3>
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                <div class="flex items-end gap-[2px] h-24 mb-2">${bars}</div>
+
+                <div class="flex justify-between text-[10px] text-slate-500 mb-4">
+                    <span>${dateUtils.format(activity[0].date)}</span>
+                    <span>${t('profile.today')}</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-700">
+                    <div class="text-center">
+                        <div class="text-lg font-black text-amber-500">${xpWeek}</div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-0.5">${t('profile.xpWeek')}</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-black text-amber-500">${xpMonth}</div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-0.5">${t('profile.xpMonth')}</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg font-black text-slate-100">${activeDays}<span class="text-slate-500 text-sm">/30</span></div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-0.5">${t('profile.activeDays')}</div>
+                    </div>
+                </div>
+            </div>
+        `;
     },
 
     /**

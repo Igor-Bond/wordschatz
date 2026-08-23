@@ -269,7 +269,8 @@ export const training = {
             training.state.data.reviewed = (training.state.data.reviewed || 0) + 1;
         }
         
-        await dbService.addXP(gainedXP);
+        // Различаем повторение и новое слово — график показывает их отдельно
+        await dbService.addXP(gainedXP, training.state.status === 'new_words' ? { newWords: 1 } : { reviews: 1 });
 
         training.currentIndex++;
         await lessonStateManager.updateState(training.state.status, training.currentIndex, training.state.data);
