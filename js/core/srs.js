@@ -20,6 +20,9 @@ export const srs = {
     /** Шаги заучивания в минутах: сначала через 10 минут, потом через день. */
     LEARNING_STEPS: [10, 24 * 60],
 
+    /** Во сколько раз «Трудно» откладывает показ по сравнению с «Снова». */
+    HARD_STEP_FACTOR: 2,
+
     MIN_EASE: 1.3,
     MAX_EASE: 3.0,
     MAX_INTERVAL_DAYS: 365,
@@ -31,6 +34,21 @@ export const srs = {
     DAY: 24 * 60 * 60 * 1000,
 
     clampEase: (ease) => Math.min(srs.MAX_EASE, Math.max(srs.MIN_EASE, ease)),
+
+    /**
+     * Задержка для оценки «Трудно» в заучивании.
+     *
+     * Удваиваем текущий шаг, но не больше половины того, что дало бы
+     * «Хорошо»: на последнем шаге удвоение давало два дня против одного
+     * у «Хорошо», то есть более трудный ответ откладывал слово дальше.
+     */
+    hardDelayMinutes: (stepIndex) => {
+        const current = srs.LEARNING_STEPS[stepIndex];
+        const nextStep = srs.LEARNING_STEPS[stepIndex + 1];
+        const goodDelay = nextStep ?? 24 * 60;   // с последнего шага «Хорошо» выпускает на день
+
+        return Math.min(current * srs.HARD_STEP_FACTOR, goodDelay / 2);
+    },
 
     /** Разброс, чтобы повторения не собирались в один день. */
     applyFuzz: (days) => {
@@ -60,8 +78,14 @@ export const srs = {
                 stepIndex = 0;
                 ease = srs.clampEase(ease - 0.2);
             } else if (quality === 2) {
-                // Остаёмся на текущем шаге
+                // «Трудно»: остаёмся на шаге, но ждём вдвое дольше.
+                // Без множителя кнопка показывала те же 10 минут, что и
+                // «Снова», и две первые оценки выглядели одинаково.
                 ease = srs.clampEase(ease - 0.15);
+                return {
+                    interval: 0, ease, phase: 'learning', stepIndex,
+                    nextReview: now + srs.hardDelayMinutes(stepIndex) * srs.MINUTE
+                };
             } else if (quality === 3) {
                 stepIndex += 1;
             } else {
@@ -126,9 +150,15 @@ export const srs = {
 
         if (ms < 60 * srs.MINUTE) return plural('common.minute', Math.round(ms / srs.MINUTE));
 
+        // Часы нужны, чтобы «Трудно» и «Хорошо» не выглядели одинаково
+        // на последнем шаге заучивания
+        if (ms < srs.DAY) return plural('common.hour', Math.round(ms / (60 * srs.MINUTE)));
+
         const days = Math.round(ms / srs.DAY);
-        if (days < 1) return t('common.lessThanDay');
-        if (days < 30) return plural('common.day', days);
+
+        // Днями показываем до трёх месяцев: иначе «Хорошо» и «Легко»
+        // у зрелого слова оба округлялись до «2 мес»
+        if (days <= 90) return plural('common.day', days);
 
         return plural('common.month', Math.round(days / 30));
     }

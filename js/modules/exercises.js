@@ -4,6 +4,11 @@ import { lessonStateManager } from '../core/lessonState.js';
 import { training } from './training.js';
 
 export const exercises = {
+
+    /** Опыт за задание: верно и неверно (за попытку тоже что-то даём). */
+    XP_CORRECT: 4,
+    XP_WRONG: 1,
+
     queue: [],
     currentIndex: 0,
     onFinish: null,
@@ -144,6 +149,7 @@ export const exercises = {
                 state.selectedRu = null;
 
                 if (state.matchedCount === state.totalPairs) {
+                    exercises.awardXP(true);
                     setTimeout(exercises.next, 1000);
                 }
             } else {
@@ -408,7 +414,8 @@ export const exercises = {
         if (skipBtn) skipBtn.disabled = true;
 
         const isCorrect = exercises.builderState.selected.join(' ') === exercises.builderState.correct.join(' ');
-        
+
+        exercises.awardXP(isCorrect);
         feedback.classList.remove('hidden');
         if (isCorrect) {
             feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-green-600 border border-green-400 text-white shadow-[0_0_15px_rgba(22,163,74,0.5)]";
@@ -483,10 +490,33 @@ export const exercises = {
             }
         }
 
+        exercises.awardXP(selected === correct);
+
         if (selected === correct) {
             setTimeout(exercises.next, 1200);
         } else {
             setTimeout(exercises.next, 2500);
+        }
+    },
+
+    /**
+     * Начисление опыта за задание.
+     *
+     * Раньше XP давали только карточки и экзамен — половина урока
+     * (все девять типов упражнений) не вознаграждалась вовсе.
+     */
+    awardXP: async (isCorrect) => {
+        const gained = isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG;
+
+        try {
+            await dbService.addXP(gained);
+        } catch (e) {
+            console.error('Не удалось начислить XP:', e);
+        }
+
+        // В свободной тренировке счётчиков урока нет
+        if (!exercises.isRoomMode && typeof training !== 'undefined' && training.state?.data) {
+            training.state.data.xpEarned = (training.state.data.xpEarned || 0) + gained;
         }
     },
 
@@ -501,6 +531,8 @@ export const exercises = {
         input.disabled = true;
         btn.disabled = true;
         feedback.classList.remove('hidden');
+
+        exercises.awardXP(selected === correctLower);
 
         if (selected === correctLower) {
             input.classList.remove('bg-slate-900', 'border-slate-600');

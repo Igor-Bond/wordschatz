@@ -15,6 +15,7 @@ export const uk = {
         word: { one: '{count} слово', few: '{count} слова', many: '{count} слів', other: '{count} слова' },
         wordShort: { one: 'слово', few: 'слова', many: 'слів', other: 'слова' },
         minute: { one: '{count} хв', few: '{count} хв', many: '{count} хв', other: '{count} хв' },
+        hour: { one: '{count} год', few: '{count} год', many: '{count} год', other: '{count} год' },
         month: { one: '{count} міс', few: '{count} міс', many: '{count} міс', other: '{count} міс' },
         lessThanDay: '< 1 дня'
     },

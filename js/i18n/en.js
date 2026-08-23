@@ -15,6 +15,7 @@ export const en = {
         word: { one: '{count} word', other: '{count} words' },
         wordShort: { one: 'word', other: 'words' },
         minute: { one: '{count} min', other: '{count} min' },
+        hour: { one: '{count} h', other: '{count} h' },
         month: { one: '{count} mo', other: '{count} mo' },
         lessThanDay: '< 1 day'
     },

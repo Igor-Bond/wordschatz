@@ -15,6 +15,7 @@ export const ru = {
         word: { one: '{count} слово', few: '{count} слова', many: '{count} слов', other: '{count} слова' },
         wordShort: { one: 'слово', few: 'слова', many: 'слов', other: 'слова' },
         minute: { one: '{count} мин', few: '{count} мин', many: '{count} мин', other: '{count} мин' },
+        hour: { one: '{count} ч', few: '{count} ч', many: '{count} ч', other: '{count} ч' },
         month: { one: '{count} мес', few: '{count} мес', many: '{count} мес', other: '{count} мес' },
         lessThanDay: '< 1 дня'
     },
