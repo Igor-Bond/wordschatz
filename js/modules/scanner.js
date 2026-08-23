@@ -245,7 +245,7 @@ ${aiService._getJsonFormat()}`;
             return alert('Выберите хотя бы одно слово для сохранения!');
         }
         
-        const count = await dbService.saveMultipleWords(toSave);
+        const { count } = await dbService.saveMultipleWords(toSave);
         
         document.getElementById('scan-results').innerHTML = `
             <div class="flex flex-col items-center justify-center py-10 fade-in text-center bg-slate-800 rounded-xl border border-slate-700">

@@ -101,39 +101,94 @@ const aiService = {
         ]`;
     },
 
-    generateSet: async (topic, count) => {
+    /** Нормализация для сравнения: «der Tisch» и «Tisch» — одно и то же слово. */
+    _normalizeWord: (w) => String(w || '').replace(/^(der|die|das|sich|ein|eine)\s+/i, '').trim().toLowerCase(),
+
+    /** Одна порция слов от ИИ. Исключения передаём в промпт, чтобы не повторялся. */
+    _generateBatch: async (topic, requestCount, excludeList = []) => {
         const profile = config.getProfile();
         const rule = `ОБЯЗАТЕЛЬНО: Существительным заполняй plural и dativ. Глаголам — спряжение present (ich, du, er) и rektion. Всем словам подбирай synonym (синоним) и gegenteil (антоним), если это возможно.`;
-        
-        // 1. УМНАЯ ГЕНЕРАЦИЯ: Запрашиваем с запасом (в 2 раза больше, чем нужно)
-        const requestCount = Math.max(count * 2, 20); 
 
-        const prompt = `Сгенерируй ровно ${requestCount} немецких слов уровня ${profile.level} по теме "${topic}". 
+        // Длинный список исключений раздувает промпт — берём последние 60
+        const exclude = excludeList.slice(-60);
+        const excludeRule = exclude.length
+            ? `\nНЕ используй эти слова, они уже есть у пользователя: ${exclude.join(', ')}.`
+            : '';
+
+        const prompt = `Сгенерируй ровно ${requestCount} немецких слов уровня ${profile.level} по теме "${topic}".
         Сделай примеры предложений (example_de) интересными, опираясь на увлечения пользователя: ${profile.interests}.
-        ${rule}
+        ${rule}${excludeRule}
         Верни ТОЛЬКО плоский JSON массив. Формат: \n${aiService._getJsonFormat()}`;
-        
+
         const responseText = await aiService.callGemini(prompt, true);
-        const parsedWords = aiService._parseJsonResponse(responseText, profile.level, topic);
-        
-        // 2. ЛОКАЛЬНАЯ ФИЛЬТРАЦИЯ
+        return aiService._parseJsonResponse(responseText, profile.level, topic);
+    },
+
+    /**
+     * Набор слов по теме.
+     *
+     * Для больших наборов (тема на неделю — это 50–140 слов) генерируем
+     * порциями: одним запросом модель либо обрывает JSON, либо начинает
+     * повторяться. Дубликаты и уже известные слова отсеиваются локально.
+     *
+     * @param {string} topic
+     * @param {number} count сколько слов нужно на выходе
+     * @param {Function} onProgress вызывается как (собрано, нужно)
+     */
+    generateSet: async (topic, count, onProgress = null) => {
+        const target = parseInt(count) || 10;
+        const BATCH_SIZE = 25;          // столько модель отдаёт без потери качества
+        const MAX_ATTEMPTS = Math.ceil(target / BATCH_SIZE) + 3;
+
+        // Всё, что уже есть в словаре
+        let known = new Set();
         try {
-            // Загружаем все слова из базы пользователя
-            const allSavedWords = await db.words.toArray();
-            
-            // Нормализуем для точного сравнения (убираем артикли, приводим к нижнему регистру)
-            const cleanWord = (w) => w.replace(/^(der|die|das|sich|ein|eine)\s+/i, '').trim().toLowerCase();
-            const savedWordsSet = new Set(allSavedWords.map(w => cleanWord(w.word)));
-            
-            // Фильтруем сгенерированный массив, оставляя только новые слова
-            const uniqueNewWords = parsedWords.filter(w => !savedWordsSet.has(cleanWord(w.word)));
-            
-            // Возвращаем строго запрошенное пользователем количество слов
-            return uniqueNewWords.slice(0, count);
-        } catch(e) {
-            console.error("Ошибка при локальной фильтрации слов:", e);
-            return parsedWords.slice(0, count); // Если фильтрация сломалась, отдаем как есть
+            const saved = await dbService.getAllWords();
+            known = new Set(saved.map(w => aiService._normalizeWord(w.word)));
+        } catch (e) {
+            console.error('Не удалось прочитать словарь для фильтрации:', e);
         }
+
+        const collected = [];
+        const collectedKeys = new Set();
+        let attempts = 0;
+        let emptyRounds = 0;
+
+        while (collected.length < target && attempts < MAX_ATTEMPTS && emptyRounds < 2) {
+            attempts++;
+            const need = target - collected.length;
+            const requestCount = Math.min(BATCH_SIZE, Math.max(need + 5, 10));
+
+            let batch;
+            try {
+                batch = await aiService._generateBatch(
+                    topic,
+                    requestCount,
+                    [...collectedKeys]
+                );
+            } catch (e) {
+                // Первая порция не удалась — сообщаем об ошибке, дальше пробовать нечего
+                if (collected.length === 0) throw e;
+                console.warn('Порция слов не сгенерировалась, останавливаемся:', e.message);
+                break;
+            }
+
+            let addedThisRound = 0;
+            for (const w of batch) {
+                if (collected.length >= target) break;
+                const key = aiService._normalizeWord(w.word);
+                if (!key || known.has(key) || collectedKeys.has(key)) continue;
+
+                collected.push(w);
+                collectedKeys.add(key);
+                addedThisRound++;
+            }
+
+            emptyRounds = addedThisRound === 0 ? emptyRounds + 1 : 0;
+            if (onProgress) onProgress(collected.length, target);
+        }
+
+        return collected;
     },
 
     generateStory: async (wordsArray) => {

@@ -1,102 +1,216 @@
+/**
+ * Планировщик учебного цикла: раскладка темы по дням, план на сегодня,
+ * стрик и прогресс по циклу.
+ *
+ * До этого таблицы cycles и dayPlans существовали в схеме, но никто их не
+ * создавал: getDailyPlan просто брал первые N слов из словаря. Теперь план
+ * дня читается из dayPlans активной темы.
+ */
 const scheduler = {
-    updateStreak: async () => {
-        let user = await db.user.get(1);
-        if (!user) {
-            user = { id: 1, league: 'Деревянная', totalXP: 0, currentStreak: 0, lastActiveDate: null };
-            await db.user.put(user);
-        }
 
-        const now = new Date();
-        const todayStr = now.toDateString(); 
-        
+    // ======================================================
+    //  Стрик
+    // ======================================================
+
+    updateStreak: async () => {
+        const user = await dbService.getUser();
+        const todayStr = dateUtils.today();
+
         if (user.lastActiveDate !== todayStr) {
             if (user.lastActiveDate) {
-                const todayMidnight = new Date(todayStr); 
-                const lastMidnight = new Date(user.lastActiveDate);
-                const diffTime = todayMidnight.getTime() - lastMidnight.getTime();
-                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
-                
-                if (diffDays === 1) {
-                    user.currentStreak += 1; 
-                } else if (diffDays > 1) {
-                    user.currentStreak = 1; 
-                }
+                // Старые записи хранили дату как Date.toDateString()
+                const last = user.lastActiveDate.includes('-')
+                    ? user.lastActiveDate
+                    : dateUtils.toKey(new Date(user.lastActiveDate));
+
+                const diffDays = dateUtils.diffDays(last, todayStr);
+                if (diffDays === 1) user.currentStreak = (user.currentStreak || 0) + 1;
+                else if (diffDays > 1) user.currentStreak = 1;
             } else {
-                user.currentStreak = 1; 
+                user.currentStreak = 1;
             }
-            
+
             user.lastActiveDate = todayStr;
-            await db.user.put(user);
+            await dbService.saveUser(user);
         }
 
         const headerStreak = document.getElementById('header-streak');
-        if (headerStreak) headerStreak.innerText = user.currentStreak;
-        
+        if (headerStreak) headerStreak.innerText = user.currentStreak || 0;
+
         return user;
     },
 
+    // ======================================================
+    //  Раскладка темы по дням
+    // ======================================================
+
+    /**
+     * Разбивает утверждённый набор слов на дневные порции.
+     * Первый день — сегодня.
+     *
+     * @param {number} cycleId
+     * @param {Array<number>} wordIds
+     * @param {number} dailyGoal
+     * @param {string} startDate YYYY-MM-DD
+     * @returns {Promise<Array>} созданные планы
+     */
+    buildDayPlans: async (cycleId, wordIds, dailyGoal, startDate = dateUtils.today()) => {
+        const plans = [];
+        let dayIndex = 1;
+
+        for (let i = 0; i < wordIds.length; i += dailyGoal) {
+            plans.push({
+                cycleId: cycleId,
+                date: dateUtils.addDays(startDate, dayIndex - 1),
+                dayIndex: dayIndex,
+                dailyGoal: dailyGoal,
+                status: 'pending',
+                wordIds: wordIds.slice(i, i + dailyGoal)
+            });
+            dayIndex++;
+        }
+
+        if (plans.length > 0) await dbService.createDayPlans(plans);
+        return plans;
+    },
+
+    /**
+     * Пересчёт будущих дней при смене дневной нормы (§3 ТЗ).
+     * Пройденные и сегодняшний начатый день не трогаем.
+     */
+    recalculateFuturePlans: async (cycleId, newDailyGoal) => {
+        const today = dateUtils.today();
+        const cycleWords = await dbService.getWordsByCycle(cycleId);
+        const allPlans = await dbService.getPlansByCycle(cycleId);
+
+        const keptPlans = allPlans.filter(p =>
+            p.date < today || (p.date === today && p.status !== 'pending')
+        );
+
+        const processedWordIds = new Set();
+        keptPlans.forEach(plan => {
+            (plan.wordIds || []).forEach(id => processedWordIds.add(id));
+        });
+
+        const remainingWords = cycleWords.filter(w => !processedWordIds.has(w.id));
+
+        const plansToDelete = allPlans.filter(p => !keptPlans.includes(p));
+        if (plansToDelete.length > 0) {
+            await dbService.deleteDayPlans(plansToDelete.map(p => p.id));
+        }
+
+        // Если сегодняшний день уже начат — новая раскладка стартует с завтра
+        const hasActiveToday = keptPlans.some(p => p.date === today);
+        const startDate = hasActiveToday ? dateUtils.addDays(today, 1) : today;
+
+        const plans = [];
+        let dayIndex = keptPlans.length + 1;
+        for (let i = 0; i < remainingWords.length; i += newDailyGoal) {
+            plans.push({
+                cycleId: cycleId,
+                date: dateUtils.addDays(startDate, plans.length),
+                dayIndex: dayIndex++,
+                dailyGoal: newDailyGoal,
+                status: 'pending',
+                wordIds: remainingWords.slice(i, i + newDailyGoal).map(w => w.id)
+            });
+        }
+
+        if (plans.length > 0) await dbService.createDayPlans(plans);
+
+        console.log(`[Планировщик] Цикл ${cycleId}: пересчитано ${plans.length} дней по ${newDailyGoal} слов.`);
+        return plans;
+    },
+
+    // ======================================================
+    //  План на сегодня
+    // ======================================================
+
+    /**
+     * Что нужно сделать сегодня.
+     *
+     * Повторение берётся по всему словарю (SRS), новые слова — из плана дня
+     * активной темы. Слова, добавленные вручную через «+», не привязаны к теме
+     * и добираются сверху, если план дня не заполняет дневную норму.
+     */
     getDailyPlan: async () => {
         const profile = config.getProfile();
-        const now = Date.now();
-        const allWords = await db.words.toArray();
+        const dailyGoal = profile.dailyGoal;
 
-        const toReview = allWords.filter(w => w.repetitions > 0 && w.nextReview <= now);
-        const newWords = allWords.filter(w => w.repetitions === 0).slice(0, profile.dailyGoal);
+        const review = await dbService.getWordsToReview();
+
+        const cycle = await dbService.getActiveCycle();
+        let dayPlan = null;
+        let newWords = [];
+
+        if (cycle) {
+            const today = dateUtils.today();
+            dayPlan = await dbService.getPlanForDate(cycle.id, today);
+
+            // Пропущенные дни не сгорают: подтягиваем самый ранний невыполненный
+            if (!dayPlan || dayPlan.status === 'completed') {
+                const pending = await dbService.getEarliestPendingPlan(cycle.id);
+                if (pending && pending.date <= today) dayPlan = pending;
+                else if (dayPlan && dayPlan.status === 'completed') dayPlan = null;
+            }
+
+            if (dayPlan) {
+                const planWords = await dbService.getWordsByIds(dayPlan.wordIds || []);
+                newWords = planWords.filter(w => w.repetitions === 0);
+            }
+        }
+
+        // Добор словами вне темы (быстрое добавление, импорт)
+        if (newWords.length < dailyGoal) {
+            const all = await dbService.getAllWords();
+            const inPlan = new Set(newWords.map(w => w.id));
+            const free = all.filter(w =>
+                w.repetitions === 0 && !w.cycleId && !inPlan.has(w.id)
+            );
+            newWords = newWords.concat(free.slice(0, dailyGoal - newWords.length));
+        }
 
         return {
-            review: toReview,
+            review: review,
             newWords: newWords,
-            total: toReview.length + newWords.length
+            dayPlan: dayPlan,
+            cycle: cycle,
+            total: review.length + newWords.length
         };
     },
 
-    recalculateFuturePlans: async (cycleId, newDailyGoal) => {
-        console.log(`Начинаем пересчет плана для цикла ${cycleId}`);
-        const today = new Date().toISOString().split('T')[0];
-        const cycleWords = await db.words.where('cycleId').equals(cycleId).toArray();
-        const pastAndActivePlans = await db.dayPlans
-            .where('cycleId').equals(cycleId)
-            .filter(plan => plan.date < today || (plan.date === today && plan.status !== 'pending'))
-            .toArray();
-
-        const processedWordIds = new Set();
-        pastAndActivePlans.forEach(plan => {
-            if (plan.wordIds) plan.wordIds.forEach(id => processedWordIds.add(id));
+    /** Отмечает день плана выполненным — вызывается при завершении урока. */
+    completeDayPlan: async (planId) => {
+        if (!planId) return;
+        await dbService.updateDayPlan(planId, {
+            status: 'completed',
+            completedAt: Date.now()
         });
+    },
 
-        const remainingWords = cycleWords.filter(word => !processedWordIds.has(word.id));
-        const plansToDelete = await db.dayPlans
-            .where('cycleId').equals(cycleId)
-            .filter(plan => plan.date > today || (plan.date === today && plan.status === 'pending'))
-            .toArray();
-        
-        const idsToDelete = plansToDelete.map(p => p.id);
-        await db.dayPlans.bulkDelete(idsToDelete);
+    // ======================================================
+    //  Прогресс по теме
+    // ======================================================
 
-        let currentDate = new Date();
-        const hasActivePlanToday = pastAndActivePlans.some(p => p.date === today);
-        if (hasActivePlanToday) {
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
+    getCycleProgress: async (cycleId) => {
+        const plans = await dbService.getPlansByCycle(cycleId);
+        const words = await dbService.getWordsByCycle(cycleId);
 
-        const newPlans = [];
-        for (let i = 0; i < remainingWords.length; i += newDailyGoal) {
-            const chunk = remainingWords.slice(i, i + newDailyGoal);
-            const planDate = currentDate.toISOString().split('T')[0];
-            
-            newPlans.push({
-                cycleId: cycleId,
-                date: planDate,
-                dailyGoal: newDailyGoal,
-                status: 'pending',
-                wordIds: chunk.map(w => w.id)
-            });
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
+        const completedDays = plans.filter(p => p.status === 'completed').length;
+        const startedWords = words.filter(w => w.repetitions > 0).length;
 
-        if (newPlans.length > 0) {
-            await db.dayPlans.bulkAdd(newPlans);
-        }
-        return newPlans;
+        // Текущий день — первый невыполненный, иначе цикл пройден
+        const pendingIndex = plans.findIndex(p => p.status !== 'completed');
+        const currentDay = pendingIndex === -1 ? plans.length : pendingIndex + 1;
+
+        return {
+            totalDays: plans.length,
+            completedDays: completedDays,
+            currentDay: currentDay,
+            totalWords: words.length,
+            startedWords: startedWords,
+            isFinished: plans.length > 0 && completedDays === plans.length,
+            percent: plans.length ? Math.round((completedDays / plans.length) * 100) : 0
+        };
     }
 };

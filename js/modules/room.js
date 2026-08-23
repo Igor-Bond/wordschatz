@@ -71,7 +71,7 @@ const room = {
     },
 
     startExerciseMode: async (allowedModes) => {
-        let allWords = await db.words.toArray();
+        let allWords = await dbService.getAllWords();
         
         const hardModeToggle = document.getElementById('room-hard-mode');
         const isHardMode = hardModeToggle && hardModeToggle.checked;
@@ -133,7 +133,7 @@ const room = {
 
     startStory: async () => {
         const container = document.getElementById('room-game-container');
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         
         if (allWords.length === 0) {
             container.innerHTML = `
@@ -209,7 +209,7 @@ const room = {
         addBtn.classList.add('hidden');
         textSpan.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Ищем "${cleanWord}"...`;
 
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         const found = allWords.find(w => w.word.toLowerCase().includes(cleanWord));
 
         if (found) {

@@ -29,6 +29,7 @@ const app = {
         
         // Маршрутизация по модулям приложения
         if (viewId === 'plan') { dashboard.render(); return; }
+        if (viewId === 'cycle') { cycle.renderTopicPicker(); return; }
         if (viewId === 'scanner') { scanner.render(); return; }
         if (viewId === 'training') { training.render(); return; }
         if (viewId === 'room') { room.render(); return; }
@@ -76,17 +77,29 @@ const app = {
         setTimeout(() => { modal.classList.add('hidden'); }, 200);
     },
 
-    saveSettings: () => {
+    saveSettings: async () => {
         const key = document.getElementById('settings-api-key').value.trim();
         const lang = document.getElementById('settings-lang').value;
         const level = document.getElementById('settings-level').value;
-        const goal = document.getElementById('settings-goal').value;
-        
-        if(key) config.set('api_key', key);
+        const goal = parseInt(document.getElementById('settings-goal').value);
+
+        const previousGoal = config.getProfile().dailyGoal;
+
+        if (key) config.set('api_key', key);
         config.set('ui_lang', lang);
         config.set('level', level);
         config.set('daily_goal', goal);
-        
+
+        // §3 ТЗ: при смене дневной нормы оставшиеся дни темы пересчитываются
+        if (goal !== previousGoal) {
+            try {
+                const activeCycle = await dbService.getActiveCycle();
+                if (activeCycle) await scheduler.recalculateFuturePlans(activeCycle.id, goal);
+            } catch (e) {
+                console.error('Не удалось пересчитать план темы:', e);
+            }
+        }
+
         app.closeSettings();
         location.reload();
     },
@@ -106,10 +119,7 @@ const app = {
 
         try {
             // 1. Пользовательские данные в IndexedDB
-            if (typeof db !== 'undefined') {
-                db.close();
-                await db.delete();
-            }
+            await dbService.resetDatabase();
         } catch (e) {
             console.error('Не удалось удалить базу данных:', e);
             alert(

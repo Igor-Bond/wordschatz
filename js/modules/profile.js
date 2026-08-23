@@ -95,7 +95,7 @@ const profile = {
         
         try {
             // Безопасное получение данных
-            const user = (await db.user.get(1)) || {};
+            const user = await dbService.getUser();
             const totalXP = user.totalXP || 0;
             const currentStreak = user.currentStreak || 0;
             
@@ -105,16 +105,14 @@ const profile = {
             }
 
             // Статистика словаря
-            const allWords = await db.words.toArray();
+            const allWords = await dbService.getAllWords();
             const totalWords = allWords.length;
             const masteredCount = allWords.filter(w => w.mastery === 100).length;
             const difficultCount = allWords.filter(w => w.isDifficult === 1).length;
 
             // Сбор ошибок из Журнала
             let mistakes = [];
-            if (db.mistakes) {
-                mistakes = await db.mistakes.toArray();
-            }
+            mistakes = await dbService.getMistakes();
             
             const mistakeCounts = {};
             mistakes.forEach(m => {
@@ -128,7 +126,7 @@ const profile = {
                 .slice(0, 5)
                 .map(Number);
             
-            const topMistakeWords = await Promise.all(topMistakeIds.map(id => db.words.get(id)));
+            const topMistakeWords = await Promise.all(topMistakeIds.map(id => dbService.getWordById(id)));
 
             // Расчет Лиг
             const leagues = [
@@ -246,7 +244,7 @@ const profile = {
 
     renderDictionary: async () => {
         const container = document.getElementById('prof-mode-dict');
-        const allWords = await db.words.orderBy('createdAt').reverse().toArray();
+        const allWords = await dbService.getAllWords();
 
         let html = `
             <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-4 flex justify-between gap-2">
@@ -299,7 +297,7 @@ const profile = {
     },
 
     openEditModal: async (id) => {
-        const word = await db.words.get(id);
+        const word = await dbService.getWordById(id);
         if (!word) return;
 
         document.getElementById('edit-id').value = word.id;
@@ -334,7 +332,7 @@ const profile = {
         const id = parseInt(document.getElementById('edit-id').value);
         if (!id) return;
 
-        const word = await db.words.get(id);
+        const word = await dbService.getWordById(id);
         if (!word) return;
 
         word.word = document.getElementById('edit-word').value.trim();
@@ -356,21 +354,21 @@ const profile = {
             word.superlative = grammar2;
         }
 
-        await db.words.put(word);
+        await dbService.putWord(word);
         profile.closeEditModal();
         profile.renderDictionary(); 
     },
 
     deleteWord: async (id, wordStr) => {
         if (confirm(`Удалить слово "${wordStr}" из словаря?`)) {
-            await db.words.delete(id);
+            await dbService.deleteWord(id);
             profile.renderDictionary();
             profile.renderStats();
         }
     },
 
     exportData: async () => {
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         if (allWords.length === 0) return alert('Словарь пуст, нечего экспортировать!');
 
         const cleanData = allWords.map(w => {
@@ -401,7 +399,7 @@ const profile = {
                 const data = JSON.parse(e.target.result);
                 if (!Array.isArray(data)) throw new Error("Неверный формат JSON");
                 
-                const count = await dbService.saveMultipleWords(data);
+                const { count } = await dbService.saveMultipleWords(data);
                 alert(`Успешно импортировано ${count} новых слов!`);
                 
                 profile.renderDictionary();

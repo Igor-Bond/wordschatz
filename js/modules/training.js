@@ -29,7 +29,9 @@ const training = {
             training.state.data.reviewQueue = plan.review;
             training.state.data.newWordsQueue = plan.newWords;
             training.state.data.practiceQueue = [...plan.review, ...plan.newWords];
-            
+            // Запоминаем день учебного цикла, чтобы отметить его выполненным в конце
+            training.state.data.dayPlanId = plan.dayPlan ? plan.dayPlan.id : null;
+
             if (plan.review.length > 0) {
                 await training.startStep('review', training.state.data.reviewQueue, 0);
             } else if (plan.newWords.length > 0) {
@@ -64,6 +66,17 @@ const training = {
         training.showCard();
     },
 
+    /**
+     * Завершение урока: закрываем состояние урока и отмечаем день учебного
+     * цикла выполненным. Без второго шага цикл никогда бы не дошёл до контроля.
+     */
+    finishLesson: async () => {
+        await lessonStateManager.completeLesson();
+
+        const dayPlanId = training.state?.data?.dayPlanId;
+        if (dayPlanId) await scheduler.completeDayPlan(dayPlanId);
+    },
+
     nextStep: async () => {
         // ФИКС: Берем замороженные очереди из состояния, а не запрашиваем БД
         const data = training.state.data;
@@ -75,19 +88,19 @@ const training = {
             } else if (practiceWords.length > 0) {
                 await training.startStep('practice', practiceWords, 0);
             } else {
-                await lessonStateManager.completeLesson();
+                await training.finishLesson();
                 training.showCompletedScreen();
             }
         } else if (training.state.status === 'new_words') {
             if (practiceWords.length > 0) {
                 await training.startStep('practice', practiceWords, 0);
             } else {
-                await lessonStateManager.completeLesson();
+                await training.finishLesson();
                 training.showCompletedScreen();
             }
         } else if (training.state.status === 'practice') {
             // Когда практика пройдена - завершаем урок
-            await lessonStateManager.completeLesson();
+            await training.finishLesson();
             training.showCompletedScreen();
         }
     },
@@ -98,7 +111,7 @@ const training = {
         // --- ИНТЕГРАЦИЯ УПРАЖНЕНИЙ (ЭТАП 2.2) ---
         if (training.state.status === 'practice') {
             exercises.start(training.queue, training.currentIndex, async () => {
-                await lessonStateManager.completeLesson();
+                await training.finishLesson();
                 training.state.status = 'completed';
                 training.showCompletedScreen();
             });
@@ -230,7 +243,7 @@ const training = {
         const msPerDay = 1000 * 60 * 60 * 24;
         word.nextReview = Date.now() + (word.interval * msPerDay);
         
-        await db.words.put(word);
+        await dbService.putWord(word);
 
         const xpMap = { 1: 1, 2: 3, 3: 5, 4: 8 };
         const gainedXP = xpMap[quality];
@@ -256,7 +269,7 @@ const training = {
     },
 
     showCompletedScreen: async () => {
-        const user = await db.user.get(1);
+        const user = await dbService.getUser();
         const main = document.getElementById('main-content');
         const stateData = training.state?.data || { newWords: 0, reviewed: 0, xpEarned: 0 };
         

@@ -4,121 +4,186 @@ const dashboard = {
         main.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div></div>`;
 
         await scheduler.updateStreak();
-        const user = await db.user.get(1) || { league: 'Деревянная', totalXP: 0, currentStreak: 0 };
-        
+
+        const user = await dbService.getUser();
+        const profile = config.getProfile();
+        const plan = await scheduler.getDailyPlan();
+
         const headerStreak = document.getElementById('header-streak');
         if (headerStreak) headerStreak.innerText = user.currentStreak || 0;
 
-        const plan = await scheduler.getDailyPlan();
-        const profile = config.getProfile();
-
-        // --- ЛОГИКА ВЫЗОВА ЭКЗАМЕНА ---
-        const allCycles = await db.cycles.toArray();
-        const activeCycle = allCycles.find(c => c.status === 'active');
-        let isReadyForExam = false;
-        
-        if (activeCycle) {
-            // Ищем все дневные планы для текущей темы
-            const plans = await db.dayPlans.filter(p => p.cycleId === activeCycle.id).toArray();
-            
-            // Если планы созданы и абсолютно все пройдены — пора сдавать контроль
-            if (plans.length > 0 && plans.every(p => p.status === 'completed')) {
-                isReadyForExam = true;
-            }
-        }
-
-        const btnText = plan.total > 0 ? `НАЧАТЬ УРОК (${plan.total})` : `ПЛАН ВЫПОЛНЕН 🎉`;
-        const btnClass = plan.total > 0 
-            ? `bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-95` 
-            : `bg-slate-700 text-slate-400 cursor-not-allowed`;
-
-        let examHtml = '';
-        if (isReadyForExam) {
-            examHtml = `
-                <div class="bg-slate-800 p-6 rounded-2xl border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.15)] relative overflow-hidden text-center mb-6 fade-in">
-                    <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
-                    <h3 class="text-xl font-black text-slate-100 mb-2">Тема завершена!</h3>
-                    <p class="text-slate-400 text-sm mb-6">Вы выполнили все дни темы «${activeCycle.title}». Пройдите итоговый контроль знаний.</p>
-                    <button id="start-exam-btn" class="w-full py-4 bg-red-600 hover:bg-red-500 text-white text-lg font-black rounded-xl shadow-lg active:scale-95 transition-all">
-                        ПРОЙТИ КОНТРОЛЬ ТЕМЫ
-                    </button>
-                </div>
-            `;
-        }
-
-        let planHtml = '';
-        // Показываем обычный план, только если экзамен еще не готов ИЛИ если есть слова для повторения на сегодня
-        if (!isReadyForExam || plan.total > 0) {
-            planHtml = `
-                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg relative overflow-hidden fade-in">
-                    <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                    
-                    <div class="flex justify-between items-end mb-4">
-                        <h3 class="text-lg font-bold text-slate-100">План на сегодня</h3>
-                        <span class="text-[10px] font-bold text-slate-500 uppercase bg-slate-900 px-2 py-1 rounded border border-slate-700">Твоя подборка</span>
-                    </div>
-                    
-                    <div class="space-y-4 mb-6">
-                        <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-rotate-right text-blue-400 text-lg"></i>
-                                <span class="text-slate-300 font-medium">Повторение</span>
-                            </div>
-                            <span class="text-xl font-bold text-blue-400">${plan.review.length}</span>
-                        </div>
-                        
-                        <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-seedling text-green-400 text-lg"></i>
-                                <span class="text-slate-300 font-medium">Новые слова</span>
-                            </div>
-                            <span class="text-xl font-bold text-green-400">${plan.newWords.length} / ${profile.dailyGoal}</span>
-                        </div>
-                    </div>
-
-                    <button id="start-daily-btn" class="w-full py-4 text-lg font-black rounded-xl transition-all ${btnClass}" ${plan.total === 0 ? 'disabled' : ''}>
-                        ${btnText}
-                    </button>
-                </div>
-            `;
-        }
+        const cycleProgress = plan.cycle ? await scheduler.getCycleProgress(plan.cycle.id) : null;
+        const isReadyForExam = !!(cycleProgress && cycleProgress.isFinished);
 
         main.innerHTML = `
             <div class="fade-in space-y-6 max-w-lg mx-auto mt-2 pb-10">
-                <!-- Карточка профиля, лиги и XP -->
-                <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-100">Hallo, ${profile.name}! 👋</h2>
+                ${dashboard.renderProfileCard(profile, user)}
+                ${isReadyForExam ? dashboard.renderExamCard(plan.cycle) : ''}
+                ${plan.cycle ? dashboard.renderCycleCard(plan.cycle, cycleProgress) : ''}
+                ${dashboard.renderPlanCard(plan, profile, isReadyForExam)}
+            </div>
+        `;
+
+        const examBtn = document.getElementById('start-exam-btn');
+        if (examBtn) examBtn.addEventListener('click', () => control.start(plan.cycle.id));
+
+        const startBtn = document.getElementById('start-daily-btn');
+        if (startBtn) startBtn.addEventListener('click', () => app.navigate('training'));
+
+        const topicBtn = document.getElementById('choose-topic-btn');
+        if (topicBtn) topicBtn.addEventListener('click', () => cycle.renderTopicPicker());
+    },
+
+    // --- Профиль, лига и XP ---
+    renderProfileCard: (profile, user) => {
+        const xp = user.totalXP || 0;
+        const next = dbService.getNextLeague(xp);
+        const currentLeague = user.league || dbService.getLeagueForXP(xp);
+
+        let progressHtml = '';
+        if (next) {
+            const currentMin = dbService.LEAGUES.filter(l => xp >= l.minXP).pop().minXP;
+            const span = next.minXP - currentMin;
+            const percent = span > 0 ? Math.round(((xp - currentMin) / span) * 100) : 0;
+            progressHtml = `
+                <div class="mt-3">
+                    <div class="w-full bg-slate-900 rounded-full h-1.5 border border-slate-700 overflow-hidden">
+                        <div class="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1.5">До лиги «${next.name}» — ${next.minXP - xp} XP</p>
+                </div>
+            `;
+        } else {
+            progressHtml = `<p class="text-[10px] text-slate-500 mt-3">Максимальная лига достигнута</p>`;
+        }
+
+        return `
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-bold text-slate-100 truncate">Hallo, ${profile.name}! 👋</h2>
                         <div class="flex gap-4 mt-2">
-                            <p class="text-sm text-slate-400">Лига: <span class="font-bold text-amber-500">${user.league || 'Каменная'}</span></p>
-                            <p class="text-sm text-slate-400">XP: <span class="font-bold text-blue-400">${user.totalXP || 0}</span></p>
+                            <p class="text-sm text-slate-400">Лига: <span class="font-bold text-amber-500">${currentLeague}</span></p>
+                            <p class="text-sm text-slate-400">XP: <span class="font-bold text-blue-400">${xp}</span></p>
                         </div>
                     </div>
                     <div class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center border-2 border-amber-500/50 shadow-inner shrink-0">
                         <i class="fa-solid fa-trophy text-2xl text-amber-500"></i>
                     </div>
                 </div>
-
-                ${examHtml}
-                ${planHtml}
+                ${progressHtml}
             </div>
         `;
+    },
 
-        // Привязываем клик на кнопку экзамена
-        if (isReadyForExam) {
-            document.getElementById('start-exam-btn').addEventListener('click', () => {
-                control.start(activeCycle.id);
-            });
+    // --- Текущая тема и день цикла ---
+    renderCycleCard: (activeCycle, progress) => {
+        return `
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="min-w-0">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Тема</p>
+                        <h3 class="text-lg font-bold text-slate-100 truncate">${cycle.esc(activeCycle.title)}</h3>
+                    </div>
+                    <span class="text-xs font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg shrink-0">
+                        День ${progress.currentDay} из ${progress.totalDays}
+                    </span>
+                </div>
+
+                <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-700 overflow-hidden">
+                    <div class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: ${progress.percent}%"></div>
+                </div>
+
+                <div class="flex justify-between text-[11px] text-slate-500 mt-2">
+                    <span>Пройдено дней: ${progress.completedDays}</span>
+                    <span>Слов в теме: ${progress.totalWords}</span>
+                </div>
+            </div>
+        `;
+    },
+
+    // --- Контроль темы ---
+    renderExamCard: (activeCycle) => `
+        <div class="bg-slate-800 p-6 rounded-2xl border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.15)] text-center fade-in">
+            <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-100 mb-2">Тема завершена!</h3>
+            <p class="text-slate-400 text-sm mb-6">Вы прошли все дни темы «${cycle.esc(activeCycle.title)}». Пройдите итоговый контроль знаний.</p>
+            <button id="start-exam-btn" class="w-full py-4 bg-red-600 hover:bg-red-500 text-white text-lg font-black rounded-xl shadow-lg active:scale-95 transition-all">
+                ПРОЙТИ КОНТРОЛЬ ТЕМЫ
+            </button>
+        </div>
+    `,
+
+    // --- План на сегодня ---
+    renderPlanCard: (plan, profile, isReadyForExam) => {
+        // Ни темы, ни слов — предлагаем выбрать тему
+        if (!plan.cycle && plan.total === 0) {
+            return `
+                <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg text-center">
+                    <div class="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                        <i class="fa-solid fa-compass-drafting"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-100 mb-2">С чего начнём?</h3>
+                    <p class="text-slate-400 text-sm mb-6">Выберите тему — ИИ подберёт набор слов и разложит его по дням.</p>
+                    <button id="choose-topic-btn" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 text-lg font-black rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-95 transition-all">
+                        ВЫБРАТЬ ТЕМУ
+                    </button>
+                </div>
+            `;
         }
 
-        // Привязываем клик на кнопку обычного урока
-        const startBtn = document.getElementById('start-daily-btn');
-        if (startBtn && plan.total > 0) {
-            startBtn.addEventListener('click', () => {
-                app.navigate('training');
-            });
-        }
+        // Тема пройдена и на сегодня ничего нет — экзамен показан выше
+        if (isReadyForExam && plan.total === 0) return '';
+
+        const done = plan.total === 0;
+        const btnText = done ? 'ПЛАН ВЫПОЛНЕН 🎉' : `НАЧАТЬ УРОК (${plan.total})`;
+        const btnClass = done
+            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+            : 'bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-95';
+
+        // Когда тема кончилась, а слов вне темы нет — зовём выбрать следующую
+        const nextTopicHtml = (done && !plan.cycle) ? `
+            <button id="choose-topic-btn" class="w-full mt-3 py-3 bg-slate-900 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                ВЫБРАТЬ НОВУЮ ТЕМУ
+            </button>
+        ` : '';
+
+        return `
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+
+                <div class="flex justify-between items-end mb-4">
+                    <h3 class="text-lg font-bold text-slate-100">План на сегодня</h3>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase bg-slate-900 px-2 py-1 rounded border border-slate-700">
+                        ${plan.dayPlan ? dateUtils.format(plan.dayPlan.date) : 'Свободные слова'}
+                    </span>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-rotate-right text-blue-400 text-lg"></i>
+                            <span class="text-slate-300 font-medium">Повторение</span>
+                        </div>
+                        <span class="text-xl font-bold text-blue-400">${plan.review.length}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-seedling text-green-400 text-lg"></i>
+                            <span class="text-slate-300 font-medium">Новые слова</span>
+                        </div>
+                        <span class="text-xl font-bold text-green-400">${plan.newWords.length} / ${profile.dailyGoal}</span>
+                    </div>
+                </div>
+
+                <button id="start-daily-btn" class="w-full py-4 text-lg font-black rounded-xl transition-all ${btnClass}" ${done ? 'disabled' : ''}>
+                    ${btnText}
+                </button>
+                ${nextTopicHtml}
+            </div>
+        `;
     }
 };

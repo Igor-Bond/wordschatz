@@ -21,9 +21,9 @@ const control = {
             let words = [];
             
             if (cycleId) {
-                words = await db.words.filter(w => w.cycleId === cycleId).toArray();
+                words = await dbService.getWordsByCycle(cycleId);
             } else {
-                const allWords = await db.words.filter(w => w.status !== 'new').toArray();
+                const allWords = await dbService.getStudiedWords();
                 words = allWords.sort(() => 0.5 - Math.random()).slice(0, 20);
             }
 
@@ -109,7 +109,7 @@ const control = {
     },
 
     renderTranslation: async (word, type) => {
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 3);
         const options = [...distractors, word].sort(() => 0.5 - Math.random());
         
@@ -225,7 +225,7 @@ const control = {
 
         // 2. ЗАКРЫВАЕМ ЦИКЛ (ТЕМУ)
         if (control.state.cycleId) {
-            await db.cycles.update(control.state.cycleId, { status: 'completed' });
+            await dbService.updateCycle(control.state.cycleId, { status: "completed", completedAt: Date.now() });
         }
 
         // 3. НАЧИСЛЕНИЕ ОПЫТА (За тест даем много XP)
@@ -332,7 +332,7 @@ const control = {
 
             const isDifficult = (currentMastery < 40 && data.mistakes > 0) ? 1 : 0;
 
-            await db.words.update(parseInt(id), { 
+            await dbService.updateWord(id, {
                 mastery: currentMastery,
                 isDifficult: isDifficult
             });

@@ -89,7 +89,7 @@ const exercises = {
     // НАЙДИ ПАРУ (MATCH PAIRS)
     // ==========================================
     renderMatchPairsQuiz: async (word) => {
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 3);
         const pairs = [...distractors, word];
         
@@ -172,7 +172,7 @@ const exercises = {
     // ПРЯМОЙ / ОБРАТНЫЙ ПЕРЕВОД
     // ==========================================
     renderTranslationQuiz: async (word, direction = 'de-ru') => {
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 3);
         const options = [...distractors, word].sort(() => 0.5 - Math.random());
         
@@ -270,7 +270,7 @@ const exercises = {
 
         if (!found) masked = `_____ ${word.example_de}`;
 
-        const allWords = await db.words.toArray();
+        const allWords = await dbService.getAllWords();
         const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 2).map(w => w.word);
         const hints = [...distractors, targetMatch].sort(() => 0.5 - Math.random());
 
