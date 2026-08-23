@@ -14,6 +14,50 @@ export const exercises = {
     /** Допустимые варианты ответа для текущего задания с вводом. */
     acceptedAnswers: null,
 
+    /**
+     * От узнавания к активному воспроизведению (§12 ТЗ).
+     *
+     * Раньше тип задания выбирался случайно из всех подходящих: слово,
+     * увиденное первый раз, могло сразу попасть на аудирование с вводом,
+     * а давно выученное — на выбор из четырёх кнопок.
+     */
+    STAGES: {
+        // Узнать среди вариантов
+        recognition: ['translation_de_ru', 'match_pairs', 'article'],
+
+        // Выбор потруднее плюс первые задания с вводом
+        consolidation: ['translation_ru_de', 'article', 'rektion', 'verb_form', 'fill_blanks'],
+
+        // Написать самому
+        production: ['translation_ru_de_input', 'verb_form', 'fill_blanks', 'listening', 'sentence_builder']
+    },
+
+    /** Экранирование для подстановки в атрибут. */
+    escAttr: (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'),
+
+    /** Этап для слова: по числу повторений и освоению. */
+    getStage: (word) => {
+        const repetitions = word?.repetitions || 0;
+        const mastery = word?.mastery || 0;
+
+        if (repetitions < 2 || mastery < 30) return 'recognition';
+        if (mastery < 70) return 'consolidation';
+        return 'production';
+    },
+
+    /**
+     * Выбор задания под этап слова.
+     * Если для этапа ничего не подходит (например, у слова нет примера),
+     * берём любое доступное — оставить пользователя без задания нельзя.
+     */
+    pickByStage: (word, validModes) => {
+        const stage = exercises.getStage(word);
+        const preferred = validModes.filter(m => exercises.STAGES[stage].includes(m));
+
+        const pool = preferred.length ? preferred : validModes;
+        return quiz.shuffle(pool)[0];
+    },
+
     queue: [],
     currentIndex: 0,
     onFinish: null,
@@ -83,13 +127,18 @@ export const exercises = {
         if ((!hasRequested || requested.includes('fill_blanks')) && word.example_de) validModes.push('fill_blanks');
         if ((!hasRequested || requested.includes('sentence_builder')) && word.example_de) validModes.push('sentence_builder');
         if ((!hasRequested || requested.includes('listening')) && word.word) validModes.push('listening');
+        if ((!hasRequested || requested.includes('translation_ru_de_input')) && word.word) validModes.push('translation_ru_de_input');
 
         if (validModes.length === 0) validModes.push('translation_de_ru');
 
-        const exType = validModes[Math.floor(Math.random() * validModes.length)];
+        // В Комнате режим выбран пользователем — этап не навязываем
+        const exType = hasRequested
+            ? quiz.shuffle(validModes)[0]
+            : exercises.pickByStage(word, validModes);
 
         let block = null;
-        if (exType === 'article') block = exercises.renderArticleQuiz(word);
+        if (exType === 'translation_ru_de_input') block = exercises.renderProductionQuiz(word);
+        else if (exType === 'article') block = exercises.renderArticleQuiz(word);
         else if (exType === 'verb_form') block = exercises.renderVerbQuiz(word);
         else if (exType === 'fill_blanks') block = await exercises.renderFillBlanksQuiz(word);
         else if (exType === 'sentence_builder') block = exercises.renderSentenceBuilder(word);
@@ -221,6 +270,39 @@ export const exercises = {
                 <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${label}</h3>
                 <h2 class="text-3xl font-black text-slate-100 mb-8 text-center">${questionText}</h2>
                 <div class="space-y-3" id="ex-buttons">${btns}</div>
+            </div>
+        `;
+    },
+
+    /**
+     * Воспроизведение: написать немецкое слово по переводу (§13 ТЗ).
+     *
+     * Обратный перевод до сих пор был выбором из четырёх кнопок, то есть
+     * узнаванием. Для освоенного слова это слишком просто.
+     */
+    renderProductionQuiz: (word) => {
+        const full = String(word.word || '').trim();
+        const bare = germanUtils.stripArticle(word);
+        const gender = germanUtils.getGender(word);
+
+        // Существительное принимаем и с артиклем, и без: артикль
+        // тренируется отдельным заданием
+        exercises.acceptedAnswers = gender ? [full, bare] : [full];
+
+        return `
+            <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.writeInGerman')}</h3>
+                <h2 class="text-3xl font-black text-amber-500 mb-8">${word.translation}</h2>
+
+                <input type="text" id="ex-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+                    class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-4 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors"
+                    placeholder="${exercises.escAttr(t("exercises.wordPlaceholder"))}">
+
+                <button onclick="exercises.checkInput('${full.replace(/'/g, "\\'")}', 'translation_ru_de_input')"
+                    class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">
+                    ${t('exercises.check')}
+                </button>
+                <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
             </div>
         `;
     },

@@ -30,6 +30,10 @@ export const room = {
                         <i class="fa-solid fa-language text-blue-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeRuDe')}</span>
                     </button>
+                    <button onclick="room.startExerciseMode(['translation_ru_de_input'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-pen-to-square text-blue-500 text-2xl"></i>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeProduction')}</span>
+                    </button>
                     <button onclick="room.startExerciseMode(['match_pairs'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-purple-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-layer-group text-purple-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeMatch')}</span>
@@ -90,7 +94,7 @@ export const room = {
         // Интеллектуальный фильтр слов под выбранный режим.
         let compatibleWords = allWords.filter(w => {
             let isValid = false;
-            if (allowedModes.includes('translation_de_ru') || allowedModes.includes('translation_ru_de') || allowedModes.includes('match_pairs')) isValid = true;
+            if (allowedModes.includes('translation_de_ru') || allowedModes.includes('translation_ru_de') || allowedModes.includes('translation_ru_de_input') || allowedModes.includes('match_pairs')) isValid = true;
             if (allowedModes.includes('listening') && w.word) isValid = true;
             if (allowedModes.includes('article') && w.type === 'noun') isValid = true;
             if (allowedModes.includes('verb_form') && w.type === 'verb' && (w.preterite || w.participle_ii)) isValid = true;
