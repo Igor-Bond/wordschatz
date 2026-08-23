@@ -9,11 +9,11 @@
 
 | Файл | Версия | Источник |
 |---|---|---|
-| `tailwind.min.js` | 3.4.16 | `https://cdn.tailwindcss.com/3.4.16` |
 | `dexie.min.js` | 4.0.10 | `https://unpkg.com/dexie@4.0.10/dist/dexie.min.mjs` |
 | `fontawesome/css/fontawesome.min.css` | 6.4.0 | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css` |
 | `fontawesome/css/solid.min.css` | 6.4.0 | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css` |
 | `fontawesome/webfonts/fa-solid-900.woff2` | 6.4.0 | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2` |
+| `firebase/*` | 11.x | модульный SDK, импорты переписаны на относительные |
 
 ## Изменения относительно оригиналов
 
@@ -25,29 +25,17 @@
   в `dexie.min.js`: не всякий хостинг отдаёт `.mjs` с правильным Content-Type,
   а при неверном типе импорт модуля падает и приложение не запускается. Она
   импортируется напрямую из `js/services/db.js`. Убрана ссылка на несуществующий sourcemap.
+- **Firebase:** в модульном SDK импорты ведут на `https://www.gstatic.com/...`,
+  из-за чего офлайн ломался. Переписаны на относительные.
 
-## Технический долг
+## Tailwind здесь больше нет
 
-`tailwind.min.js` — это Play CDN, то есть компилятор Tailwind, работающий
-в браузере: 451 КБ и предупреждение в консоли «should not be used in production».
-Сейчас это осознанный компромисс: он даёт офлайн без сборки и без риска, что
-purge выкинет нужный класс (в коде классы собираются в JS-строках).
+Раньше в этой папке лежал `tailwind.min.js` — Play CDN, то есть компилятор
+Tailwind весом 441 КБ, работавший в браузере при каждом запуске приложения.
+Он заменён сборкой заранее: `css/tailwind.css`, около 37 КБ.
 
-## Что осталось до Vite
+Собирается автономным исполняемым файлом Tailwind, Node не нужен:
+`tools/build-css.ps1`. Подробности и порядок действий — в `docs/DEPLOY.md`.
 
-Код уже переведён на нативные ES-модули, поэтому переход на Vite — небольшой
-шаг. Он требует установленного Node (на машине разработки его пока нет):
-
-1. `npm init -y`, затем `npm i -D vite` и `npm i dexie tailwindcss`.
-2. `vite.config.js`: `base: './'`, `build.outDir: 'dist'`, копирование
-   `manifest.json`, `sw.js`, `_redirects` и `assets/` в сборку.
-3. В `js/services/db.js` заменить `'../../vendor/dexie.min.js'` на `'dexie'`.
-4. Tailwind перевести на CLI-сборку с `content: ['index.html', 'js/**/*.js']`
-   — вместо Play CDN получится примерно 15 КБ CSS. Проверить, что классы,
-   собираемые в JS-строках, не выкинуты purge.
-5. Font Awesome — либо оставить как есть, либо `npm i @fortawesome/fontawesome-free`.
-6. Пути в `sw.js` привязать к именам файлов из сборки: Vite добавляет хеши,
-   поэтому список прекэша придётся генерировать (`vite-plugin-pwa` делает это сам).
-7. На Netlify указать build command `npm run build` и publish directory `dist`.
-
-После этого папку `vendor/` можно удалить.
+Классы, которые в коде собираются подстановкой (`text-${accent}` и подобные),
+перечислены в `safelist` в `tailwind.config.js` — сканер их не находит.
