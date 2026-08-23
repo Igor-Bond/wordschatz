@@ -1,3 +1,5 @@
+import { t, plural } from '../i18n/i18n.js';
+
 /**
  * Интервальное повторение (§17 ТЗ), подход Anki в упрощённом виде.
  *
@@ -122,13 +124,12 @@ export const srs = {
         const result = srs.calculate(quality, word);
         const ms = result.nextReview - Date.now();
 
-        if (ms < 60 * srs.MINUTE) return `${Math.round(ms / srs.MINUTE)} мин`;
+        if (ms < 60 * srs.MINUTE) return plural('common.minute', Math.round(ms / srs.MINUTE));
+
         const days = Math.round(ms / srs.DAY);
-        if (days < 1) return '< 1 дня';
-        if (days === 1) return '1 день';
-        if (days < 5) return `${days} дня`;
-        if (days < 30) return `${days} дней`;
-        const months = Math.round(days / 30);
-        return months === 1 ? '1 мес' : `${months} мес`;
+        if (days < 1) return t('common.lessThanDay');
+        if (days < 30) return plural('common.day', days);
+
+        return plural('common.month', Math.round(days / 30));
     }
 };

@@ -1,4 +1,5 @@
 import { dbService } from '../services/db.js';
+import { i18n, t } from '../i18n/i18n.js';
 import { aiService } from '../services/ai.js';
 import { exercises } from './exercises.js';
 
@@ -220,7 +221,7 @@ export const room = {
             textSpan.innerHTML = `<b>${found.word}</b> — <span class="text-white">${found.translation}</span> <span class="text-xs opacity-75 ml-2">(уже в словаре)</span>`;
         } else {
             try {
-                const prompt = `Переведи немецкое слово "${cleanWord}" на русский язык кратко. Верни JSON в формате: {"word": "${cleanWord}", "translation": "перевод", "type": "noun/verb/adjective/phrase"}`;
+                const prompt = `Переведи немецкое слово "${cleanWord}" на язык ${i18n.aiLanguage().name} кратко. Верни JSON в формате: {"word": "${cleanWord}", "translation": "перевод", "type": "noun/verb/adjective/phrase"}`;
                 const raw = await aiService.callGemini(prompt, true);
                 const wordData = JSON.parse(raw.replace(/```json/gi, '').replace(/```/g, '').trim());
 

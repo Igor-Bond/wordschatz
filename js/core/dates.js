@@ -1,3 +1,5 @@
+import { i18n } from '../i18n/i18n.js';
+
 /**
  * Работа с датами учебного плана.
  *
@@ -36,11 +38,11 @@ export const dateUtils = {
         return Math.round((dateB - dateA) / 86400000);
     },
 
-    /** Человекочитаемая дата: «23 августа». */
+    /** Человекочитаемая дата: «23 августа», «23 серпня», «August 23». */
     format: (dateKey) => {
         const [y, m, d] = dateKey.split('-').map(Number);
-        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-                        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-        return `${d} ${months[m - 1]}`;
+        const date = new Date(y, m - 1, d);
+
+        return new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'long' }).format(date);
     }
 };

@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { i18n } from '../i18n/i18n.js';
 import { dbService } from './db.js';
 
 export const aiService = {
@@ -110,7 +111,9 @@ export const aiService = {
     /** Одна порция слов от ИИ. Исключения передаём в промпт, чтобы не повторялся. */
     _generateBatch: async (topic, requestCount, excludeList = []) => {
         const profile = config.getProfile();
-        const rule = `ОБЯЗАТЕЛЬНО: Существительным заполняй plural и dativ. Глаголам — спряжение present (ich, du, er) и rektion. Всем словам подбирай synonym (синоним) и gegenteil (антоним), если это возможно.`;
+        const lang = i18n.aiLanguage();
+        const rule = `ОБЯЗАТЕЛЬНО: Существительным заполняй plural и dativ. Глаголам — спряжение present (ich, du, er) и rektion. Всем словам подбирай synonym (синоним) и gegenteil (антоним), если это возможно.
+        ЯЗЫК ПЕРЕВОДА: поля translation и example_ru должны быть на языке "${lang.name}", а не на русском, если указан другой язык.`;
 
         // Длинный список исключений раздувает промпт — берём последние 60
         const exclude = excludeList.slice(-60);
@@ -200,7 +203,7 @@ export const aiService = {
         
         const prompt = `Напиши короткий, увлекательный рассказ на немецком языке (уровень ${profile.level}), используя ОБЯЗАТЕЛЬНО следующие слова: ${wordsList}. 
         Тематика рассказа должна быть связана с: ${profile.interests}.
-        Верни JSON в формате: {"story_de": "текст рассказа", "story_ru": "литературный перевод"}`;
+        Верни JSON в формате: {"story_de": "текст рассказа", "story_ru": "литературный перевод на язык ${i18n.aiLanguage().name}"}`;
         
         const responseText = await aiService.callGemini(prompt, true);
         return JSON.parse(responseText);

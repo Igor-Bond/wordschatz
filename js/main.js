@@ -13,6 +13,7 @@
  */
 
 import { config } from './config.js';
+import { i18n, t, plural, LANGUAGES } from './i18n/i18n.js';
 import { db, dbService } from './services/db.js';
 import { aiService } from './services/ai.js';
 import { dateUtils } from './core/dates.js';
@@ -41,6 +42,7 @@ import { app } from './app.js';
  * после чего блок исчезнет.
  */
 Object.assign(window, {
+    i18n, t, plural,
     config, db, dbService, aiService, dateUtils, srs, lessonStateManager, scheduler,
     onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
 });
@@ -79,5 +81,12 @@ function registerServiceWorker() {
 
 window.addEventListener('load', registerServiceWorker);
 
+// Язык выставляем до первого рендера: разметка собирается строками,
+// живой перерисовки при смене языка нет
+i18n.setLanguage(config.get('ui_lang') || 'ru');
+
 // Модульные скрипты выполняются до DOMContentLoaded, так что подписка успевает
-document.addEventListener('DOMContentLoaded', app.init);
+document.addEventListener('DOMContentLoaded', () => {
+    i18n.applyToDom();   // статические строки index.html
+    app.init();
+});

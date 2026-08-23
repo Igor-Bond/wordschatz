@@ -65,7 +65,7 @@ db.version(3).stores({
 
 const DEFAULT_USER = {
     id: 1,
-    league: 'Деревянная',
+    league: 'wooden',
     totalXP: 0,
     currentStreak: 0,
     lastActiveDate: null
@@ -198,7 +198,10 @@ export const dbService = {
 
     getUser: async () => {
         const user = await db.user.get(1);
-        return user || { ...DEFAULT_USER };
+        if (!user) return { ...DEFAULT_USER };
+
+        // Записи прошлых версий хранили русское название лиги вместо ключа
+        return { ...user, league: dbService.normalizeLeague(user.league) };
     },
 
     saveUser: async (user) => {
@@ -240,20 +243,40 @@ export const dbService = {
         });
     },
 
-    /** Пороги лиг в одном месте — раньше дублировались в db.js и dashboard.js. */
+    /**
+     * Пороги лиг в одном месте — раньше дублировались в db.js и dashboard.js.
+     * В базе хранится ключ, а не название: названия переводятся при показе.
+     */
     LEAGUES: [
-        { name: 'Деревянная', minXP: 0 },
-        { name: 'Каменная', minXP: 100 },
-        { name: 'Бронзовая', minXP: 300 },
-        { name: 'Серебряная', minXP: 1000 },
-        { name: 'Золотая', minXP: 2500 },
-        { name: 'Алмазная', minXP: 5000 }
+        { key: 'wooden', minXP: 0 },
+        { key: 'stone', minXP: 100 },
+        { key: 'bronze', minXP: 300 },
+        { key: 'silver', minXP: 1000 },
+        { key: 'gold', minXP: 2500 },
+        { key: 'diamond', minXP: 5000 }
     ],
 
+    /** Записи прошлых версий хранили русское название лиги. */
+    LEGACY_LEAGUE_NAMES: {
+        'Деревянная': 'wooden',
+        'Каменная': 'stone',
+        'Бронзовая': 'bronze',
+        'Серебряная': 'silver',
+        'Металлическая': 'silver',
+        'Золотая': 'gold',
+        'Алмазная': 'diamond'
+    },
+
+    normalizeLeague: (value) => {
+        if (!value) return 'wooden';
+        if (dbService.LEAGUES.some(l => l.key === value)) return value;
+        return dbService.LEGACY_LEAGUE_NAMES[value] || 'wooden';
+    },
+
     getLeagueForXP: (xp) => {
-        let current = dbService.LEAGUES[0].name;
+        let current = dbService.LEAGUES[0].key;
         for (const league of dbService.LEAGUES) {
-            if (xp >= league.minXP) current = league.name;
+            if (xp >= league.minXP) current = league.key;
         }
         return current;
     },

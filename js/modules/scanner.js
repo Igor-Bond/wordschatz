@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { i18n, t } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { aiService } from '../services/ai.js';
 
@@ -102,7 +103,7 @@ export const scanner = {
         
         try {
             const prompt = `Пользователь ввел слово/фразу: "${input}". 
-            Определи часть речи, переведи на русский. 
+            Определи часть речи, переведи на язык ${i18n.aiLanguage().name}.
             Если это существительное - дай plural и dativ. 
             Если глагол - present (ich, du, er) и rektion. 
             Дай антоним (gegenteil) если есть, и составь живой пример.
@@ -142,7 +143,7 @@ ${aiService._getJsonFormat()}`;
             const profile = config.getProfile();
             const prompt = `Проанализируй текст: "${text}". 
             Найди от 5 до 10 самых полезных незнакомых слов для студента уровня ${profile.level}.
-            Определи часть речи, переведи на русский. 
+            Определи часть речи, переведи на язык ${i18n.aiLanguage().name}.
             Если это существительное - дай plural и dativ. 
             Если глагол - present (ich, du, er) и rektion. 
             Дай антоним (gegenteil) если есть, и вытащи предложение с этим словом из текста (или составь свое).

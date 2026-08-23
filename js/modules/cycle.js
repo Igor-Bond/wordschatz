@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { aiService } from '../services/ai.js';
 import { scheduler } from '../core/scheduler.js';
@@ -20,10 +21,10 @@ export const cycle = {
     },
 
     /** Темы из §4 ТЗ — как быстрые подсказки, свою тему всегда можно ввести. */
-    SUGGESTED_TOPICS: [
-        'Быт', 'Путешествия', 'Еда', 'Работа', 'Здоровье',
-        'Ремонт двигателя', 'Автодиагностика', 'Баскетбол',
-        'Микросхемотехника', 'Электроника'
+    SUGGESTED_TOPIC_KEYS: [
+        'everyday', 'travel', 'food', 'work', 'health',
+        'engineRepair', 'carDiagnostics', 'basketball',
+        'microelectronics', 'electronics'
     ],
 
     DURATIONS: [5, 7, 10, 14],
@@ -51,28 +52,30 @@ export const cycle = {
                     <div class="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-amber-500/30">
                         <i class="fa-solid fa-compass-drafting"></i>
                     </div>
-                    <h2 class="text-2xl font-bold text-slate-100 mb-2">Новая тема</h2>
-                    <p class="text-slate-400 text-sm">Выберите, что учим дальше. ИИ подберёт слова под ваш уровень (${profile.level}) и интересы.</p>
+                    <h2 class="text-2xl font-bold text-slate-100 mb-2">${t('cycle.newTopic')}</h2>
+                    <p class="text-slate-400 text-sm">${t('cycle.intro', { level: profile.level })}</p>
                 </div>
 
                 <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-4">
-                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Тема</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">${t('cycle.topicLabel')}</label>
                     <input type="text" id="cycle-topic-input"
                         class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 transition-colors"
-                        placeholder="Например: Дом" value="${cycle.esc(cycle.state.topic)}">
+                        placeholder="${cycle.esc(t('cycle.topicPlaceholder'))}" value="${cycle.esc(cycle.state.topic)}">
 
                     <div class="flex flex-wrap gap-2 mt-3">
-                        ${cycle.SUGGESTED_TOPICS.map(t => `
-                            <button onclick="cycle.pickTopic('${cycle.esc(t)}')"
+                        ${cycle.SUGGESTED_TOPIC_KEYS.map(key => {
+                            const label = t('cycle.topics.' + key);
+                            return `
+                            <button onclick="cycle.pickTopic('${cycle.esc(label)}')"
                                 class="px-3 py-1.5 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-medium rounded-lg hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
-                                ${cycle.esc(t)}
-                            </button>
-                        `).join('')}
+                                ${cycle.esc(label)}
+                            </button>`;
+                        }).join('')}
                     </div>
                 </div>
 
                 <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-6">
-                    <label class="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Продолжительность</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">${t('cycle.durationLabel')}</label>
                     <div class="grid grid-cols-4 gap-2">
                         ${cycle.DURATIONS.map(d => `
                             <button onclick="cycle.pickDuration(${d})"
@@ -82,35 +85,30 @@ export const cycle = {
                                         : 'bg-slate-900 border-slate-600 text-slate-300 hover:border-slate-500'
                                 }">
                                 <div class="text-lg leading-none">${d}</div>
-                                <div class="text-[10px] font-medium opacity-70 mt-1">${cycle.dayWord(d)}</div>
+                                <div class="text-[10px] font-medium opacity-70 mt-1">${plural('common.dayShort', d)}</div>
                             </button>
                         `).join('')}
                     </div>
                     <p class="text-xs text-slate-500 mt-3">
-                        ${cycle.state.days} ${cycle.dayWord(cycle.state.days)} × ${profile.dailyGoal} слов =
-                        <span class="text-amber-500 font-bold">${wordsCount} слов</span> в теме
+                        ${t('cycle.durationSummary', {
+                            days: plural('common.day', cycle.state.days),
+                            goal: profile.dailyGoal,
+                            total: wordsCount
+                        })}
                     </p>
                 </div>
 
                 <button onclick="cycle.generate()"
                     class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 text-lg font-black rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-95 transition-all">
-                    ПОДОБРАТЬ СЛОВА
+                    ${t('cycle.generate')}
                 </button>
 
                 <button onclick="dashboard.render()"
                     class="w-full mt-3 py-3 text-slate-500 hover:text-slate-300 text-sm font-bold transition-colors">
-                    Позже
+                    ${t('common.later')}
                 </button>
             </div>
         `;
-    },
-
-    dayWord: (n) => {
-        const last = n % 10, tens = n % 100;
-        if (tens >= 11 && tens <= 14) return 'дней';
-        if (last === 1) return 'день';
-        if (last >= 2 && last <= 4) return 'дня';
-        return 'дней';
     },
 
     pickTopic: (topic) => {
@@ -135,7 +133,7 @@ export const cycle = {
         const topic = (input?.value || '').trim();
 
         if (!topic) {
-            alert('Введите тему или выберите одну из предложенных.');
+            alert(t('cycle.topicRequired'));
             return;
         }
 
@@ -151,7 +149,7 @@ export const cycle = {
             });
 
             if (!words || words.length === 0) {
-                throw new Error('ИИ не вернул ни одного нового слова. Попробуйте другую тему.');
+                throw new Error(t('cycle.emptyResult'));
             }
 
             cycle.state.words = words.map(w => ({ ...w, selected: true }));
@@ -166,14 +164,14 @@ export const cycle = {
         main.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-center fade-in max-w-sm mx-auto">
                 <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-amber-500 mb-6"></div>
-                <h3 class="text-xl font-bold text-slate-100 mb-2">Подбираем слова</h3>
-                <p class="text-slate-400 text-sm mb-6">Тема «${cycle.esc(topic)}»</p>
+                <h3 class="text-xl font-bold text-slate-100 mb-2">${t('cycle.loadingTitle')}</h3>
+                <p class="text-slate-400 text-sm mb-6">${t('cycle.loadingTopic', { topic: cycle.esc(topic) })}</p>
 
                 <div class="w-full bg-slate-800 rounded-full h-2 border border-slate-700 overflow-hidden">
                     <div id="cycle-progress-bar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
                 </div>
-                <p id="cycle-progress-text" class="text-xs text-slate-500 mt-3">${done} из ${total}</p>
-                <p class="text-[11px] text-slate-600 mt-6 max-w-xs">Большой набор собирается несколькими запросами — это может занять до минуты.</p>
+                <p id="cycle-progress-text" class="text-xs text-slate-500 mt-3">${t('cycle.loadingProgress', { done, total })}</p>
+                <p class="text-[11px] text-slate-600 mt-6 max-w-xs">${t('cycle.loadingHint')}</p>
             </div>
         `;
     },
@@ -182,7 +180,7 @@ export const cycle = {
         const bar = document.getElementById('cycle-progress-bar');
         const text = document.getElementById('cycle-progress-text');
         if (bar) bar.style.width = `${Math.round((done / total) * 100)}%`;
-        if (text) text.innerText = `${done} из ${total}`;
+        if (text) text.innerText = t('cycle.loadingProgress', { done, total });
     },
 
     renderError: (message) => {
@@ -192,10 +190,10 @@ export const cycle = {
                 <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center text-3xl mb-6 border border-red-500/30">
                     <i class="fa-solid fa-triangle-exclamation"></i>
                 </div>
-                <h3 class="text-xl font-bold text-slate-100 mb-2">Не получилось</h3>
+                <h3 class="text-xl font-bold text-slate-100 mb-2">${t('common.error')}</h3>
                 <p class="text-slate-400 text-sm mb-8">${cycle.esc(message)}</p>
                 <button onclick="cycle.renderTopicPicker()" class="w-full py-4 bg-amber-500 text-slate-900 font-black rounded-xl active:scale-95 transition-transform">
-                    ПОПРОБОВАТЬ СНОВА
+                    ${t('common.tryAgain')}
                 </button>
             </div>
         `;
@@ -211,28 +209,28 @@ export const cycle = {
         const selected = cycle.state.words.filter(w => w.selected).length;
         const days = Math.ceil(selected / profile.dailyGoal);
 
-        const typeBadges = {
-            noun: { label: 'сущ.', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
-            verb: { label: 'глаг.', color: 'text-green-400 bg-green-400/10 border-green-400/20' },
-            adjective: { label: 'прил.', color: 'text-purple-400 bg-purple-400/10 border-purple-400/20' },
-            phrase: { label: 'фраза', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' }
+        const badgeColors = {
+            noun: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+            verb: 'text-green-400 bg-green-400/10 border-green-400/20',
+            adjective: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+            phrase: 'text-amber-400 bg-amber-400/10 border-amber-400/20'
         };
 
         main.innerHTML = `
             <div class="fade-in max-w-lg mx-auto mt-2 pb-32">
                 <div class="mb-4">
-                    <h2 class="text-2xl font-bold text-slate-100">Тема «${cycle.esc(cycle.state.topic)}»</h2>
-                    <p class="text-slate-400 text-sm mt-1">Снимите галочки со слов, которые уже знаете.</p>
+                    <h2 class="text-2xl font-bold text-slate-100">${t('cycle.previewTitle', { topic: cycle.esc(cycle.state.topic) })}</h2>
+                    <p class="text-slate-400 text-sm mt-1">${t('cycle.previewHint')}</p>
                 </div>
 
                 <div class="flex gap-2 mb-4">
-                    <button onclick="cycle.selectAll(true)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">ВЫБРАТЬ ВСЁ</button>
-                    <button onclick="cycle.selectAll(false)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">СНЯТЬ ВСЁ</button>
+                    <button onclick="cycle.selectAll(true)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">${t('common.selectAll')}</button>
+                    <button onclick="cycle.selectAll(false)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">${t('common.deselectAll')}</button>
                 </div>
 
                 <div class="space-y-2">
                     ${cycle.state.words.map((w, i) => {
-                        const badge = typeBadges[w.type] || typeBadges.phrase;
+                        const type = badgeColors[w.type] ? w.type : 'phrase';
                         return `
                         <div onclick="cycle.toggleWord(${i})"
                             class="bg-slate-800 p-3 rounded-xl border-2 flex items-center gap-3 cursor-pointer transition-all active:scale-[0.99] ${
@@ -246,7 +244,7 @@ export const cycle = {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
                                     <span class="font-bold text-slate-100 truncate">${cycle.esc(w.word)}</span>
-                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${badge.color}">${badge.label}</span>
+                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${badgeColors[type]}">${t('wordTypes.' + type)}</span>
                                 </div>
                                 <div class="text-sm text-amber-500/90 truncate">${cycle.esc(w.translation)}</div>
                             </div>
@@ -258,15 +256,15 @@ export const cycle = {
             <div class="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-700 p-4 pb-[max(env(safe-area-inset-bottom),16px)]">
                 <div class="max-w-lg mx-auto">
                     <div class="flex justify-between items-center mb-3 text-sm">
-                        <span class="text-slate-400">Выбрано: <b id="cycle-selected-count" class="text-slate-100">${selected}</b> из ${cycle.state.words.length}</span>
-                        <span class="text-slate-400"><b id="cycle-days-count" class="text-amber-500">${days}</b> ${cycle.dayWord(days)} обучения</span>
+                        <span class="text-slate-400">${t('cycle.selectedCount', { selected, total: cycle.state.words.length })}</span>
+                        <span class="text-slate-400"><b id="cycle-days-count" class="text-amber-500">${plural('common.day', days)}</b> ${t('cycle.daysOfStudy')}</span>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="cycle.renderTopicPicker()" class="px-4 py-3.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl active:scale-95 transition-all">
                             <i class="fa-solid fa-arrow-left"></i>
                         </button>
                         <button onclick="cycle.approve()" class="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl shadow-lg active:scale-95 transition-all">
-                            НАЧАТЬ ТЕМУ
+                            ${t('cycle.approve')}
                         </button>
                     </div>
                 </div>
@@ -295,14 +293,11 @@ export const cycle = {
         const selected = cycle.state.words.filter(w => w.selected);
 
         if (selected.length === 0) {
-            alert('Выберите хотя бы одно слово.');
+            alert(t('cycle.nothingSelected'));
             return;
         }
         if (selected.length < profile.dailyGoal) {
-            const ok = confirm(
-                `Выбрано ${selected.length} слов — это меньше дневной нормы (${profile.dailyGoal}).\n` +
-                `Тема пройдёт за один день. Продолжить?`
-            );
+            const ok = confirm(t('cycle.belowGoal', { count: selected.length, goal: profile.dailyGoal }));
             if (!ok) return;
         }
 
@@ -330,7 +325,7 @@ export const cycle = {
             );
 
             if (ids.length === 0) {
-                throw new Error('Все выбранные слова уже есть в словаре.');
+                throw new Error(t('cycle.allWordsKnown'));
             }
 
             await scheduler.buildDayPlans(cycleId, ids, profile.dailyGoal);

@@ -1,4 +1,5 @@
 import { config } from './config.js';
+import { i18n, t, plural } from './i18n/i18n.js';
 import { dbService } from './services/db.js';
 import { scheduler } from './core/scheduler.js';
 import { onboarding } from './modules/onboarding.js';
@@ -57,8 +58,8 @@ export const app = {
                 <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-4 shadow-inner border border-slate-700">
                     <i class="fa-solid fa-tools text-3xl text-amber-500/50"></i>
                 </div>
-                <h2 class="text-xl font-bold text-slate-300 mb-2">Модуль в разработке</h2>
-                <p class="text-sm text-center max-w-xs">Этот раздел пока недоступен.</p>
+                <h2 class="text-xl font-bold text-slate-300 mb-2">${t('app.moduleInProgress')}</h2>
+                <p class="text-sm text-center max-w-xs">${t('app.moduleUnavailable')}</p>
             </div>
         `;
     },
@@ -71,7 +72,12 @@ export const app = {
         document.getElementById('settings-api-key').value = savedKey;
         document.getElementById('settings-lang').value = prof.uiLang || 'ru';
         document.getElementById('settings-level').value = prof.level || 'A1';
-        document.getElementById('settings-goal').value = prof.dailyGoal || '5';
+        // Подписи «5 слов / 10 слов…» зависят от языка, поэтому собираем список здесь
+        const goalSelect = document.getElementById('settings-goal');
+        goalSelect.innerHTML = [5, 10, 15, 20]
+            .map(n => `<option value="${n}">${plural('common.word', n)}</option>`)
+            .join('');
+        goalSelect.value = prof.dailyGoal || '10';
 
         const modal = document.getElementById('settings-modal');
         const content = document.getElementById('settings-modal-content');
@@ -125,11 +131,7 @@ export const app = {
      * пользователь заново проходил onboarding и получал старые слова.
      */
     resetAll: async () => {
-        const confirmed = confirm(
-            'Удалить ВСЕ данные?\n\n' +
-            'Будут стёрты словарь, прогресс, XP, лига, история уроков и настройки.\n' +
-            'Действие необратимо. Если нужен бэкап — сначала сделайте экспорт словаря.'
-        );
+        const confirmed = confirm(t('app.resetConfirm'));
         if (!confirmed) return;
 
         // Отложенная запись профиля не должна воссоздать базу после удаления
@@ -140,10 +142,7 @@ export const app = {
             await dbService.resetDatabase();
         } catch (e) {
             console.error('Не удалось удалить базу данных:', e);
-            alert(
-                'Не удалось удалить базу данных. ' +
-                'Возможно, приложение открыто в другой вкладке — закройте её и попробуйте снова.'
-            );
+            alert(t('app.resetDbFailed'));
             return;
         }
 
@@ -174,11 +173,11 @@ export const app = {
             'shadow-[0_0_20px_rgba(245,158,11,0.25)] fade-in';
         banner.innerHTML = `
             <i class="fa-solid fa-arrows-rotate text-amber-500"></i>
-            <span class="text-sm font-medium">Доступна новая версия</span>
+            <span class="text-sm font-medium">${t('app.updateAvailable')}</span>
             <button id="sw-update-btn" class="ml-1 px-3 py-1.5 bg-amber-500 text-slate-900 text-xs font-black rounded-lg active:scale-95 transition-transform">
-                ОБНОВИТЬ
+                ${t('app.updateButton')}
             </button>
-            <button id="sw-update-dismiss" class="text-slate-500 hover:text-slate-300 transition-colors" aria-label="Закрыть">
+            <button id="sw-update-dismiss" class="text-slate-500 hover:text-slate-300 transition-colors" aria-label="${t('common.close')}">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         `;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
-    <meta name="description" content="ИИ-репетитор и тренажер немецких слов">
+    <meta name="description" content="ИИ-репетитор и тренажер немецких слов" data-i18n-content="app.description">
     <title>WortSchatz Pro</title>
 
     <!-- PWA -->
@@ -41,11 +41,11 @@
         <nav class="bg-slate-800 border-t border-slate-700 absolute bottom-0 w-full px-2 pt-2 pb-[max(env(safe-area-inset-bottom),8px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
             <button onclick="app.navigate('plan')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-amber-500 transition-colors" data-target="plan">
                 <i class="fa-solid fa-list-check text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold tracking-wider">ПЛАН</span>
+                <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.plan">ПЛАН</span>
             </button>
             <button onclick="app.navigate('room')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors" data-target="room">
                 <i class="fa-solid fa-dumbbell text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold tracking-wider">КОМНАТА</span>
+                <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.room">КОМНАТА</span>
             </button>
             
             <div class="flex-none flex justify-center items-center relative -top-6 mx-1">
@@ -56,11 +56,11 @@
             
             <button onclick="app.navigate('chat')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors" data-target="chat">
                 <i class="fa-solid fa-comment-dots text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold tracking-wider">ИИ-ЧАТ</span>
+                <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.chat">ИИ-ЧАТ</span>
             </button>
             <button onclick="app.navigate('profile')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors" data-target="profile">
                 <i class="fa-solid fa-shield-halved text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold tracking-wider">ПРОФИЛЬ</span>
+                <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.profile">ПРОФИЛЬ</span>
             </button>
         </nav>
     </div>
@@ -69,13 +69,13 @@
     <div id="settings-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
         <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden flex flex-col scale-95 transition-transform duration-200" id="settings-modal-content">
             <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                <h3 class="text-lg font-bold text-slate-100">Настройки / Налаштування</h3>
+                <h3 class="text-lg font-bold text-slate-100" data-i18n="settings.title">Настройки</h3>
                 <button onclick="app.closeSettings()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
             <div class="p-5 space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5">Язык интерфейса / Мова</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.language">Язык интерфейса</label>
                     <select id="settings-lang" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                         <option value="ru" selected>Русский (По умолчанию)</option>
                         <option value="uk">Українська</option>
@@ -85,7 +85,7 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1.5">Уровень</label>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.level">Уровень</label>
                         <select id="settings-level" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                             <option value="A1">A1</option>
                             <option value="A2">A2</option>
@@ -94,7 +94,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1.5">Норма / день</label>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.dailyGoal">Норма / день</label>
                         <select id="settings-goal" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                             <option value="5">5 слов</option>
                             <option value="10">10 слов</option>
@@ -105,21 +105,21 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5">API Ключ (Gemini)</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.apiKey">API Ключ (Gemini)</label>
                     <input type="text" id="settings-api-key" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                 </div>
 
                 <div class="pt-1">
                     <div class="bg-slate-900/50 rounded-lg p-3 border border-slate-700 text-center shadow-inner">
                         <p class="text-xs font-bold text-slate-300">WortSchatz Pro <span class="text-amber-500">v1.0</span></p>
-                        <p class="text-[9px] text-slate-500 mt-0.5 uppercase tracking-wider">Created by Igor Bondarenko</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5 uppercase tracking-wider" data-i18n="settings.createdBy">Created by Igor Bondarenko</p>
                     </div>
                 </div>
             </div>
             
             <div class="p-4 border-t border-slate-700 bg-slate-900/50 flex gap-2">
-                <button onclick="app.resetAll()" class="flex-1 py-2.5 bg-red-900/30 text-red-500 font-bold rounded-xl border border-red-900 hover:bg-red-900/50 active:scale-95 transition-all text-xs">СБРОСИТЬ ВСЁ</button>
-                <button onclick="app.saveSettings()" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow active:scale-95 transition-all text-xs">СОХРАНИТЬ</button>
+                <button onclick="app.resetAll()" class="flex-1 py-2.5 bg-red-900/30 text-red-500 font-bold rounded-xl border border-red-900 hover:bg-red-900/50 active:scale-95 transition-all text-xs"><span data-i18n="settings.reset">СБРОСИТЬ ВСЁ</span></button>
+                <button onclick="app.saveSettings()" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow active:scale-95 transition-all text-xs"><span data-i18n="common.save">СОХРАНИТЬ</span></button>
             </div>
         </div>
     </div>
