@@ -36,7 +36,7 @@ export const room = {
                     </label>
                 </h3>
                 
-                <div class="grid grid-cols-2 gap-3 mb-8">
+                <div class="grid grid-cols-2 auto-rows-fr gap-3 mb-8">
                     <button onclick="room.startExerciseMode(['translation_de_ru'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-language text-blue-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeDeRu')}</span>
@@ -78,11 +78,13 @@ export const room = {
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeListening')}</span>
                     </button>
                     <!--
-                        Одиннадцатая плитка занимает обе колонки: в две
-                        колонки нечётное число оставляет дыру рядом
-                        с последней — на это уже жаловались
+                        Одиннадцатая плитка занимает обе колонки: нечётное
+                        число оставляет дыру рядом с последней. Внутри —
+                        та же раскладка, что у соседей: значок сверху,
+                        подпись под ним. Со значком сбоку плитка выходила
+                        ниже остальных и выбивалась из ряда
                     -->
-                    <button onclick="room.startExerciseMode(['adjective_ending'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-row items-center justify-center gap-3 col-span-2 active:scale-95">
+                    <button onclick="room.startExerciseMode(['adjective_ending'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-col items-center gap-2 col-span-2 active:scale-95">
                         <i class="fa-solid fa-table-cells text-teal-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeDeclension')}</span>
                     </button>
