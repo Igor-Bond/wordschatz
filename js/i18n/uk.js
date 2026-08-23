@@ -281,6 +281,22 @@ export const uk = {
         unsupported: 'Браузер не підтримує сповіщення.'
     },
 
+    declension: {
+        label: 'Відмінювання',
+        weak: 'Після der / die / das',
+        mixed: 'Після ein / kein / mein',
+        strong: 'Без артикля',
+        nominativ: 'Nom.',
+        akkusativ: 'Akk.',
+        dativ: 'Dat.',
+        m: 'чол.',
+        f: 'жін.',
+        n: 'сер.',
+        pl: 'мн.',
+        exercise: 'Яке закінчення?',
+        exerciseHint: 'Оберіть форму прикметника'
+    },
+
     speech: {
         noVoiceTitle: 'Немає німецького голосу',
         noVoiceHint: 'На пристрої не встановлено голос для німецької мови, тому озвучення мовчить.\n\nAndroid: Налаштування → Система → Мови та введення → Синтез мовлення → «Синтезатор мовлення Google» → Установити голосові дані → Deutsch.\n\niPhone: Налаштування → Доступність → Усний контент → Голоси → Deutsch.',
@@ -417,6 +433,8 @@ export const uk = {
         modeBuilder: 'Складання<br>речень',
         modeRektion: 'Rektion<br>(Керування)',
         modeListening: 'Аудіювання<br>на слух',
+        modeDeclension: 'Відмінювання прикметників',
+        notEnoughAdjectives: 'Додайте до словника прикметники — відмінювання питається лише в них.',
         immersive: 'Занурювальні режими',
         storyTitle: 'Інтерактивне ШІ-оповідання',
         storyHint: 'Читання історії з автоперекладом по кліку',

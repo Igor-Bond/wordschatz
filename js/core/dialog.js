@@ -53,7 +53,20 @@ export const dialog = {
         return activeState() !== null;
     },
 
-    _show: ({ message, title, buttons, danger, stacked }) => new Promise(resolve => {
+    /**
+     * Окно с готовой разметкой вместо текста.
+     *
+     * Нужно там, где содержимое — таблица, а не сообщение: склонение
+     * прилагательного текстом в одну колонку нечитаемо. Разметку собирает
+     * вызывающий и сам отвечает за экранирование того, что в неё попало.
+     */
+    custom: (html, options = {}) => dialog._show({
+        html,
+        title: options.title,
+        buttons: [{ value: true, label: options.okLabel || t('common.close'), primary: true }]
+    }),
+
+    _show: ({ message, html, title, buttons, danger, stacked }) => new Promise(resolve => {
         // Второй диалог поверх первого — закрываем предыдущий без ответа
         if (активный) активный.close(null);
 
@@ -71,7 +84,9 @@ export const dialog = {
                  role="dialog" aria-modal="true">
                 ${title ? `<div class="px-5 pt-5 pb-1"><h3 class="text-lg font-bold text-slate-100">${dialog._esc(title)}</h3></div>` : ''}
                 <div class="px-5 ${title ? 'pt-1' : 'pt-5'} pb-5 max-h-[55vh] overflow-y-auto">
-                    <p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">${dialog._esc(message)}</p>
+                    ${html
+                        ? `<div class="text-sm text-slate-300">${html}</div>`
+                        : `<p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">${dialog._esc(message)}</p>`}
                 </div>
                 <div class="p-4 pb-[max(env(safe-area-inset-bottom),16px)] bg-slate-900/50 border-t border-slate-700 ${stacked ? 'space-y-2' : 'flex gap-2'}">
                     ${buttons.map((b, i) => `

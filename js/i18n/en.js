@@ -281,6 +281,22 @@ export const en = {
         unsupported: 'This browser does not support notifications.'
     },
 
+    declension: {
+        label: 'Declension',
+        weak: 'After der / die / das',
+        mixed: 'After ein / kein / mein',
+        strong: 'No article',
+        nominativ: 'Nom.',
+        akkusativ: 'Acc.',
+        dativ: 'Dat.',
+        m: 'masc.',
+        f: 'fem.',
+        n: 'neut.',
+        pl: 'pl.',
+        exercise: 'Which ending?',
+        exerciseHint: 'Pick the adjective form'
+    },
+
     speech: {
         noVoiceTitle: 'No German voice',
         noVoiceHint: 'This device has no German speech voice installed, so playback stays silent.\n\nAndroid: Settings → System → Languages & input → Text-to-speech → Google Speech Services → Install voice data → Deutsch.\n\niPhone: Settings → Accessibility → Spoken Content → Voices → Deutsch.',
@@ -417,6 +433,8 @@ export const en = {
         modeBuilder: 'Sentence<br>building',
         modeRektion: 'Rektion<br>(Verb government)',
         modeListening: 'Listening<br>comprehension',
+        modeDeclension: 'Adjective declension',
+        notEnoughAdjectives: 'Add adjectives to your dictionary — declension is only asked of them.',
         immersive: 'Immersive modes',
         storyTitle: 'Interactive AI story',
         storyHint: 'Read a story with tap-to-translate',

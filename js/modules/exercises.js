@@ -1,4 +1,5 @@
 import { quiz } from '../core/quiz.js';
+import { declension } from '../core/declension.js';
 import { speech } from '../core/speech.js';
 import { masteryUtils } from '../core/mastery.js';
 import { germanUtils } from '../core/german.js';
@@ -28,10 +29,10 @@ export const exercises = {
         recognition: ['translation_de_ru', 'match_pairs', 'article'],
 
         // Выбор потруднее плюс первые задания с вводом
-        consolidation: ['translation_ru_de', 'article', 'rektion', 'verb_form', 'fill_blanks'],
+        consolidation: ['translation_ru_de', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending'],
 
         // Написать самому
-        production: ['translation_ru_de_input', 'verb_form', 'fill_blanks', 'listening', 'sentence_builder']
+        production: ['translation_ru_de_input', 'verb_form', 'fill_blanks', 'listening', 'sentence_builder', 'adjective_ending']
     },
 
     /** Экранирование для подстановки в атрибут. */
@@ -162,6 +163,11 @@ export const exercises = {
         }
         if ((!hasRequested || requested.includes('translation_ru_de_input')) && word.word) validModes.push('translation_ru_de_input');
 
+        // Окончание прилагательного собирается по правилу, данных не требует
+        if ((!hasRequested || requested.includes('adjective_ending')) && word.type === 'adjective' && !declension.isIndeclinable(word.word)) {
+            validModes.push('adjective_ending');
+        }
+
         if (validModes.length === 0) validModes.push('translation_de_ru');
 
         // Экзамен раскладывает типы заданий заранее, чтобы каждое слово
@@ -181,6 +187,7 @@ export const exercises = {
         else if (exType === 'sentence_builder') block = exercises.renderSentenceBuilder(word);
         else if (exType === 'listening') block = exercises.renderListeningQuiz(word);
         else if (exType === 'rektion') block = exercises.renderRektionQuiz(word);
+        else if (exType === 'adjective_ending') block = exercises.renderAdjectiveEnding(word);
         else if (exType === 'match_pairs') block = await exercises.renderMatchPairsQuiz(word);
         else if (exType === 'translation_ru_de') block = await exercises.renderTranslationQuiz(word, 'ru-de');
         else block = await exercises.renderTranslationQuiz(word, 'de-ru');
@@ -461,6 +468,74 @@ export const exercises = {
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" placeholder="${t('exercises.wordPlaceholder')}">
                 </div>
                 <button onclick="exercises.checkInput('${targetMatch.replace(/'/g, "\\'")}', 'fill_blanks')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
+                <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
+            </div>
+        `;
+    },
+
+    /**
+     * Существительные для примера со склонением.
+     *
+     * Прилагательное само рода не имеет — его задаёт существительное рядом.
+     * Берём короткие и заведомо знакомые слова: задание про окончание,
+     * а не про перевод соседа.
+     */
+    DECLENSION_NOUNS: {
+        m: 'Mann', f: 'Frau', n: 'Kind', pl: 'Leute'
+    },
+
+    /**
+     * Окончание прилагательного (§6 ТЗ).
+     *
+     * Единственное задание, которое собирается по правилу, без ИИ и без
+     * словаря: окончание зависит от артикля, рода и падежа, и всё это
+     * известно на месте.
+     */
+    renderAdjectiveEnding: (word) => {
+        if (word.type !== 'adjective' || !word.word) return null;
+        if (declension.isIndeclinable(word.word)) return null;
+
+        const type = quiz.shuffle([...declension.TYPES])[0];
+        const gender = quiz.shuffle([...declension.GENDERS])[0];
+        const kase = quiz.shuffle([...declension.CASES])[0];
+
+        const correct = declension.form(word.word, type, gender, kase);
+        const article = declension.article(type, gender, kase);
+        const noun = declension.nounForm(exercises.DECLENSION_NOUNS[gender], gender, kase);
+
+        // Неверные варианты — формы того же слова в других клетках таблицы:
+        // выбор между «hellen» и «Tisch» не проверяет ничего
+        const все = new Set();
+        for (const t2 of declension.TYPES) {
+            for (const g of declension.GENDERS) {
+                for (const k of declension.CASES) {
+                    все.add(declension.form(word.word, t2, g, k));
+                }
+            }
+        }
+        все.delete(correct);
+
+        const options = quiz.shuffle([correct, ...quiz.shuffle([...все]).slice(0, 3)]);
+        if (options.length < 2) return null;
+
+        const фраза = `${article ? article + ' ' : ''}____ ${noun}`;
+
+        return `
+            <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
+                <h3 class="text-sm font-bold text-slate-400 mb-2 text-center">${t('declension.exercise')}</h3>
+                <p class="text-[11px] text-slate-500 text-center mb-4">${t('declension.' + kase)} · ${t('declension.' + type)}</p>
+
+                <div class="text-center mb-2">
+                    <span class="text-2xl font-bold text-slate-100">${exercises.escAttr(фраза)}</span>
+                </div>
+                <p class="text-center text-amber-500 text-sm mb-6">${exercises.escAttr(word.word)} — ${exercises.escAttr(word.translation || '')}</p>
+
+                <div class="grid grid-cols-2 gap-2" id="ex-buttons">
+                    ${options.map(opt => `
+                        <button onclick="exercises.checkChoice(this, '${exercises.escAttr(opt)}', '${exercises.escAttr(correct)}', 'adjective_ending')"
+                            class="py-4 bg-slate-900 border-2 border-slate-700 hover:border-amber-500 text-slate-100 font-bold rounded-xl text-lg active:scale-95 transition-all">${exercises.escAttr(opt)}</button>
+                    `).join('')}
+                </div>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
             </div>
         `;

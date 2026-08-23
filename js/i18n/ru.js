@@ -281,6 +281,22 @@ export const ru = {
         unsupported: 'Браузер не поддерживает уведомления.'
     },
 
+    declension: {
+        label: 'Склонение',
+        weak: 'После der / die / das',
+        mixed: 'После ein / kein / mein',
+        strong: 'Без артикля',
+        nominativ: 'Nom.',
+        akkusativ: 'Akk.',
+        dativ: 'Dat.',
+        m: 'муж.',
+        f: 'жен.',
+        n: 'ср.',
+        pl: 'мн.',
+        exercise: 'Какое окончание?',
+        exerciseHint: 'Выберите форму прилагательного'
+    },
+
     speech: {
         noVoiceTitle: 'Нет немецкого голоса',
         noVoiceHint: 'На устройстве не установлен голос для немецкого языка, поэтому озвучка молчит.\n\nAndroid: Настройки → Система → Языки и ввод → Синтез речи → «Речевой синтезатор Google» → Установить голосовые данные → Deutsch.\n\niPhone: Настройки → Универсальный доступ → Устный контент → Голоса → Deutsch.',
@@ -417,6 +433,8 @@ export const ru = {
         modeBuilder: 'Сборка<br>предложений',
         modeRektion: 'Rektion<br>(Управление)',
         modeListening: 'Аудирование<br>на слух',
+        modeDeclension: 'Склонение прилагательных',
+        notEnoughAdjectives: 'Добавьте в словарь прилагательные — склонение спрашивается только у них.',
         immersive: 'Иммерсивные режимы',
         storyTitle: 'Интерактивный ИИ-рассказ',
         storyHint: 'Чтение истории с авто-переводом по клику',

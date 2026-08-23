@@ -3,6 +3,7 @@ import { dbService } from '../services/db.js';
 import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
 import { germanUtils } from '../core/german.js';
+import { declension } from '../core/declension.js';
 import { speech } from '../core/speech.js';
 import { dialog } from '../core/dialog.js';
 import { masteryUtils } from '../core/mastery.js';
@@ -122,6 +123,39 @@ export const training = {
             await training.finishLesson();
             training.showCompletedScreen();
         }
+    },
+
+    /**
+     * Полная таблица склонения.
+     *
+     * Тридцать шесть клеток в карточку не влезают и на телефоне читаются
+     * кашей, поэтому они живут в отдельном окне: три блока по типу артикля,
+     * в каждом четыре рода на три падежа.
+     */
+    showDeclension: async () => {
+        const word = training.currentWord;
+        if (!word) return;
+
+        const t2 = declension.table(word.word);
+        const подписи = { m: t('declension.m'), f: t('declension.f'), n: t('declension.n'), pl: t('declension.pl') };
+
+        const блок = (type) => `
+            <div class="mb-3 last:mb-0">
+                <div class="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">${t('declension.' + type)}</div>
+                <div class="grid grid-cols-5 gap-x-1 gap-y-0.5 text-[11px]">
+                    <span></span>
+                    ${declension.GENDERS.map(g => `<span class="text-slate-500">${подписи[g]}</span>`).join('')}
+                    ${declension.CASES.map(kase => `
+                        <span class="text-slate-500">${t('declension.' + kase)}</span>
+                        ${declension.GENDERS.map(g => `<span class="text-slate-200 font-bold truncate">${training.esc(t2[type][kase][g])}</span>`).join('')}
+                    `).join('')}
+                </div>
+            </div>`;
+
+        await dialog.custom(
+            declension.TYPES.map(блок).join(''),
+            { title: `${word.word} — ${t('declension.label')}` }
+        );
     },
 
     /** Экранирование: слова приходят от ИИ и из Wiktionary. */
@@ -244,6 +278,20 @@ export const training = {
         } else if (word.type === 'adjective') {
             tableRows += row('Komparativ', word.comparative);
             tableRows += row('Superlativ', word.superlative);
+
+            // Суть правила в одну строку: окончание задаётся артиклем.
+            // Полная таблица — по нажатию, она не помещается в карточку
+            const краткое = declension.summary(word.word)
+                .map(f => `${f.article ? f.article + ' ' : ''}<b class="text-slate-100">${f.form}</b>`)
+                .join(' · ');
+
+            tableRows += `
+                <div class="flex justify-between items-center py-2 border-b border-slate-700/50 gap-3">
+                    <span class="text-slate-400 text-sm shrink-0">${t('declension.label')}</span>
+                    <button onclick="training.showDeclension()" class="text-sm text-right text-slate-300 hover:text-amber-500 transition-colors">
+                        ${краткое} <i class="fa-solid fa-table-cells text-[10px] ml-1 opacity-60"></i>
+                    </button>
+                </div>`;
         }
 
         tableRows += row(t('card.synonyms'), word.synonym);

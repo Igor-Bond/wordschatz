@@ -1,5 +1,6 @@
 import { dialog } from '../core/dialog.js';
 import { exercises } from './exercises.js';
+import { declension } from '../core/declension.js';
 import { speech } from '../core/speech.js';
 import { quiz } from '../core/quiz.js';
 import { germanUtils } from '../core/german.js';
@@ -91,6 +92,7 @@ export const control = {
             if (germanUtils.hasKnownArticle(word)) modes.push('article');
             if (word.type === 'verb' && (word.preterite || word.participle_ii)) modes.push('verb_form');
             if (germanUtils.hasRektion(word)) modes.push('rektion');
+            if (word.type === 'adjective' && !declension.isIndeclinable(word.word)) modes.push('adjective_ending');
             if (word.example_de) modes.push('fill_blanks', 'sentence_builder');
             if (word.word) modes.push('translation_ru_de_input');
             if (listening && word.word) modes.push('listening');

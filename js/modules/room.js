@@ -77,6 +77,15 @@ export const room = {
                         <i class="fa-solid fa-headphones text-teal-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeListening')}</span>
                     </button>
+                    <!--
+                        Одиннадцатая плитка занимает обе колонки: в две
+                        колонки нечётное число оставляет дыру рядом
+                        с последней — на это уже жаловались
+                    -->
+                    <button onclick="room.startExerciseMode(['adjective_ending'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-row items-center justify-center gap-3 col-span-2 active:scale-95">
+                        <i class="fa-solid fa-table-cells text-teal-500 text-2xl"></i>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeDeclension')}</span>
+                    </button>
                 </div>
 
                 <h3 class="text-sm font-bold text-slate-500 mb-4 px-1 uppercase tracking-wider">${t('room.immersive')}</h3>
@@ -195,17 +204,17 @@ export const room = {
             if (allowedModes.includes('fill_blanks') && w.example_de && w.example_de.length > 2) isValid = true;
             if (allowedModes.includes('sentence_builder') && w.example_de && w.example_de.length > 2) isValid = true;
             if (allowedModes.includes('rektion') && w.type === 'verb' && w.rektion) isValid = true;
+            if (allowedModes.includes('adjective_ending') && w.type === 'adjective') isValid = true;
             
             return isValid;
         });
 
         // Порог в четыре слова остался с тех пор, когда неверные варианты
-        // брались из этого же списка. Сейчас они приходят из всего словаря,
-        // поэтому тему из трёх слов запускать можно — иначе выбор темы был
-        // бы бесполезен для всего, кроме самых больших тем
-        const minimum = room.topic ? 1 : 4;
-
-        if (compatibleWords.length < minimum) {
+        // брались из этого же списка. Сейчас каждое задание добывает их само:
+        // перевод и пары — из всего словаря, склонение и формы глагола — из
+        // собственной таблицы слова. Одного подходящего слова достаточно,
+        // и одинокое прилагательное больше не отказывается тренироваться
+        if (compatibleWords.length < 1) {
             // При выбранной теме общая фраза «нужно хотя бы 4 слова» неверна:
             // порог там другой, и дело не в количестве, а в самой теме
             let errorMsg = room.topic ? '' : t('room.notEnough') + '\n\n';
@@ -216,6 +225,7 @@ export const room = {
             else if (allowedModes.includes('article')) errorMsg += t('room.notEnoughNouns');
             else if (allowedModes.includes('verb_form')) errorMsg += t('room.notEnoughVerbs');
             else if (allowedModes.includes('rektion')) errorMsg += t('room.notEnoughRektion');
+            else if (allowedModes.includes('adjective_ending')) errorMsg += t('room.notEnoughAdjectives');
             else if (allowedModes.includes('fill_blanks') || allowedModes.includes('sentence_builder')) errorMsg += t('room.notEnoughExamples');
             
             await dialog.alert(errorMsg);
