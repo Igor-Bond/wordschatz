@@ -201,12 +201,39 @@ const dbService = {
         return await db.user.put(dbService._stamp({ ...DEFAULT_USER, ...user, id: 1 }));
     },
 
+    /**
+     * Настройки профиля живут в той же записи, что XP и стрик: это данные
+     * одного пользователя, и в облако они поедут вместе. Секреты сюда не
+     * попадают — их отсеивает config.getSyncableProfile.
+     */
+    saveStoredProfile: async (profile) => {
+        // Транзакция и частичное обновление: XP пишется в эту же запись из
+        // другого потока выполнения, и обычный put затёр бы начисленные очки.
+        return await db.transaction('rw', db.user, async () => {
+            const existing = await db.user.get(1);
+            if (existing) {
+                await db.user.update(1, { profile: profile, updatedAt: Date.now() });
+            } else {
+                await db.user.put({ ...DEFAULT_USER, profile: profile, updatedAt: Date.now() });
+            }
+        });
+    },
+
+    getStoredProfile: async () => {
+        const user = await db.user.get(1);
+        return user?.profile || null;
+    },
+
     addXP: async (points) => {
-        const user = await dbService.getUser();
-        user.totalXP = (user.totalXP || 0) + points;
-        user.league = dbService.getLeagueForXP(user.totalXP);
-        await dbService.saveUser(user);
-        return user;
+        // Тоже в транзакции: между чтением и записью сюда может вклиниться
+        // сохранение профиля.
+        return await db.transaction('rw', db.user, async () => {
+            const user = await dbService.getUser();
+            user.totalXP = (user.totalXP || 0) + points;
+            user.league = dbService.getLeagueForXP(user.totalXP);
+            await db.user.put(dbService._stamp({ ...DEFAULT_USER, ...user, id: 1 }));
+            return user;
+        });
     },
 
     /** Пороги лиг в одном месте — раньше дублировались в db.js и dashboard.js. */

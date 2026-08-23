@@ -1,5 +1,8 @@
 const app = {
-    init: () => {
+    init: async () => {
+        // Если localStorage пуст, а база уже есть — поднимаем профиль оттуда
+        await config.hydrateFromDb();
+
         if (config.isConfigured()) {
             document.getElementById('app-view').classList.remove('hidden');
             document.getElementById('app-view').classList.add('flex');
@@ -116,6 +119,9 @@ const app = {
             'Действие необратимо. Если нужен бэкап — сначала сделайте экспорт словаря.'
         );
         if (!confirmed) return;
+
+        // Отложенная запись профиля не должна воссоздать базу после удаления
+        config.suspendMirror();
 
         try {
             // 1. Пользовательские данные в IndexedDB
