@@ -4,11 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="ИИ-репетитор и тренажер немецких слов">
     <title>WortSchatz Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WortSchatz">
+
+    <!-- Локальные зависимости: без них приложение не работало бы офлайн -->
+    <script src="vendor/tailwind.min.js"></script>
+    <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="vendor/dexie.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-300 font-sans antialiased selection:bg-amber-500 selection:text-slate-900 h-[100dvh] overflow-hidden flex flex-col">
 
@@ -107,7 +119,7 @@
             </div>
             
             <div class="p-4 border-t border-slate-700 bg-slate-900/50 flex gap-2">
-                <button onclick="localStorage.clear(); location.reload();" class="flex-1 py-2.5 bg-red-900/30 text-red-500 font-bold rounded-xl border border-red-900 hover:bg-red-900/50 active:scale-95 transition-all text-xs">СБРОСИТЬ ВСЁ</button>
+                <button onclick="app.resetAll()" class="flex-1 py-2.5 bg-red-900/30 text-red-500 font-bold rounded-xl border border-red-900 hover:bg-red-900/50 active:scale-95 transition-all text-xs">СБРОСИТЬ ВСЁ</button>
                 <button onclick="app.saveSettings()" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow active:scale-95 transition-all text-xs">СОХРАНИТЬ</button>
             </div>
         </div>
@@ -129,5 +141,41 @@
     <script src="js/modules/chat.js"></script>
     <script src="js/modules/control.js"></script>
     <script src="js/app.js"></script>
+
+    <!-- Регистрация Service Worker (офлайн-режим и установка PWA) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Была ли страница уже под управлением SW до этой загрузки.
+                // Без этой проверки первая же установка вызвала бы лишнюю перезагрузку.
+                const hadController = !!navigator.serviceWorker.controller;
+
+                navigator.serviceWorker.register('sw.js')
+                    .then((reg) => {
+                        console.log('[PWA] Service Worker зарегистрирован:', reg.scope);
+
+                        // Если появилась новая версия — сообщаем приложению
+                        reg.addEventListener('updatefound', () => {
+                            const sw = reg.installing;
+                            if (!sw) return;
+                            sw.addEventListener('statechange', () => {
+                                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                                    if (typeof app !== 'undefined' && app.showUpdateBanner) app.showUpdateBanner();
+                                }
+                            });
+                        });
+                    })
+                    .catch((err) => console.error('[PWA] Ошибка регистрации Service Worker:', err));
+
+                // Перезагружаем страницу, когда новый SW взял управление
+                let reloading = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!hadController || reloading) return;
+                    reloading = true;
+                    location.reload();
+                });
+            });
+        }
+    </script>
 </body>
 </html>

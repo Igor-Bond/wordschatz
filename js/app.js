@@ -89,6 +89,85 @@ const app = {
         
         app.closeSettings();
         location.reload();
+    },
+
+    /**
+     * Полный сброс приложения.
+     * Раньше чистился только localStorage, а словарь оставался в IndexedDB:
+     * пользователь заново проходил onboarding и получал старые слова.
+     */
+    resetAll: async () => {
+        const confirmed = confirm(
+            'Удалить ВСЕ данные?\n\n' +
+            'Будут стёрты словарь, прогресс, XP, лига, история уроков и настройки.\n' +
+            'Действие необратимо. Если нужен бэкап — сначала сделайте экспорт словаря.'
+        );
+        if (!confirmed) return;
+
+        try {
+            // 1. Пользовательские данные в IndexedDB
+            if (typeof db !== 'undefined') {
+                db.close();
+                await db.delete();
+            }
+        } catch (e) {
+            console.error('Не удалось удалить базу данных:', e);
+            alert(
+                'Не удалось удалить базу данных. ' +
+                'Возможно, приложение открыто в другой вкладке — закройте её и попробуйте снова.'
+            );
+            return;
+        }
+
+        // 2. Настройки профиля и API-ключ
+        try {
+            Object.keys(localStorage)
+                .filter((k) => k.startsWith('ws_'))
+                .forEach((k) => localStorage.removeItem(k));
+        } catch (e) {
+            console.error('Не удалось очистить localStorage:', e);
+        }
+
+        location.reload();
+    },
+
+    /**
+     * Баннер обновления: новая версия скачана, но ждёт применения.
+     * Вызывается из регистрации Service Worker в index.html.
+     */
+    showUpdateBanner: () => {
+        if (document.getElementById('sw-update-banner')) return;
+
+        const banner = document.createElement('div');
+        banner.id = 'sw-update-banner';
+        banner.className =
+            'fixed bottom-24 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 ' +
+            'bg-slate-800 border border-amber-500/50 text-slate-200 px-4 py-3 rounded-2xl ' +
+            'shadow-[0_0_20px_rgba(245,158,11,0.25)] fade-in';
+        banner.innerHTML = `
+            <i class="fa-solid fa-arrows-rotate text-amber-500"></i>
+            <span class="text-sm font-medium">Доступна новая версия</span>
+            <button id="sw-update-btn" class="ml-1 px-3 py-1.5 bg-amber-500 text-slate-900 text-xs font-black rounded-lg active:scale-95 transition-transform">
+                ОБНОВИТЬ
+            </button>
+            <button id="sw-update-dismiss" class="text-slate-500 hover:text-slate-300 transition-colors" aria-label="Закрыть">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        `;
+        document.body.appendChild(banner);
+
+        document.getElementById('sw-update-btn').addEventListener('click', async () => {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg && reg.waiting) {
+                reg.waiting.postMessage('SKIP_WAITING'); // дальше сработает controllerchange
+            } else {
+                location.reload();
+            }
+        });
+
+        document.getElementById('sw-update-dismiss').addEventListener('click', () => {
+            banner.remove();
+        });
     }
 };
 
