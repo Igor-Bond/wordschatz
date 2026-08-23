@@ -11,6 +11,7 @@ import { onboarding } from './modules/onboarding.js';
 import { dashboard } from './modules/dashboard.js';
 import { cycle } from './modules/cycle.js';
 import { scanner } from './modules/scanner.js';
+import { exercises } from './modules/exercises.js';
 import { training } from './modules/training.js';
 import { profile } from './modules/profile.js';
 import { room } from './modules/room.js';
@@ -57,6 +58,13 @@ export const app = {
     },
 
     navigate: (viewId) => {
+        // Уход с экрана прекращает начатое упражнение. Без сброса режим
+        // экзамена или Комнаты пережил бы переход, и ответы следующего урока
+        // уходили бы в чужой обработчик — без опыта и с чужим набором заданий
+        exercises.exam = null;
+        exercises.isRoomMode = false;
+        exercises.allowedModes = null;
+
         // Управляем активным цветом иконок в нижнем меню
         document.querySelectorAll('.nav-btn').forEach(btn => {
             if(btn.dataset.target === viewId) {

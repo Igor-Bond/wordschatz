@@ -189,23 +189,15 @@ export const cycle = {
      * доверять карточкам, которые сверить не удалось.
      */
     renderCheckSummary: () => {
-        const check = cycle.state.check;
-        if (!check) return '';
-
-        const части = [];
-        if (check.fixed) части.push(t('cycle.checkFixed', { count: check.fixed }));
-        if (check.filled) части.push(t('cycle.checkFilled', { count: check.filled }));
-        if (check.unchecked) части.push(t('cycle.checkUnchecked', { count: check.unchecked }));
-
-        const текст = части.length ? части.join(' · ') : t('cycle.checkClean');
-        const тревожно = check.fixed > 0 || check.unchecked > 0;
+        const summary = wiktionary.summary(cycle.state.check);
+        if (!summary) return '';
 
         return `
             <div class="mb-4 px-3 py-2 rounded-xl border text-xs flex items-start gap-2 ${
-                тревожно ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-green-500/10 border-green-500/30 text-green-300'
+                summary.alarming ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-green-500/10 border-green-500/30 text-green-300'
             }">
-                <i class="fa-solid ${тревожно ? 'fa-triangle-exclamation' : 'fa-circle-check'} mt-0.5 shrink-0"></i>
-                <span>${текст}</span>
+                <i class="fa-solid ${summary.alarming ? 'fa-triangle-exclamation' : 'fa-circle-check'} mt-0.5 shrink-0"></i>
+                <span>${summary.text}</span>
             </div>
         `;
     },

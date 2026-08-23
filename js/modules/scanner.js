@@ -1,3 +1,4 @@
+import { wiktionary } from '../services/wiktionary.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t } from '../i18n/i18n.js';
@@ -97,6 +98,22 @@ export const scanner = {
         `;
     },
 
+    /** Итог последней сверки — показывается над списком найденного. */
+    lastCheck: null,
+
+    /**
+     * Сверка найденных слов до того, как они попадут в словарь.
+     *
+     * Сюда приходят три источника — поиск слова, тема и разбор текста, —
+     * и все три пишет модель. Ошибку в роде или в Perfekt здесь заметить
+     * так же некому, как и при генерации темы.
+     */
+    verify: async (words) => {
+        scanner.showLoader(t('cycle.verifying'));
+        scanner.lastCheck = await wiktionary.enrich(words);
+        return scanner.lastCheck;
+    },
+
     searchWord: async () => {
         const input = document.getElementById('scan-word-input').value.trim();
         if (!input) return;
@@ -112,7 +129,8 @@ ${aiService._getJsonFormat()}`;
             const rawResponse = await aiService.callGemini(prompt, true);
             let result = aiService._parseJsonResponse(rawResponse, config.getProfile().level, t('scanner.topicMisc'));
             
-            scanner.currentResults = result.map(w => ({...w, selected: true})); 
+            scanner.currentResults = result.map(w => ({...w, selected: true}));
+            await scanner.verify(scanner.currentResults);
             scanner.renderResults(scanner.currentResults);
         } catch (error) {
             document.getElementById('scan-results').innerHTML = `<p class="text-red-400 text-center bg-red-900/20 p-4 rounded-xl border border-red-900/50">${error.message}</p>`;
@@ -127,6 +145,7 @@ ${aiService._getJsonFormat()}`;
         try {
             const result = await aiService.generateSet(topic, count);
             scanner.currentResults = result.map(w => ({...w, selected: true}));
+            await scanner.verify(scanner.currentResults);
             scanner.renderResults(scanner.currentResults);
         } catch (error) {
             document.getElementById('scan-results').innerHTML = `<p class="text-red-400 text-center bg-red-900/20 p-4 rounded-xl border border-red-900/50">${error.message}</p>`;
@@ -150,7 +169,8 @@ ${aiService._getJsonFormat()}`;
             const rawResponse = await aiService.callGemini(prompt, true);
             let result = aiService._parseJsonResponse(rawResponse, profile.level, t('scanner.topicFromText'));
             
-            scanner.currentResults = result.map(w => ({...w, selected: true})); 
+            scanner.currentResults = result.map(w => ({...w, selected: true}));
+            await scanner.verify(scanner.currentResults);
             scanner.renderResults(scanner.currentResults);
         } catch (error) {
             document.getElementById('scan-results').innerHTML = `<p class="text-red-400 text-center bg-red-900/20 p-4 rounded-xl border border-red-900/50">${error.message}</p>`;
@@ -192,8 +212,18 @@ ${aiService._getJsonFormat()}`;
         }
 
         const selectedCount = wordsArray.filter(w => w.selected).length;
+        const summary = wiktionary.summary(scanner.lastCheck);
 
-        let html = `
+        let html = summary ? `
+            <div class="mb-3 px-3 py-2 rounded-xl border text-xs flex items-start gap-2 ${
+                summary.alarming ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-green-500/10 border-green-500/30 text-green-300'
+            }">
+                <i class="fa-solid ${summary.alarming ? 'fa-triangle-exclamation' : 'fa-circle-check'} mt-0.5 shrink-0"></i>
+                <span>${summary.text}</span>
+            </div>
+        ` : '';
+
+        html += `
             <div class="flex justify-between items-center mb-4 px-2 py-3 bg-slate-900/90 backdrop-blur-md sticky top-[72px] z-20 border-b border-slate-700 rounded-xl shadow-lg">
                 <span class="text-sm font-bold text-slate-300">${t('scanner.selected')}: <span id="scan-selected-count" class="text-amber-500 text-lg">${selectedCount}</span> / ${wordsArray.length}</span>
                 <button onclick="scanner.saveSelected()" class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow-lg active:scale-95 transition-all">

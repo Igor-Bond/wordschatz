@@ -68,6 +68,19 @@ export const exercises = {
     onFinish: null,
     isRoomMode: false,
     allowedModes: null,
+
+    /**
+     * Режим экзамена (§31 ТЗ).
+     *
+     * Контроль темы раньше имел собственные три задания и собственную
+     * проверку ответов — треть от того, чем занимаются на уроке. Теперь он
+     * пользуется этим же движком: { title, onAnswer(word, correct, mode) }.
+     * XP за отдельный ответ в экзамене не начисляется, его выдают за итог.
+     */
+    exam: null,
+
+    /** Тип текущего задания — нужен экзамену для разбора ошибок. */
+    _currentMode: null,
     
     builderState: {
         words: [],
@@ -99,18 +112,25 @@ export const exercises = {
         const word = exercises.queue[exercises.currentIndex];
         const progress = (exercises.currentIndex / exercises.queue.length) * 100;
 
-        let title = exercises.isRoomMode ? t('exercises.freeTraining') : t('exercises.practice');
+        let title = exercises.exam
+            ? exercises.exam.title
+            : (exercises.isRoomMode ? t('exercises.freeTraining') : t('exercises.practice'));
+
+        // Экзамен красный, урок и Комната фиолетовые — по цвету шапки видно,
+        // идёт тренировка или зачёт
+        const accent = exercises.exam?.accent || 'purple-400';
+        const barColor = exercises.exam ? 'bg-red-500' : 'bg-purple-500';
 
         // Шапка с прогрессом закреплена, само задание прокручивается:
         // у длинных заданий вроде сборки предложения содержимое не помещается
         let html = `
             <div class="max-w-lg mx-auto h-full flex flex-col pt-2 fade-in">
                 <div class="flex items-center justify-between mb-2 shrink-0">
-                    <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-400/10 px-2 py-1 rounded border border-purple-400/20 shadow-sm">${title}</span>
+                    <span class="text-[10px] font-bold text-${accent} uppercase tracking-wider bg-${accent}/10 px-2 py-1 rounded border border-${accent}/20 shadow-sm">${title}</span>
                     <span class="text-xs font-bold text-slate-500">${t('exercises.taskOf', { current: exercises.currentIndex + 1, total: exercises.queue.length })}</span>
                 </div>
                 <div class="w-full bg-slate-800 rounded-full h-2 mb-4 border border-slate-700 overflow-hidden shrink-0 mt-1">
-                    <div class="bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                    <div class="${barColor} h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                 </div>
                 <div class="flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-2">
         `;
@@ -143,10 +163,14 @@ export const exercises = {
 
         if (validModes.length === 0) validModes.push('translation_de_ru');
 
-        // В Комнате режим выбран пользователем — этап не навязываем
-        const exType = hasRequested
-            ? quiz.shuffle(validModes)[0]
-            : exercises.pickByStage(word, validModes);
+        // Экзамен раскладывает типы заданий заранее, чтобы каждое слово
+        // спросили по-разному; в Комнате режим выбран пользователем,
+        // на уроке — по освоенности слова
+        const exType = word.__mode && validModes.includes(word.__mode)
+            ? word.__mode
+            : (hasRequested ? quiz.shuffle(validModes)[0] : exercises.pickByStage(word, validModes));
+
+        exercises._currentMode = exType;
 
         let block = null;
         if (exType === 'translation_ru_de_input') block = exercises.renderProductionQuiz(word);
@@ -684,34 +708,57 @@ export const exercises = {
      * (все девять типов упражнений) не вознаграждалась вовсе.
      */
     awardXP: async (isCorrect) => {
-        const gained = isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG;
+        const word = exercises.queue?.[exercises.currentIndex];
 
-        try {
-            await dbService.addXP(gained);
-        } catch (e) {
-            console.error('Не удалось начислить XP:', e);
+        // За экзамен опыт начисляется по итогу, а не по каждому ответу
+        if (exercises.exam) {
+            try {
+                exercises.exam.onAnswer(word, isCorrect, exercises._currentMode);
+            } catch (e) {
+                console.error('Экзамен не смог учесть ответ:', e);
+            }
+        } else {
+            const gained = isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG;
+            try {
+                await dbService.addXP(gained);
+            } catch (e) {
+                console.error('Не удалось начислить XP:', e);
+            }
         }
 
         // Ответы в упражнениях — самый частый сигнал о том, знает человек
         // слово или нет, но раньше они не влияли ни на что, кроме XP
-        const word = exercises.queue?.[exercises.currentIndex];
         if (word?.id) {
-            masteryUtils.registerAnswer(word, isCorrect);
             try {
+                // Состояние читаем из базы, а не из очереди: на экзамене одно
+                // слово спрашивают дважды разными заданиями, и обе копии в
+                // очереди помнят историю на момент её сборки. Второй ответ
+                // затирал бы первый вместо того, чтобы к нему прибавиться
+                const stored = (await dbService.getWordById(word.id)) || word;
+                masteryUtils.registerAnswer(stored, isCorrect);
+
                 await dbService.updateWord(word.id, {
-                    recent: word.recent,
-                    attempts: word.attempts,
-                    correct: word.correct,
-                    mastery: word.mastery
+                    recent: stored.recent,
+                    attempts: stored.attempts,
+                    correct: stored.correct,
+                    mastery: stored.mastery
+                });
+
+                Object.assign(word, {
+                    recent: stored.recent,
+                    attempts: stored.attempts,
+                    correct: stored.correct,
+                    mastery: stored.mastery
                 });
             } catch (e) {
                 console.error('Не удалось сохранить результат ответа:', e);
             }
         }
 
-        // В свободной тренировке счётчиков урока нет
-        if (!exercises.isRoomMode && typeof training !== 'undefined' && training.state?.data) {
-            training.state.data.xpEarned = (training.state.data.xpEarned || 0) + gained;
+        // В свободной тренировке и на экзамене счётчиков урока нет
+        if (!exercises.exam && !exercises.isRoomMode && typeof training !== 'undefined' && training.state?.data) {
+            training.state.data.xpEarned = (training.state.data.xpEarned || 0)
+                + (isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG);
         }
     },
 

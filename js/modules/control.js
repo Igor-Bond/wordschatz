@@ -1,5 +1,6 @@
 import { dialog } from '../core/dialog.js';
-import { masteryUtils } from '../core/mastery.js';
+import { exercises } from './exercises.js';
+import { speech } from '../core/speech.js';
 import { quiz } from '../core/quiz.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -8,7 +9,6 @@ import { scheduler } from '../core/scheduler.js';
 import { dashboard } from './dashboard.js';
 
 export const control = {
-    acceptedAnswers: null,
 
     state: {
         cycleId: null, // Добавлено для закрытия темы
@@ -44,202 +44,73 @@ export const control = {
                 return;
             }
 
-            control.state.questions = control.generateQuestions(words);
+            control.state.questions = await control.generateQuestions(words);
             control.state.currentIndex = 0;
             control.state.correctCount = 0;
             control.state.mistakes = [];
             control.state.startTime = Date.now();
 
-            control.renderCurrent();
+            // Экзамен идёт на том же движке, что и урок: у него все девять
+            // типов заданий, проверка ответов и журнал ошибок. Своя реализация
+            // здесь умела три типа и в журнал не писала вовсе
+            exercises.exam = {
+                title: t('control.exam'),
+                accent: 'red-500',
+                onAnswer: (word, isCorrect, mode) => {
+                    if (isCorrect) control.state.correctCount++;
+                    else control.state.mistakes.push({ word, type: mode });
+                }
+            };
+
+            exercises.start(control.state.questions, 0, control.finishTest);
         } catch (e) {
             console.error("Ошибка запуска контроля:", e);
             await dialog.alert(t("control.startFailed"));
         }
     },
 
-    generateQuestions: (words) => {
-        let questions = [];
-        const shuffledWords = quiz.shuffle(words);
-        
-        shuffledWords.forEach(word => {
-            questions.push({ word: word, type: 'translation_de_ru' });
-            
-            if (Math.random() > 0.5) {
-                questions.push({ word: word, type: 'translation_ru_de' });
+    /** Сколько вопросов задаём за экзамен. */
+    MAX_QUESTIONS: 25,
+
+    /**
+     * Раскладка вопросов по типам заданий (§31 ТЗ).
+     *
+     * Раньше экзамен спрашивал только перевод, артикль и форму глагола —
+     * три типа из девяти. Слово, выученное на карточках, но не собираемое
+     * в предложение, считалось сданным.
+     *
+     * Каждому слову назначается свой набор посильных типов: спрашивать
+     * артикль у глагола или Rektion там, где её нет, бессмысленно.
+     */
+    generateQuestions: async (words) => {
+        const listening = await speech.isAvailable();
+
+        const applicable = (word) => {
+            const modes = ['translation_de_ru', 'translation_ru_de', 'match_pairs'];
+
+            if (germanUtils.hasKnownArticle(word)) modes.push('article');
+            if (word.type === 'verb' && (word.preterite || word.participle_ii)) modes.push('verb_form');
+            if (germanUtils.hasRektion(word)) modes.push('rektion');
+            if (word.example_de) modes.push('fill_blanks', 'sentence_builder');
+            if (word.word) modes.push('translation_ru_de_input');
+            if (listening && word.word) modes.push('listening');
+
+            return modes;
+        };
+
+        const questions = [];
+        for (const word of quiz.shuffle(words)) {
+            const modes = quiz.shuffle(applicable(word));
+
+            // Два разных задания на слово: одно на узнавание, одно потруднее.
+            // Так двадцать пять вопросов покрывают около тринадцати слов
+            // с разных сторон, а не двадцать пять раз одно и то же
+            for (const mode of modes.slice(0, 2)) {
+                questions.push({ ...word, __mode: mode });
             }
-
-            if (germanUtils.hasKnownArticle(word) && Math.random() > 0.4) {
-                questions.push({ word: word, type: 'article' });
-            }
-
-            if (word.type === 'verb' && (word.preterite || word.participle_ii) && Math.random() > 0.3) {
-                questions.push({ word: word, type: 'verb_form' });
-            }
-        });
-
-        return quiz.shuffle(questions).slice(0, 25);
-    },
-
-    renderCurrent: async () => {
-        const main = document.getElementById('main-content');
-        
-        if (control.state.currentIndex >= control.state.questions.length) {
-            control.finishTest();
-            return;
         }
 
-        const q = control.state.questions[control.state.currentIndex];
-        const progress = (control.state.currentIndex / control.state.questions.length) * 100;
-
-        let html = `
-            <div class="max-w-lg mx-auto min-h-full flex flex-col pt-2 pb-6 fade-in">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-500/10 px-3 py-1.5 rounded border border-red-500/20 shadow-sm animate-pulse">${t('control.exam')}</span>
-                    <span class="text-xs font-bold text-slate-500">${t('control.questionOf', { current: control.state.currentIndex + 1, total: control.state.questions.length })}</span>
-                </div>
-                <div class="w-full bg-slate-800 rounded-full h-2 mb-6 border border-slate-700 overflow-hidden mt-1">
-                    <div class="bg-red-500 h-full rounded-full transition-all duration-300" style="width: ${progress}%"></div>
-                </div>
-        `;
-
-        let block = null;
-        if (q.type === 'translation_de_ru' || q.type === 'translation_ru_de') {
-            block = await control.renderTranslation(q.word, q.type);
-        } else if (q.type === 'article') {
-            block = control.renderArticle(q.word);
-        } else if (q.type === 'verb_form') {
-            block = control.renderVerbForm(q.word);
-        }
-
-        // Если формы для вопроса не хватило — спрашиваем перевод
-        if (!block) block = await control.renderTranslation(q.word, 'translation_de_ru');
-
-        html += block;
-        html += `</div>`;
-        main.innerHTML = html;
-
-        setTimeout(() => {
-            const input = document.getElementById('ctrl-input');
-            if (input) input.focus();
-        }, 100);
-    },
-
-    renderTranslation: async (word, type) => {
-        const allWords = await dbService.getAllWords();
-        // Дистракторы той же части речи, как и в упражнениях
-        const options = quiz.buildOptions(word, allWords, 3);
-        
-        const questionText = type === 'translation_ru_de' ? word.translation : word.word;
-        const btnClass = type === 'translation_ru_de' ? 'text-xl' : 'text-base';
-        
-        let btns = options.map(opt => {
-            const answerText = type === 'translation_ru_de' ? opt.word : opt.translation;
-            return `<button onclick="control.checkChoice(this, '${opt.id}', '${word.id}', '${answerText.replace(/'/g, "\\'")}')" class="w-full py-4 bg-slate-900 border-2 border-slate-700 text-slate-300 font-bold rounded-xl text-left px-5 hover:border-amber-500 active:scale-95 transition-all ${btnClass}">${answerText}</button>`;
-        }).join('');
-
-        return `
-            <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
-                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${t('control.translateWord')}</h3>
-                <h2 class="text-3xl font-black text-slate-100 mb-8 text-center">${questionText}</h2>
-                <div class="space-y-3" id="ctrl-buttons">${btns}</div>
-            </div>
-        `;
-    },
-
-    renderArticle: (word) => {
-        // Тот же разбор, что и в упражнениях: без артикля в слове
-        // подставлялся «der», и экзамен требовал неверный род
-        const article = germanUtils.getGender(word);
-        if (!article) return null;
-
-        const pureWord = germanUtils.stripArticle(word);
-
-        return `
-            <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('control.whichArticle')}</h3>
-                <h2 class="text-4xl font-black text-slate-100 mb-8 break-words">${pureWord}</h2>
-                <div class="grid grid-cols-3 gap-3" id="ctrl-buttons">
-                    <button onclick="control.checkChoice(this, 'der', '${article}', 'der')" class="py-4 bg-slate-900 border-2 border-slate-700 text-blue-400 font-bold rounded-xl text-xl hover:border-blue-500 active:scale-95 transition-all">DER</button>
-                    <button onclick="control.checkChoice(this, 'die', '${article}', 'die')" class="py-4 bg-slate-900 border-2 border-slate-700 text-red-400 font-bold rounded-xl text-xl hover:border-red-500 active:scale-95 transition-all">DIE</button>
-                    <button onclick="control.checkChoice(this, 'das', '${article}', 'das')" class="py-4 bg-slate-900 border-2 border-slate-700 text-green-400 font-bold rounded-xl text-xl hover:border-green-500 active:scale-95 transition-all">DAS</button>
-                </div>
-            </div>
-        `;
-    },
-
-    renderVerbForm: (word) => {
-        // Perfekt как в словаре: «hat gemacht», а не «haben gemacht»
-        const perfekt = germanUtils.perfektForm(word);
-        const preteritum = germanUtils.preteritumForm(word);
-
-        const askPerfekt = perfekt && (!preteritum || Math.random() > 0.5);
-        const form = askPerfekt ? perfekt : preteritum;
-        if (!form) return null;
-
-        const targetForm = form.primary;
-        control.acceptedAnswers = form.accepted;
-
-        const label = askPerfekt ? t('exercises.perfektLabel') : 'Präteritum (ich/er/sie/es)';
-        return `
-            <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.writeVerbForm')}</h3>
-                <h2 class="text-3xl font-black text-slate-100 mb-2">${word.word}</h2>
-                <p class="text-slate-500 mb-8 font-bold">${word.translation}</p>
-                <div class="mb-6 text-left">
-                    <label class="block text-xs font-bold text-amber-500 mb-2">${label}</label>
-                    <input type="text" id="ctrl-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold" autocomplete="off">
-                </div>
-                <button onclick="control.checkInput('${targetForm.replace(/'/g, "\\'")}')" class="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl active:scale-95 transition-all" id="ctrl-submit">${t('control.answer')}</button>
-            </div>
-        `;
-    },
-
-    checkChoice: (btn, selected, correct, selectedText) => {
-        const btns = document.getElementById('ctrl-buttons').children;
-        for (let b of btns) b.disabled = true;
-
-        const q = control.state.questions[control.state.currentIndex];
-        
-        if (selected === correct) {
-            control.state.correctCount++;
-            btn.classList.add('bg-green-600', 'border-green-400', 'text-white');
-        } else {
-            control.state.mistakes.push({ word: q.word, expected: correct, actual: selectedText, type: q.type });
-            btn.classList.add('bg-red-600', 'border-red-400', 'text-white');
-        }
-
-        setTimeout(control.next, 600);
-    },
-
-    checkInput: (correct) => {
-        const input = document.getElementById('ctrl-input');
-        const btn = document.getElementById('ctrl-submit');
-        
-        const selected = input.value.trim();
-
-        const accepted = control.acceptedAnswers?.length ? control.acceptedAnswers : [correct];
-        const isCorrect = germanUtils.matchesAnswer(selected, accepted);
-        control.acceptedAnswers = null;
-
-        input.disabled = true;
-        btn.disabled = true;
-
-        const q = control.state.questions[control.state.currentIndex];
-
-        if (isCorrect) {
-            control.state.correctCount++;
-            input.classList.add('bg-green-900/50', 'border-green-500', 'text-green-400');
-        } else {
-            control.state.mistakes.push({ word: q.word, expected: correct, actual: selected, type: q.type });
-            input.classList.add('bg-red-900/50', 'border-red-500', 'text-red-400', 'line-through');
-        }
-
-        setTimeout(control.next, 800);
-    },
-
-    next: () => {
-        control.state.currentIndex++;
-        control.renderCurrent();
+        return quiz.shuffle(questions).slice(0, control.MAX_QUESTIONS);
     },
 
     finishTest: async () => {
@@ -248,8 +119,9 @@ export const control = {
         const correct = control.state.correctCount;
         const percentage = Math.round((correct / total) * 100);
         
-        // 1. ПЕРЕСЧЕТ МАСТЕРСТВА (MASTERY)
-        await control.updateMastery();
+        // Освоенность обновилась по каждому ответу в самих упражнениях,
+        // пересчитывать её здесь второй раз не нужно
+        exercises.exam = null;
 
         // 2. ЗАКРЫВАЕМ ЦИКЛ (ТЕМУ)
         if (control.state.cycleId) {
@@ -330,40 +202,5 @@ export const control = {
                 </div>
             </div>
         `;
-    },
-
-    updateMastery: async () => {
-        const wordResults = {};
-        
-        control.state.questions.forEach(q => {
-            const wId = q.word.id;
-            if (!wordResults[wId]) {
-                wordResults[wId] = { word: q.word, totalQuestions: 0, mistakes: 0 };
-            }
-            wordResults[wId].totalQuestions++;
-        });
-
-        control.state.mistakes.forEach(m => {
-            if (wordResults[m.word.id]) {
-                wordResults[m.word.id].mistakes++;
-            }
-        });
-
-        for (const [id, data] of Object.entries(wordResults)) {
-            const word = { ...data.word };
-
-            // Каждый вопрос экзамена — отдельный ответ в истории слова:
-            // три верных из четырёх и должны выглядеть как три из четырёх
-            for (let i = 0; i < data.totalQuestions; i++) {
-                masteryUtils.registerAnswer(word, i >= data.mistakes);
-            }
-
-            await dbService.updateWord(id, {
-                recent: word.recent,
-                attempts: word.attempts,
-                correct: word.correct,
-                mastery: word.mastery
-            });
-        }
     }
 };

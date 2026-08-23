@@ -1,4 +1,5 @@
 import { germanUtils } from '../core/german.js';
+import { t } from '../i18n/i18n.js';
 
 /**
  * Сверка карточек с немецким Wiktionary.
@@ -379,6 +380,29 @@ export const wiktionary = {
         }
 
         return { fixed, filled, unchecked };
+    },
+
+    /**
+     * Итог сверки словами.
+     *
+     * Разметку собирает вызывающий модуль, здесь только текст и признак
+     * «есть о чём беспокоиться» — иначе одна и та же логика разъехалась бы
+     * по экрану темы и экрану добавления.
+     *
+     * @returns {{text: string, alarming: boolean}|null}
+     */
+    summary: (check) => {
+        if (!check) return null;
+
+        const parts = [];
+        if (check.fixed) parts.push(t('cycle.checkFixed', { count: check.fixed }));
+        if (check.filled) parts.push(t('cycle.checkFilled', { count: check.filled }));
+        if (check.unchecked) parts.push(t('cycle.checkUnchecked', { count: check.unchecked }));
+
+        return {
+            text: parts.length ? parts.join(' · ') : t('cycle.checkClean'),
+            alarming: check.fixed > 0 || check.unchecked > 0
+        };
     },
 
     /**
