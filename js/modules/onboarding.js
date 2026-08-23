@@ -213,7 +213,7 @@ export const onboarding = {
             <input type="text" id="ob-apikey" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-6 outline-none focus:border-amber-500"
                 placeholder="${t('onboarding.apiPlaceholder')}">
 
-            <button onclick="onboarding.finish()" class="w-full py-4 bg-green-500 text-slate-900 text-lg font-black rounded-xl shadow-lg transition-transform active:scale-95">
+            <button onclick="onboarding.nextStep()" class="w-full py-4 bg-green-500 text-slate-900 text-lg font-black rounded-xl shadow-lg transition-transform active:scale-95">
                 ${t('onboarding.finish')}
             </button>
         </div>`,
@@ -265,6 +265,18 @@ export const onboarding = {
     },
 
     finish: async () => {
+        // Ключ вводится на шаге 5, но finish можно вызвать и оттуда, и с шага
+        // входа. Если поле ещё на экране — читаем прямо из него, иначе берём
+        // сохранённое. Без этой подстраховки ключ уходил в настройки пустым.
+        const field = document.getElementById('ob-apikey');
+        if (field) onboarding.data.apiKey = field.value.trim();
+
+        if (!onboarding.data.apiKey) {
+            onboarding.step = 5;
+            onboarding.renderStep();
+            return await dialog.alert(t('onboarding.apiRequired'));
+        }
+
         config.set('name', onboarding.data.name);
         config.set('ui_lang', onboarding.data.uiLang);
         config.set('level', onboarding.data.level);
