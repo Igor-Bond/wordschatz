@@ -1,4 +1,5 @@
 import { quiz } from '../core/quiz.js';
+import { masteryUtils } from '../core/mastery.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -40,8 +41,11 @@ export const exercises = {
         const repetitions = word?.repetitions || 0;
         const mastery = word?.mastery || 0;
 
+        // Пороги под шкалу освоенности: 30 — интервал около двух дней,
+        // 65 — около двух недель. К вводу вручную переходим, когда слово
+        // уже переживало заметные перерывы
         if (repetitions < 2 || mastery < 30) return 'recognition';
-        if (mastery < 70) return 'consolidation';
+        if (mastery < 65) return 'consolidation';
         return 'production';
     },
 
@@ -677,6 +681,23 @@ export const exercises = {
             await dbService.addXP(gained);
         } catch (e) {
             console.error('Не удалось начислить XP:', e);
+        }
+
+        // Ответы в упражнениях — самый частый сигнал о том, знает человек
+        // слово или нет, но раньше они не влияли ни на что, кроме XP
+        const word = exercises.queue?.[exercises.currentIndex];
+        if (word?.id) {
+            masteryUtils.registerAnswer(word, isCorrect);
+            try {
+                await dbService.updateWord(word.id, {
+                    recent: word.recent,
+                    attempts: word.attempts,
+                    correct: word.correct,
+                    mastery: word.mastery
+                });
+            } catch (e) {
+                console.error('Не удалось сохранить результат ответа:', e);
+            }
         }
 
         // В свободной тренировке счётчиков урока нет

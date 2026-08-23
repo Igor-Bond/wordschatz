@@ -100,6 +100,52 @@ db.version(4).stores({
     console.log('[DB] Миграция 4 завершена: разобраны род и спряжение.');
 });
 
+// Версия 5 (история ответов: освоенность считается, а не копится)
+db.version(5).stores({
+    words: '++id, word, translation, type, topic, interval, ease, repetitions, isDifficult, nextReview, createdAt, cycleId, status, mastery, updatedAt, gender, verified',
+    cycles: '++id, title, status, updatedAt',
+    dayPlans: '++id, cycleId, date, dailyGoal, status, updatedAt',
+    lessonState: '++id, date, status, currentStep, data, updatedAt',
+    mistakes: '++id, wordId, taskType, userInput, timestamp',
+    stats: '++id, date, xp, reviewsCount, newWordsCount, updatedAt',
+    user: 'id, league, totalXP, currentStreak, lastActiveDate, updatedAt'
+}).upgrade(async (tx) => {
+    console.log('[DB] Миграция на версию 5...');
+
+    await tx.words.toCollection().modify(word => {
+        if (!Array.isArray(word.recent)) word.recent = [];
+        if (typeof word.attempts !== 'number') word.attempts = 0;
+        if (typeof word.correct !== 'number') word.correct = 0;
+
+        // Накопленное значение считать нельзя: оно росло и от «Снова».
+        // Пересчитываем из интервала — истории ответов у старых слов нет,
+        // но состояние SRS честное и доступно прямо сейчас.
+        word.mastery = computeMastery(word);
+        word.updatedAt = Date.now();
+    });
+
+    console.log('[DB] Миграция 5 завершена: освоенность пересчитана из интервалов.');
+});
+
+/**
+ * Расчёт освоенности для миграции.
+ *
+ * Повторяет формулу из core/mastery.js. Импортировать оттуда нельзя:
+ * миграция выполняется при открытии базы, до загрузки модулей приложения,
+ * и лишняя зависимость здесь означала бы цикл.
+ */
+function computeMastery(word) {
+    const interval = word.interval || 0;
+    const repetitions = word.repetitions || 0;
+    const phase = word.phase || (interval > 0 && repetitions > 0 ? 'review' : 'learning');
+
+    if (phase === 'learning' || interval <= 0) return Math.min(25, repetitions * 8);
+    if (interval < 7) return Math.round(25 + ((interval - 1) / 6) * 30);
+    if (interval < 21) return Math.round(55 + ((interval - 7) / 14) * 25);
+
+    return Math.min(100, Math.round(80 + ((interval - 21) / 69) * 20));
+}
+
 /**
  * Разбор строки спряжения вида «ich mache, du machst, er/sie/es macht».
  * Возвращает null, если разобрать нечего.
@@ -173,6 +219,9 @@ export const dbService = {
             conjugation: null,             // спряжение объектом, а не строкой
             akkusativ: null,
             verified: 0,                   // карточку ещё не проверял человек
+            recent: [],                    // последние ответы: 1 верно, 0 нет
+            attempts: 0,
+            correct: 0,
             ...rest,                       // переданные поля важнее значений по умолчанию
             createdAt: rest.createdAt || now,   // при импорте дата создания сохраняется
             updatedAt: now,

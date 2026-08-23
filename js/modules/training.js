@@ -1,5 +1,8 @@
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
+import { auth } from '../services/auth.js';
+import { sync } from '../services/sync.js';
+import { masteryUtils } from '../core/mastery.js';
 import { srs } from '../core/srs.js';
 import { lessonStateManager } from '../core/lessonState.js';
 import { scheduler } from '../core/scheduler.js';
@@ -85,6 +88,9 @@ export const training = {
 
         // Серия дней растёт по факту пройденного урока, а не от захода в приложение
         await scheduler.registerLessonCompleted();
+
+        // Результаты урока — самое ценное, что стоит отдать в облако сразу
+        if (auth.isSignedIn) sync.run({ silent: true }).catch(() => {});
     },
 
     nextStep: async () => {
@@ -258,9 +264,9 @@ export const training = {
         word.nextReview = srsData.nextReview;
         word.repetitions += 1;
 
-        if (word.mastery !== undefined && word.mastery < 100) {
-            word.mastery = Math.min(100, word.mastery + (quality * 5));
-        }
+        // «Снова» и «Трудно» — это не вспомнил или вспомнил с трудом,
+        // освоенность от них расти не должна
+        masteryUtils.registerAnswer(word, quality >= 3);
 
         // Слово тронули — оно больше не «ждёт своего дня»
         if (word.status === 'pending' || word.status === 'new') word.status = 'learning';

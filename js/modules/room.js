@@ -1,4 +1,5 @@
 import { dialog } from '../core/dialog.js';
+import { masteryUtils } from '../core/mastery.js';
 import { quiz } from '../core/quiz.js';
 import { dbService } from '../services/db.js';
 import { i18n, t } from '../i18n/i18n.js';
@@ -98,7 +99,7 @@ export const room = {
         const isHardMode = hardModeToggle && hardModeToggle.checked;
 
         if (isHardMode) {
-            allWords = allWords.filter(w => w.ease <= 2.3 || (w.mastery !== undefined && w.mastery < 60) || w.isDifficult);
+            allWords = allWords.filter(masteryUtils.isWeak);
         }
 
         // Интеллектуальный фильтр слов под выбранный режим.

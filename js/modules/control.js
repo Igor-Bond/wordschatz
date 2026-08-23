@@ -1,4 +1,5 @@
 import { dialog } from '../core/dialog.js';
+import { masteryUtils } from '../core/mastery.js';
 import { quiz } from '../core/quiz.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -349,22 +350,19 @@ export const control = {
         });
 
         for (const [id, data] of Object.entries(wordResults)) {
-            let currentMastery = data.word.mastery || 0;
-            const successRate = (data.totalQuestions - data.mistakes) / data.totalQuestions;
+            const word = { ...data.word };
 
-            if (successRate === 1) {
-                currentMastery = Math.min(100, currentMastery + 25);
-            } else if (successRate === 0) {
-                currentMastery = Math.max(0, currentMastery - 20);
-            } else {
-                currentMastery = Math.min(100, currentMastery + 5);
+            // Каждый вопрос экзамена — отдельный ответ в истории слова:
+            // три верных из четырёх и должны выглядеть как три из четырёх
+            for (let i = 0; i < data.totalQuestions; i++) {
+                masteryUtils.registerAnswer(word, i >= data.mistakes);
             }
 
-            const isDifficult = (currentMastery < 40 && data.mistakes > 0) ? 1 : 0;
-
             await dbService.updateWord(id, {
-                mastery: currentMastery,
-                isDifficult: isDifficult
+                recent: word.recent,
+                attempts: word.attempts,
+                correct: word.correct,
+                mastery: word.mastery
             });
         }
     }

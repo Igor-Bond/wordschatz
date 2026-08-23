@@ -1,6 +1,7 @@
 import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
 import { install } from '../core/install.js';
+import { masteryUtils } from '../core/mastery.js';
 import { dialog } from '../core/dialog.js';
 import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
@@ -119,8 +120,8 @@ export const profile = {
             // Статистика словаря
             const allWords = await dbService.getAllWords();
             const totalWords = allWords.length;
-            const masteredCount = allWords.filter(w => w.mastery === 100).length;
-            const difficultCount = allWords.filter(w => w.isDifficult === 1).length;
+            const masteredCount = allWords.filter(masteryUtils.isLearned).length;
+            const difficultCount = allWords.filter(masteryUtils.isWeak).length;
 
             // Сбор ошибок из Журнала
             let mistakes = [];
@@ -241,7 +242,8 @@ export const profile = {
                         <div class="text-2xl font-black text-slate-100">${totalWords}</div>
                         <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">${t('profile.totalWords')}</div>
                     </div>
-                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center flex flex-col justify-center shadow-md border-b-2 border-b-green-500/50">
+                    <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center flex flex-col justify-center shadow-md border-b-2 border-b-green-500/50"
+                         title="${profile.escapeAttr(t('profile.masteredHint'))}">
                         <div class="text-2xl font-black text-green-400">${masteredCount}</div>
                         <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">${t('profile.mastered')}</div>
                     </div>
@@ -628,9 +630,9 @@ export const profile = {
         let words = profile._dictCache.filter(w => {
             if (type !== 'all' && w.type !== type) return false;
 
-            if (status === 'difficult' && !w.isDifficult) return false;
-            if (status === 'mastered' && (w.mastery || 0) < 100) return false;
-            if (status === 'learning' && (!(w.repetitions > 0) || (w.mastery || 0) >= 100)) return false;
+            if (status === 'difficult' && !masteryUtils.isWeak(w)) return false;
+            if (status === 'mastered' && !masteryUtils.isLearned(w)) return false;
+            if (status === 'learning' && (!(w.repetitions > 0) || masteryUtils.isLearned(w))) return false;
 
             if (!needle) return true;
 
@@ -676,7 +678,7 @@ export const profile = {
 
         list.innerHTML = words.map(w => {
             const safeWordStr = (w.word || '').replace(/'/g, "\\'");
-            const accent = w.mastery === 100 ? 'bg-green-500' : (w.isDifficult ? 'bg-red-500' : 'bg-slate-600');
+            const accent = masteryUtils.isLearned(w) ? 'bg-green-500' : (masteryUtils.isWeak(w) ? 'bg-red-500' : 'bg-slate-600');
 
             return `
                 <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center group relative overflow-hidden">
