@@ -52,3 +52,6 @@ tmp/
 temp/
 *.tmp
 *.bak
+
+# --- Локальная проверка размещения в подпапке (GitHub Pages) ---
+_subpath/

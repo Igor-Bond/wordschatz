@@ -10,7 +10,7 @@
 | Файл | Версия | Источник |
 |---|---|---|
 | `tailwind.min.js` | 3.4.16 | `https://cdn.tailwindcss.com/3.4.16` |
-| `dexie.min.js` | 4.0.10 | `https://unpkg.com/dexie@4.0.10/dist/dexie.min.js` |
+| `dexie.min.js` | 4.0.10 | `https://unpkg.com/dexie@4.0.10/dist/dexie.min.mjs` |
 | `fontawesome/css/fontawesome.min.css` | 6.4.0 | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css` |
 | `fontawesome/css/solid.min.css` | 6.4.0 | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css` |
 | `fontawesome/webfonts/fa-solid-900.woff2` | 6.4.0 | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2` |
@@ -21,8 +21,10 @@
   39 иконок и все они из этого набора (`regular` и `brands` не нужны).
   Из `solid.min.css` убрана ссылка на `fa-solid-900.ttf`, чтобы не тянуть
   лишние 400 КБ и не ловить 404 при прекэшировании.
-- **Dexie:** используется ESM-сборка (`dexie.min.mjs`), она импортируется
-  напрямую из `js/services/db.js`. Убрана ссылка на несуществующий sourcemap.
+- **Dexie:** используется ESM-сборка (в источнике `dexie.min.mjs`), переименована
+  в `dexie.min.js`: не всякий хостинг отдаёт `.mjs` с правильным Content-Type,
+  а при неверном типе импорт модуля падает и приложение не запускается. Она
+  импортируется напрямую из `js/services/db.js`. Убрана ссылка на несуществующий sourcemap.
 
 ## Технический долг
 
@@ -39,7 +41,7 @@ purge выкинет нужный класс (в коде классы соби�
 1. `npm init -y`, затем `npm i -D vite` и `npm i dexie tailwindcss`.
 2. `vite.config.js`: `base: './'`, `build.outDir: 'dist'`, копирование
    `manifest.json`, `sw.js`, `_redirects` и `assets/` в сборку.
-3. В `js/services/db.js` заменить `'../../vendor/dexie.min.mjs'` на `'dexie'`.
+3. В `js/services/db.js` заменить `'../../vendor/dexie.min.js'` на `'dexie'`.
 4. Tailwind перевести на CLI-сборку с `content: ['index.html', 'js/**/*.js']`
    — вместо Play CDN получится примерно 15 КБ CSS. Проверить, что классы,
    собираемые в JS-строках, не выкинуты purge.

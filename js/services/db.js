@@ -1,5 +1,5 @@
 import { dateUtils } from '../core/dates.js';
-import Dexie from '../../vendor/dexie.min.mjs';
+import Dexie from '../../vendor/dexie.min.js';
 
 /**
  * Единственная точка работы с хранилищем (§39 ТЗ).
