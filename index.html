@@ -139,6 +139,20 @@
                     <pre id="diagnose-result" class="hidden mt-2 p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-400 whitespace-pre-wrap break-all max-h-40 overflow-y-auto"></pre>
                 </div>
 
+                <!-- §41 ТЗ: напоминание о занятии -->
+                <div>
+                    <label class="flex items-center justify-between gap-2 cursor-pointer">
+                        <span class="text-xs font-bold text-slate-400" data-i18n="reminder.setting">Напоминать о занятии</span>
+                        <input type="checkbox" id="settings-reminder" class="accent-amber-500 w-4 h-4 shrink-0">
+                    </label>
+                    <div id="settings-reminder-row" class="mt-2 hidden">
+                        <input type="time" id="settings-reminder-time" value="19:00"
+                            class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
+                        <p class="text-[10px] text-slate-500 mt-1" data-i18n="reminder.hint">Работает, пока приложение открыто или свёрнуто. Закрытое приложение разбудить нечем — для этого нужен сервер.</p>
+                    </div>
+                    <p id="settings-reminder-error" class="hidden text-[10px] text-red-400 mt-1"></p>
+                </div>
+
                 <!-- §35 ТЗ: раздел «Информация» -->
                 <div class="pt-1">
                     <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1" data-i18n="settings.about">Информация</h4>

@@ -1,5 +1,6 @@
 import { auth } from './services/auth.js';
 import { sync } from './services/sync.js';
+import { reminder } from './core/reminder.js';
 import { speech } from './core/speech.js';
 import { dialog } from './core/dialog.js';
 import { config } from './config.js';
@@ -26,6 +27,13 @@ export const app = {
             document.getElementById('app-view').classList.remove('hidden');
             document.getElementById('app-view').classList.add('flex');
             app.initApp();
+
+            // Напоминать есть о чём, только если план на сегодня не пройден
+            reminder.checkPlan = async () => {
+                const plan = await scheduler.getDailyPlan();
+                return (plan.review.length + plan.newWords.length) > 0;
+            };
+            reminder.schedule();
 
             // Сессия и синхронизация — в фоне, чтобы не задерживать первый экран
             app.restoreCloudSession();
@@ -123,6 +131,13 @@ export const app = {
         goalSelect.value = prof.dailyGoal || '10';
         document.getElementById('settings-interests').value = prof.interests || '';
 
+        const reminderBox = document.getElementById('settings-reminder');
+        const reminderTime = document.getElementById('settings-reminder-time');
+        reminderBox.checked = reminder.isEnabled() && reminder.permission() === 'granted';
+        reminderTime.value = reminder.getTime();
+        document.getElementById('settings-reminder-row').classList.toggle('hidden', !reminderBox.checked);
+        reminderBox.onchange = () => app.toggleReminder(reminderBox.checked);
+
         app.fillAbout();
 
         const modal = document.getElementById('settings-modal');
@@ -173,6 +188,41 @@ export const app = {
         }
     },
 
+    /**
+     * Включение напоминаний.
+     *
+     * Разрешение браузер спрашивает только в ответ на действие человека,
+     * поэтому запрос идёт прямо из обработчика галочки, а не при запуске.
+     */
+    toggleReminder: async (on) => {
+        const row = document.getElementById('settings-reminder-row');
+        const error = document.getElementById('settings-reminder-error');
+        const box = document.getElementById('settings-reminder');
+        error.classList.add('hidden');
+
+        if (!on) {
+            reminder.disable();
+            row.classList.add('hidden');
+            return;
+        }
+
+        const result = await reminder.enable(document.getElementById('settings-reminder-time').value);
+
+        if (result === 'granted') {
+            row.classList.remove('hidden');
+            return;
+        }
+
+        // Отказ и отсутствие поддержки выглядят одинаково — молча снятая
+        // галочка. Объясняем, иначе это похоже на поломку
+        box.checked = false;
+        row.classList.add('hidden');
+        error.textContent = result === 'unsupported'
+            ? t('reminder.unsupported')
+            : t('reminder.denied');
+        error.classList.remove('hidden');
+    },
+
     closeSettings: () => {
         const modal = document.getElementById('settings-modal');
         const content = document.getElementById('settings-modal-content');
@@ -196,6 +246,13 @@ export const app = {
         config.set('level', level);
         config.set('daily_goal', goal);
         config.set('interests', interests);
+
+        // Время напоминания сохраняем только при включённой галочке:
+        // иначе выключенное напоминание переставляло бы себе будильник
+        if (document.getElementById('settings-reminder').checked) {
+            config.set('reminder_time', document.getElementById('settings-reminder-time').value);
+            reminder.schedule();
+        }
 
         // §3 ТЗ: при смене дневной нормы оставшиеся дни темы пересчитываются
         if (goal !== previousGoal) {

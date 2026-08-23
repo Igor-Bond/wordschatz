@@ -120,6 +120,51 @@ export const wiktionary = {
         .map(([, v]) => v)
         .filter(Boolean),
 
+    /**
+     * Список из раздела статьи вида {{Synonyme}} или {{Gegenwörter}}.
+     *
+     * Разделы устроены так:
+     *   {{Synonyme}}
+     *   :[1] [[Tafel]]
+     *   :[2] [[Messe]], [[Tafelrunde]]
+     *
+     * Берём только первое значение: остальные относятся к смыслам, которым
+     * мы не учим, и в карточке от них больше шума, чем пользы. Внутри
+     * значения соседние ссылки — это одно выражение: «[[Luft]] [[holen]]»
+     * читается как «Luft holen», а запятая разделяет разные варианты.
+     */
+    _parseSection: (wikitext, name, limit = 3) => {
+        const start = wikitext.indexOf(`{{${name}}}`);
+        if (start < 0) return [];
+
+        const lines = wikitext.slice(start).split('\n').slice(1);
+
+        // Раздел кончается на первой строке, которая не начинается с двоеточия
+        const firstMeaning = lines.find(l => /^:\s*\[1\]/.test(l));
+        if (!firstMeaning) return [];
+
+        return firstMeaning
+            .replace(/^:\s*\[1\]\s*/, '')
+            .split(',')
+            .map(part => part
+                .replace(/\{\{[^}]*\}\}/g, '')                       // пометки вроде {{ugs.}}
+                .replace(/\[\[([^\]|]*\|)?([^\]]*)\]\]/g, '$2')      // ссылки → текст
+                .replace(/<[^>]*>/g, '')
+                .replace(/\s+/g, ' ')
+                .trim())
+            .filter(Boolean)
+            .slice(0, limit);
+    },
+
+    /** Транскрипция из раздела {{Aussprache}}. */
+    _parseIpa: (wikitext) => {
+        const start = wikitext.indexOf('{{Aussprache}}');
+        if (start < 0) return null;
+
+        const match = wikitext.slice(start, start + 400).match(/\{\{Lautschrift\|([^}|]+)\}\}/);
+        return match ? match[1].trim() : null;
+    },
+
     /** Один блок форм в сравнимом виде. */
     _readTemplate: (fields, type) => {
         if (type === 'noun') {
@@ -181,7 +226,18 @@ export const wiktionary = {
         if (!templates.length) return null;
 
         const variants = templates.map(f => wiktionary._readTemplate(f, type));
-        if (variants.length === 1) return variants[0];
+
+        if (variants.length === 1) {
+            // Транскрипция и синонимы лежат в разделах страницы, а не внутри
+            // блока форм. Разобрать, какому значению они относятся, можно
+            // только когда значение на странице одно
+            return {
+                ...variants[0],
+                ipa: wiktionary._parseIpa(wikitext),
+                synonyms: wiktionary._parseSection(wikitext, 'Synonyme'),
+                antonyms: wiktionary._parseSection(wikitext, 'Gegenwörter')
+            };
+        }
 
         if (type === 'noun') {
             const ourGender = word ? germanUtils.getGender(word) : null;
@@ -335,6 +391,14 @@ export const wiktionary = {
             if (empty(word.comparative) && entry.comparative[0]) changes.comparative = entry.comparative[0];
             if (empty(word.superlative) && entry.superlative[0]) changes.superlative = entry.superlative[0];
         }
+
+        // Транскрипция, синонимы и антонимы одинаковы для всех частей речи.
+        // Их только дозаполняем и никогда не сверяем: синоним — не форма,
+        // единственно верного варианта у него нет, и правка чужого выбора
+        // была бы навязыванием
+        if (empty(word.ipa) && entry.ipa) changes.ipa = entry.ipa;
+        if (empty(word.synonym) && entry.synonyms?.length) changes.synonym = entry.synonyms.join(', ');
+        if (empty(word.gegenteil) && entry.antonyms?.length) changes.gegenteil = entry.antonyms.join(', ');
 
         return changes;
     },

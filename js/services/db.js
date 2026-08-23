@@ -236,6 +236,7 @@ export const dbService = {
             imperative_singular: null,
             imperative_plural: null,
             konjunktiv2: null,
+            ipa: null,                     // транскрипция из Wiktionary
             verified: 0,                   // карточку ещё не проверял человек
             recent: [],                    // последние ответы: 1 верно, 0 нет
             mismatches: [],                // расхождения с Wiktionary

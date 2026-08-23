@@ -268,6 +268,15 @@ export const en = {
         startHint: 'Finish the daily plan to start a streak. Missing a day resets it.'
     },
 
+    reminder: {
+        setting: 'Remind me to practise',
+        hint: 'Works while the app is open or in the background. A closed app cannot be woken up — that needs a server.',
+        title: 'Time to practise',
+        body: 'Today’s plan is still unfinished. Five minutes keeps your streak alive.',
+        denied: 'The browser refused notifications. Grant permission in the site settings.',
+        unsupported: 'This browser does not support notifications.'
+    },
+
     speech: {
         noVoiceTitle: 'No German voice',
         noVoiceHint: 'This device has no German speech voice installed, so playback stays silent.\n\nAndroid: Settings → System → Languages & input → Text-to-speech → Google Speech Services → Install voice data → Deutsch.\n\niPhone: Settings → Accessibility → Spoken Content → Voices → Deutsch.',
@@ -289,6 +298,7 @@ export const en = {
         imperative_singular: 'Imperative, singular',
         imperative_plural: 'Imperative, plural',
         konjunktiv2: 'Konjunktiv II',
+        ipa: 'Transcription',
         comparative: 'Comparative',
         superlative: 'Superlative'
     },

@@ -124,6 +124,41 @@ export const training = {
         }
     },
 
+    /** Экранирование: слова приходят от ИИ и из Wiktionary. */
+    esc: (str) => String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;'),
+
+    /**
+     * Метки под переводом: уровень, тема и признак сверки.
+     *
+     * Всё это уже лежало в базе и нигде не показывалось. Уровень отвечает
+     * на вопрос «это базовое слово или продвинутое», тема напоминает, откуда
+     * оно взялось, а галочка — что формы сверены со словарём, а не написаны
+     * моделью на глаз.
+     */
+    renderTags: (word) => {
+        const tags = [];
+
+        if (word.level) {
+            tags.push(`<span class="text-[10px] font-bold text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded border border-slate-600">${training.esc(word.level)}</span>`);
+        }
+
+        if (word.topic) {
+            tags.push(`<span class="text-[10px] text-slate-400 bg-slate-700/30 px-2 py-0.5 rounded border border-slate-700 max-w-[45%] truncate">${training.esc(word.topic)}</span>`);
+        }
+
+        if (word.verified === 1) {
+            tags.push(`<span class="text-[10px] text-green-500/90" title="${training.esc(t('profile.verifiedBadge'))}"><i class="fa-solid fa-circle-check"></i></span>`);
+        }
+
+        return tags.length
+            ? `<div class="flex items-center justify-center gap-1.5 flex-wrap mb-3">${tags.join('')}</div>`
+            : '';
+    },
+
     showCard: () => {
         const main = document.getElementById('main-content');
         
@@ -258,10 +293,20 @@ export const training = {
                                         <i class="fa-solid fa-volume-high text-lg"></i>
                                     </button>
                                 </div>
+                                ${word.ipa
+                                    ? `<span class="text-xs text-slate-500 font-mono" id="card-ipa">[${training.esc(word.ipa)}]</span>`
+                                    : ''}
                             </div>
 
                             <div id="card-back" class="hidden flex-col p-4 bg-[#171d2b] border-t border-slate-700/50 rounded-b-2xl">
                                 <h3 class="text-2xl font-bold text-amber-500 text-center mb-3 drop-shadow-md">${word.translation}</h3>
+
+                                <!--
+                                    Уровень, тема и признак сверки хранились в базе,
+                                    но нигде не показывались: понять, базовое это слово
+                                    или продвинутое и проверены ли его формы, было нельзя
+                                -->
+                                ${training.renderTags(word)}
                                 ${grammarBlock}
                                 <div class="bg-[#1b2234] p-3 rounded-xl border border-slate-700/70 shadow-inner">
                                     <p class="text-slate-200 text-sm font-bold italic mb-1.5">"${word.example_de || ''}"</p>

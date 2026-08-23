@@ -139,6 +139,11 @@ export const germanUtils = {
         if (empty(word?.example_de)) missing.push('example_de');
         if (empty(word?.example_ru)) missing.push('example_ru');
 
+        // Транскрипция есть в Wiktionary почти у каждого слова и достаётся
+        // бесплатно. У фраз её не спрашиваем: статьи под них обычно нет,
+        // а разбор берёт заголовком первое слово
+        if (['noun', 'verb', 'adjective'].includes(word?.type) && empty(word?.ipa)) missing.push('ipa');
+
         if (word?.type === 'noun') {
             if (!germanUtils.getGender(word)) missing.push('gender');
             if (empty(word.plural)) missing.push('plural');
@@ -165,7 +170,7 @@ export const germanUtils = {
 
     /** Доля заполненных обязательных полей, 0–100. */
     completeness: (word) => {
-        const total = { noun: 7, verb: 9, adjective: 5 }[word?.type] || 3;
+        const total = { noun: 8, verb: 10, adjective: 6 }[word?.type] || 3;
         const missing = germanUtils.missingFields(word).length;
         return Math.round(((total - missing) / total) * 100);
     },
