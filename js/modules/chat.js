@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t } from '../i18n/i18n.js';
 import { aiService } from '../services/ai.js';
@@ -170,8 +171,8 @@ export const chat = {
         }
     },
 
-    clearHistory: () => {
-        if (confirm(t('chat.clearConfirm'))) {
+    clearHistory: async () => {
+        if (await dialog.confirm(t('chat.clearConfirm'), { danger: true, okLabel: t('common.delete') })) {
             chat.history = [];
             chat.render();
         }

@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -243,7 +244,7 @@ ${aiService._getJsonFormat()}`;
         const toSave = scanner.currentResults.filter(w => w.selected);
         
         if (toSave.length === 0) {
-            return alert(t('scanner.nothingSelected'));
+            return await dialog.alert(t('scanner.nothingSelected'));
         }
         
         const { count } = await dbService.saveMultipleWords(toSave);

@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -612,7 +613,11 @@ export const profile = {
     },
 
     deleteWord: async (id, wordStr) => {
-        if (confirm(t('profile.deleteConfirm', { word: wordStr }))) {
+        const ok = await dialog.confirm(t('profile.deleteConfirm', { word: wordStr }), {
+            danger: true,
+            okLabel: t('common.delete')
+        });
+        if (ok) {
             await dbService.deleteWord(id);
             profile.renderDictionary();
             profile.renderStats();
@@ -626,7 +631,7 @@ export const profile = {
     exportData: async () => {
         const backup = await dbService.exportAll();
 
-        if (backup.words.length === 0) return alert(t('profile.exportEmpty'));
+        if (backup.words.length === 0) return await dialog.alert(t('profile.exportEmpty'));
 
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -662,7 +667,7 @@ export const profile = {
                 profile.renderStats();
             } catch (err) {
                 console.error('Импорт не удался:', err);
-                alert(t('profile.importFailed') + '\n\n' + err.message);
+                await dialog.alert(t('profile.importFailed') + '\n\n' + err.message);
             }
         };
         reader.readAsText(file);
@@ -671,13 +676,24 @@ export const profile = {
 
     importFullBackup: async (data) => {
         const when = data.exportedAt ? data.exportedAt.slice(0, 10) : t('profile.unknownDate');
-        const replace = confirm(t('profile.importChoice', {
-            date: when,
-            words: data.words.length,
-            cycles: data.cycles?.length || 0
-        }));
+        // Раньше выбор объяснялся текстом «ОК — заменить, Отмена — добавить»:
+        // системный confirm умеет только две кнопки без подписей.
+        const choice = await dialog.choose(
+            t('profile.importSummary', {
+                date: when,
+                words: data.words.length,
+                cycles: data.cycles?.length || 0
+            }),
+            [
+                { value: 'merge', label: t('profile.importMerge'), hint: t('profile.importMergeHint'), primary: true },
+                { value: 'replace', label: t('profile.importReplace'), hint: t('profile.importReplaceHint'), danger: true }
+            ],
+            { title: t('profile.import') }
+        );
 
-        if (replace) {
+        if (choice === null) return;   // отменили
+
+        if (choice === 'replace') {
             const result = await dbService.restoreFromBackup(data);
 
             // Профиль из копии поднимаем в localStorage, ключ остаётся местный
@@ -691,7 +707,7 @@ export const profile = {
                 }
             }
 
-            alert(t('profile.restored', {
+            await dialog.alert(t('profile.restored', {
                 words: result.words,
                 cycles: result.cycles,
                 dayPlans: result.dayPlans
@@ -703,11 +719,11 @@ export const profile = {
         // Слияние: чужие темы и планы не переносим, слова остаются вне тем
         const words = data.words.map(({ id, cycleId, ...w }) => ({ ...w, cycleId: null }));
         const { count } = await dbService.saveMultipleWords(words);
-        alert(t('profile.mergedFromBackup', { count }));
+        await dialog.alert(t('profile.mergedFromBackup', { count }));
     },
 
     importLegacyWords: async (words) => {
         const { count } = await dbService.saveMultipleWords(words);
-        alert(t('profile.importedLegacy', { count }));
+        await dialog.alert(t('profile.importedLegacy', { count }));
     }
 };

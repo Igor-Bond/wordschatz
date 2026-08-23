@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -133,7 +134,7 @@ export const cycle = {
         const topic = (input?.value || '').trim();
 
         if (!topic) {
-            alert(t('cycle.topicRequired'));
+            await dialog.alert(t('cycle.topicRequired'));
             return;
         }
 
@@ -293,11 +294,14 @@ export const cycle = {
         const selected = cycle.state.words.filter(w => w.selected);
 
         if (selected.length === 0) {
-            alert(t('cycle.nothingSelected'));
+            await dialog.alert(t('cycle.nothingSelected'));
             return;
         }
         if (selected.length < profile.dailyGoal) {
-            const ok = confirm(t('cycle.belowGoal', { count: selected.length, goal: profile.dailyGoal }));
+            const ok = await dialog.confirm(
+                t('cycle.belowGoal', { count: selected.length, goal: profile.dailyGoal }),
+                { title: t('cycle.newTopic'), okLabel: t('cycle.approve') }
+            );
             if (!ok) return;
         }
 

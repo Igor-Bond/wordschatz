@@ -1,4 +1,6 @@
+import { dialog } from './core/dialog.js';
 import { config } from './config.js';
+import { aiService } from './services/ai.js';
 import { i18n, t, plural } from './i18n/i18n.js';
 import { dbService } from './services/db.js';
 import { scheduler } from './core/scheduler.js';
@@ -178,7 +180,11 @@ export const app = {
      * пользователь заново проходил onboarding и получал старые слова.
      */
     resetAll: async () => {
-        const confirmed = confirm(t('app.resetConfirm'));
+        const confirmed = await dialog.confirm(t('app.resetConfirm'), {
+            title: t('settings.reset'),
+            danger: true,
+            okLabel: t('common.delete')
+        });
         if (!confirmed) return;
 
         // Отложенная запись профиля не должна воссоздать базу после удаления
@@ -189,7 +195,7 @@ export const app = {
             await dbService.resetDatabase();
         } catch (e) {
             console.error('Не удалось удалить базу данных:', e);
-            alert(t('app.resetDbFailed'));
+            await dialog.alert(t('app.resetDbFailed'));
             return;
         }
 

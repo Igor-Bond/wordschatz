@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t, plural, LANGUAGES } from '../i18n/i18n.js';
 import { app } from '../app.js';
@@ -182,10 +183,10 @@ export const onboarding = {
         });
     },
 
-    nextStep: () => {
+    nextStep: async () => {
         if (onboarding.step === 1) {
             const name = document.getElementById('ob-name').value.trim();
-            if (!name) return alert(t('onboarding.nameRequired'));
+            if (!name) return await dialog.alert(t('onboarding.nameRequired'));
             onboarding.data.name = name;
         } else if (onboarding.step === 3) {
             onboarding.data.level = document.getElementById('ob-level').value;
@@ -199,9 +200,9 @@ export const onboarding = {
         onboarding.renderStep();
     },
 
-    finish: () => {
+    finish: async () => {
         const key = document.getElementById('ob-apikey').value.trim();
-        if (!key) return alert(t('onboarding.apiRequired'));
+        if (!key) return await dialog.alert(t('onboarding.apiRequired'));
         onboarding.data.apiKey = key;
 
         config.set('name', onboarding.data.name);

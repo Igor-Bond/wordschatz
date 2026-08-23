@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { quiz } from '../core/quiz.js';
 import { dbService } from '../services/db.js';
 import { i18n, t } from '../i18n/i18n.js';
@@ -108,7 +109,7 @@ export const room = {
             else if (allowedModes.includes('rektion')) errorMsg += t('room.notEnoughRektion');
             else if (allowedModes.includes('fill_blanks') || allowedModes.includes('sentence_builder')) errorMsg += t('room.notEnoughExamples');
             
-            alert(errorMsg);
+            await dialog.alert(errorMsg);
             return;
         }
         

@@ -2,6 +2,9 @@ export const en = {
 
     common: {
         save: 'SAVE',
+        ok: 'OK',
+        cancel: 'Cancel',
+        delete: 'Delete',
         next: 'NEXT',
         back: 'Back',
         later: 'Later',
@@ -391,8 +394,12 @@ export const en = {
         exportEmpty: 'The dictionary is empty, nothing to export!',
         unknownFormat: 'Unknown file format',
         unknownDate: 'unknown date',
+        importSummary: 'Backup from {date}: {words} words, {cycles} topics.',
+        importMerge: 'Add the words',
+        importMergeHint: 'Your dictionary stays, only new words are added',
+        importReplace: 'Full restore',
+        importReplaceHint: 'Your dictionary and progress are replaced by the backup',
         importFailed: 'Could not read the file. Make sure it is a WortSchatz backup.',
-        importChoice: 'Backup from {date}: {words} words, {cycles} topics.\n\nOK — full restore: your current dictionary and progress will be replaced by the backup.\nCancel — only add the words from the backup to your current dictionary.',
         restored: 'Restored:\n• words — {words}\n• topics — {cycles}\n• plan days — {dayPlans}\n\nProgress, XP and league restored. The app will reload.',
         mergedFromBackup: 'New words added: {count}. Their progress was kept from the backup.',
         importedLegacy: 'Words imported: {count}.\n\nThis is an old-format backup — it has no progress data, so the words were added as new.'

@@ -1,3 +1,4 @@
+import { dialog } from '../core/dialog.js';
 import { quiz } from '../core/quiz.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -37,7 +38,7 @@ export const control = {
             }
 
             if (words.length < 5) {
-                alert(t("control.notEnoughWords"));
+                await dialog.alert(t("control.notEnoughWords"));
                 if (typeof dashboard !== 'undefined') dashboard.render();
                 return;
             }
@@ -51,7 +52,7 @@ export const control = {
             control.renderCurrent();
         } catch (e) {
             console.error("Ошибка запуска контроля:", e);
-            alert(t("control.startFailed"));
+            await dialog.alert(t("control.startFailed"));
         }
     },
 
