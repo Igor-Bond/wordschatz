@@ -2,6 +2,7 @@ import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
+import { germanUtils } from '../core/german.js';
 import { masteryUtils } from '../core/mastery.js';
 import { srs } from '../core/srs.js';
 import { lessonStateManager } from '../core/lessonState.js';
@@ -141,27 +142,64 @@ export const training = {
         let stepTitle = training.state.status === 'review' ? t('training.review') : t('training.newWords');
         let stepColor = training.state.status === 'review' ? 'blue-400' : 'green-400';
 
+        /**
+         * Строка таблицы. Раньше эта разметка была выписана вручную
+         * четырнадцать раз, и любое поле забыть было проще, чем добавить.
+         */
+        const row = (label, value) => value
+            ? `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${label}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${value}</span></div>`
+            : '';
+
         let tableRows = '';
+        let conjugationBlock = '';
+
         if (word.type === 'noun') {
-            if (word.plural) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Plural</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.plural}</span></div>`;
-            if (word.dativ) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Dativ</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.dativ}</span></div>`;
+            tableRows += row('Plural', word.plural);
+            tableRows += row('Dativ', word.dativ);
+            // Akkusativ запрашивается у модели и хранится, но на карточке
+            // не показывался — у слабых существительных это отдельная форма
+            tableRows += row('Akkusativ', word.akkusativ);
         } else if (word.type === 'verb') {
-            if (word.present) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Präsens</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.present}</span></div>`;
-            if (word.preterite) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Präteritum</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.preterite}</span></div>`;
-            if (word.participle_ii) {
-                const aux = word.auxiliary === 'sein' ? 'sein' : 'haben';
-                tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Perfekt</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${aux} ${word.participle_ii}</span></div>`;
+            tableRows += row('Präteritum', word.preterite);
+
+            // «hat genommen», а не «haben genommen»: именно эту форму
+            // спрашивает упражнение, и так её подают словари
+            const perfekt = germanUtils.perfektForm(word);
+            if (perfekt) tableRows += row('Perfekt', perfekt.primary);
+
+            tableRows += row('Rektion', word.rektion);
+
+            // Präsens теперь приходит объектом из шести форм. Карточка читала
+            // старое строковое поле present, поэтому у новых глаголов настоящее
+            // время пропало с экрана вовсе — при том что данные есть
+            const conjugation = germanUtils.getConjugation(word);
+            if (conjugation) {
+                const cells = germanUtils.PERSONS
+                    .filter(p => conjugation[p])
+                    .map(p => `
+                        <div class="flex flex-col">
+                            <span class="text-[10px] text-slate-500">${germanUtils.PERSON_LABELS[p]}</span>
+                            <span class="text-sm font-bold text-slate-100 break-words">${conjugation[p]}</span>
+                        </div>`)
+                    .join('');
+
+                conjugationBlock = `
+                    <div class="bg-[#1b2234] rounded-xl px-4 py-3 mb-5 border border-slate-700/70 shadow-inner">
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Präsens</div>
+                        <div class="grid grid-cols-3 gap-x-3 gap-y-2">${cells}</div>
+                    </div>`;
             }
-            if (word.rektion) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Rektion</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.rektion}</span></div>`;
         } else if (word.type === 'adjective') {
-            if (word.comparative) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Komparativ</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.comparative}</span></div>`;
-            if (word.superlative) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Superlativ</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.superlative}</span></div>`;
+            tableRows += row('Komparativ', word.comparative);
+            tableRows += row('Superlativ', word.superlative);
         }
 
-        if (word.synonym) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${t('card.synonyms')}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.synonym}</span></div>`;
-        if (word.gegenteil) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${t('card.antonyms')}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.gegenteil}</span></div>`;
+        tableRows += row(t('card.synonyms'), word.synonym);
+        tableRows += row(t('card.antonyms'), word.gegenteil);
 
-        let grammarBlock = tableRows ? `<div class="bg-[#1b2234] rounded-xl px-4 py-1 mb-5 border border-slate-700/70 shadow-inner">${tableRows}</div>` : '';
+        const grammarBlock = (tableRows
+            ? `<div class="bg-[#1b2234] rounded-xl px-4 py-1 mb-5 border border-slate-700/70 shadow-inner">${tableRows}</div>`
+            : '') + conjugationBlock;
 
         main.innerHTML = `
             <!--

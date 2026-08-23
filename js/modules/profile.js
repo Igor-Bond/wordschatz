@@ -253,6 +253,8 @@ export const profile = {
                     </div>
                 </div>
 
+                ${profile.renderCompleteness(allWords)}
+
                 <!-- Топ слабых мест -->
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1 mt-2">${t('profile.weakSpots')}</h3>
                 <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
@@ -282,7 +284,7 @@ export const profile = {
 
     WORD_TYPES: ['noun', 'verb', 'adjective', 'phrase'],
 
-    STATUSES: ['all', 'difficult', 'learning', 'mastered'],
+    STATUSES: ['all', 'difficult', 'learning', 'mastered', 'incomplete'],
 
     SORTS: ['recent', 'alphabet', 'mastery'],
 
@@ -406,6 +408,53 @@ export const profile = {
         else if (outcome === 'accepted') await dialog.alert(t('install.done'));
 
         await profile.renderStats();
+    },
+
+    /**
+     * Полнота карточек.
+     *
+     * Модель иногда возвращает слово без грамматики, и заметить это можно
+     * было только пролистав словарь. Здесь это одно число, по которому видно,
+     * ухудшилась выдача или показалось.
+     */
+    renderCompleteness: (allWords) => {
+        if (allWords.length === 0) return '';
+
+        const incomplete = allWords.filter(w => germanUtils.missingFields(w).length > 0);
+        const percent = Math.round(
+            allWords.reduce((sum, w) => sum + germanUtils.completeness(w), 0) / allWords.length
+        );
+
+        const color = percent >= 90 ? 'text-green-400' : (percent >= 70 ? 'text-amber-500' : 'text-red-400');
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-bold text-slate-200">${t('profile.completeness')}</span>
+                    <span class="text-lg font-black ${color}">${percent}%</span>
+                </div>
+                <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-700 overflow-hidden mb-3">
+                    <div class="h-full rounded-full ${percent >= 90 ? 'bg-green-500' : (percent >= 70 ? 'bg-amber-500' : 'bg-red-500')}" style="width: ${percent}%"></div>
+                </div>
+                <p class="text-xs text-slate-500">
+                    ${incomplete.length
+                        ? t('profile.completenessGaps', { words: plural('common.word', incomplete.length) })
+                        : t('profile.completenessFull')}
+                </p>
+                ${incomplete.length ? `
+                    <button onclick="profile.showIncomplete()"
+                        class="mt-3 w-full py-2.5 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                        ${t('profile.completenessShow')}
+                    </button>` : ''}
+            </div>
+        `;
+    },
+
+    /** Переход в словарь с фильтром по неполным карточкам. */
+    showIncomplete: () => {
+        profile.switchTab('dict');
+        profile.dictFilters.status = 'incomplete';
+        profile.renderDictionary();
     },
 
     renderAccountCard: () => {
@@ -633,6 +682,7 @@ export const profile = {
             if (status === 'difficult' && !masteryUtils.isWeak(w)) return false;
             if (status === 'mastered' && !masteryUtils.isLearned(w)) return false;
             if (status === 'learning' && (!(w.repetitions > 0) || masteryUtils.isLearned(w))) return false;
+            if (status === 'incomplete' && germanUtils.missingFields(w).length === 0) return false;
 
             if (!needle) return true;
 
@@ -678,6 +728,7 @@ export const profile = {
 
         list.innerHTML = words.map(w => {
             const safeWordStr = (w.word || '').replace(/'/g, "\\'");
+            const gaps = germanUtils.missingFields(w);
             const accent = masteryUtils.isLearned(w) ? 'bg-green-500' : (masteryUtils.isWeak(w) ? 'bg-red-500' : 'bg-slate-600');
 
             return `
@@ -691,6 +742,7 @@ export const profile = {
                             <span class="text-[10px] text-slate-500 uppercase">${t('wordTypes.' + (profile.WORD_TYPES.includes(w.type) ? w.type : 'phrase'))}</span>
                             <span class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</span>
                             ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
+                            ${gaps.length ? `<span class="text-[10px] bg-amber-900/30 text-amber-500 px-1.5 rounded uppercase font-bold border border-amber-500/20" title="${profile.escapeAttr(gaps.join(', '))}">${t('profile.incompleteBadge', { count: gaps.length })}</span>` : ''}
                         </div>
                     </div>
 

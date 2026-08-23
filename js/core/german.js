@@ -97,7 +97,72 @@ export const germanUtils = {
                 .filter(([, form]) => String(form ?? '').trim());
             if (filled.length) return Object.fromEntries(filled);
         }
-        return null;
+
+        // Карточки, созданные до перехода на объект, хранят строку
+        // «ich mache, du machst, er macht» — разбираем её на лету
+        const text = String(word?.present ?? '').trim();
+        if (!text) return null;
+
+        const result = {};
+        for (const chunk of text.split(/[,;]/)) {
+            const match = chunk.trim().match(/^([a-zäöüß/]+)\s+(.+)$/i);
+            if (!match) continue;
+
+            const raw = match[1].toLowerCase();
+            const first = raw.split('/')[0];
+
+            // «sie» — это и третье лицо единственного числа, и вежливое
+            // множественное. Различаем по тому, что уже занято: в строке
+            // они идут по порядку, третье лицо раньше
+            let pronoun = { ich: 'ich', du: 'du', er: 'er', es: 'er', wir: 'wir', ihr: 'ihr' }[first];
+            if (!pronoun && first === 'sie') pronoun = result.er ? 'sie' : 'er';
+
+            if (pronoun && !result[pronoun]) result[pronoun] = match[2].trim();
+        }
+
+        return Object.keys(result).length ? result : null;
+    },
+
+    /**
+     * Каких форм не хватает карточке.
+     *
+     * Модель иногда возвращает слово с одним переводом и без грамматики.
+     * Заметить это на глаз можно только пролистав словарь, поэтому считаем.
+     * Синонимы, антонимы и Rektion в список не входят: их просили заполнять
+     * только при наличии, выдумывать их не надо.
+     */
+    missingFields: (word) => {
+        const empty = (v) => !String(v ?? '').trim();
+        const missing = [];
+
+        if (empty(word?.translation)) missing.push('translation');
+        if (empty(word?.example_de)) missing.push('example_de');
+        if (empty(word?.example_ru)) missing.push('example_ru');
+
+        if (word?.type === 'noun') {
+            if (!germanUtils.getGender(word)) missing.push('gender');
+            if (empty(word.plural)) missing.push('plural');
+            if (empty(word.dativ)) missing.push('dativ');
+            if (empty(word.akkusativ)) missing.push('akkusativ');
+        } else if (word?.type === 'verb') {
+            const conjugation = germanUtils.getConjugation(word);
+            if (!conjugation || Object.keys(conjugation).length < 6) missing.push('conjugation');
+            if (empty(word.preterite)) missing.push('preterite');
+            if (empty(word.participle_ii)) missing.push('participle_ii');
+            if (empty(word.auxiliary)) missing.push('auxiliary');
+        } else if (word?.type === 'adjective') {
+            if (empty(word.comparative)) missing.push('comparative');
+            if (empty(word.superlative)) missing.push('superlative');
+        }
+
+        return missing;
+    },
+
+    /** Доля заполненных обязательных полей, 0–100. */
+    completeness: (word) => {
+        const total = { noun: 7, verb: 7, adjective: 5 }[word?.type] || 3;
+        const missing = germanUtils.missingFields(word).length;
+        return Math.round(((total - missing) / total) * 100);
     },
 
     // ======================================================
