@@ -149,7 +149,7 @@ export const training = {
          * четырнадцать раз, и любое поле забыть было проще, чем добавить.
          */
         const row = (label, value) => value
-            ? `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${label}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${value}</span></div>`
+            ? `<div class="flex justify-between items-center py-2 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${label}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${value}</span></div>`
             : '';
 
         let tableRows = '';
@@ -223,9 +223,12 @@ export const training = {
                 <!--
                     Карточка прокручивается внутри себя, и на телефоне это
                     читалось как обрезанный текст: содержимое просто упиралось
-                    в кнопки. Поэтому снизу лежит затемнение, а рядом с ним —
-                    подсказка, что ниже есть ещё; и то и другое исчезает,
-                    когда прокручивать больше некуда.
+                    в кнопки. Поэтому под ней подсказка, что ниже есть ещё;
+                    она исчезает, когда прокручивать больше некуда.
+
+                    Затемнения внизу карточки нет намеренно: оно гасило
+                    последние строки примера, и текст выглядел испорченным —
+                    ровно та жалоба, ради которой подсказку и добавляли.
                 -->
                 <div class="flex-1 min-h-0 relative">
                     <div id="card-scroll" class="h-full overflow-y-auto hide-scrollbar pb-3">
@@ -240,8 +243,8 @@ export const training = {
                                 </div>
                             </div>
 
-                            <div id="card-back" class="hidden flex-col p-5 bg-[#171d2b] border-t border-slate-700/50">
-                                <h3 class="text-3xl font-bold text-amber-500 text-center mb-6 drop-shadow-md">${word.translation}</h3>
+                            <div id="card-back" class="hidden flex-col p-4 bg-[#171d2b] border-t border-slate-700/50">
+                                <h3 class="text-3xl font-bold text-amber-500 text-center mb-4 drop-shadow-md">${word.translation}</h3>
                                 ${grammarBlock}
                                 <div class="bg-[#1b2234] p-4 rounded-xl border border-slate-700/70 shadow-inner">
                                     <p class="text-slate-200 font-bold italic mb-2">"${word.example_de || ''}"</p>
@@ -250,8 +253,6 @@ export const training = {
                             </div>
                         </div>
                     </div>
-
-                    <div id="card-fade" class="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900 to-transparent opacity-0 transition-opacity duration-200"></div>
                 </div>
 
                 <!--
@@ -338,15 +339,12 @@ export const training = {
      */
     updateScrollHint: () => {
         const scroll = document.getElementById('card-scroll');
-        const fade = document.getElementById('card-fade');
         const more = document.getElementById('card-more');
-        if (!scroll || !fade || !more) return;
+        if (!scroll || !more) return;
 
         const apply = () => {
             const остаток = scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop;
-            const показать = остаток > 8;
-            fade.classList.toggle('opacity-0', !показать);
-            more.classList.toggle('opacity-0', !показать);
+            more.classList.toggle('opacity-0', остаток <= 8);
         };
 
         if (!scroll.dataset.hintBound) {
@@ -354,7 +352,11 @@ export const training = {
             scroll.dataset.hintBound = '1';
         }
 
-        // Разметка только что вставлена — размеры появятся на следующем кадре
+        // Считаем сразу и ещё раз на следующем кадре: сразу — потому что
+        // в свёрнутом приложении кадры не рисуются и rAF не сработает,
+        // повторно — потому что разметку только что вставили и размеры
+        // могут ещё не устояться
+        apply();
         requestAnimationFrame(apply);
     },
 
