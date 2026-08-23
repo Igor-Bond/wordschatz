@@ -18,6 +18,8 @@ import { db, dbService } from './services/db.js';
 import { aiService } from './services/ai.js';
 import { dateUtils } from './core/dates.js';
 import { srs } from './core/srs.js';
+import { germanUtils } from './core/german.js';
+import { quiz } from './core/quiz.js';
 import { lessonStateManager } from './core/lessonState.js';
 import { scheduler } from './core/scheduler.js';
 import { onboarding } from './modules/onboarding.js';
@@ -43,7 +45,7 @@ import { app } from './app.js';
  */
 Object.assign(window, {
     i18n, t, plural,
-    config, db, dbService, aiService, dateUtils, srs, lessonStateManager, scheduler,
+    config, db, dbService, aiService, dateUtils, srs, germanUtils, quiz, lessonStateManager, scheduler,
     onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
 });
 

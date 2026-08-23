@@ -1,3 +1,4 @@
+import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -339,6 +340,18 @@ export const profile = {
         profile.renderDictList();
     },
 
+    /**
+     * Слово с подсветкой рода: der синий, die красный, das зелёный.
+     * Общепринятая мнемоника — цвет запоминается вместе со словом.
+     */
+    renderWordWithGender: (word) => {
+        const gender = germanUtils.getGender(word);
+        if (!gender) return word.word;
+
+        const color = germanUtils.GENDER_COLORS[gender] || 'text-slate-400';
+        return `<span class="${color}">${gender}</span> ${germanUtils.stripArticle(word)}`;
+    },
+
     /** Экранирование для подстановки в атрибут. */
     escapeAttr: (str) => String(str ?? '')
         .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -426,7 +439,7 @@ export const profile = {
                     <div class="absolute left-0 top-0 bottom-0 w-1 ${accent}"></div>
 
                     <div class="pl-2 flex-1 mr-3 cursor-pointer min-w-0" onclick="profile.openEditModal(${w.id})">
-                        <h4 class="text-lg font-bold text-slate-100 truncate">${w.word}</h4>
+                        <h4 class="text-lg font-bold text-slate-100 truncate">${profile.renderWordWithGender(w)}</h4>
                         <p class="text-sm text-amber-500 truncate">${w.translation}</p>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <span class="text-[10px] text-slate-500 uppercase">${t('wordTypes.' + (profile.WORD_TYPES.includes(w.type) ? w.type : 'phrase'))}</span>

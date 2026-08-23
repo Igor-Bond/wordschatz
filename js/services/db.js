@@ -63,6 +63,68 @@ db.version(3).stores({
     console.log('[DB] Миграция 3 завершена: проставлены updatedAt и deletedAt.');
 });
 
+// Версия 4 (разбор грамматики: род, спряжение, Akkusativ, признак проверки)
+db.version(4).stores({
+    words: '++id, word, translation, type, topic, interval, ease, repetitions, isDifficult, nextReview, createdAt, cycleId, status, mastery, updatedAt, gender, verified',
+    cycles: '++id, title, status, updatedAt',
+    dayPlans: '++id, cycleId, date, dailyGoal, status, updatedAt',
+    lessonState: '++id, date, status, currentStep, data, updatedAt',
+    mistakes: '++id, wordId, taskType, userInput, timestamp',
+    stats: '++id, date, xp, reviewsCount, newWordsCount, updatedAt',
+    user: 'id, league, totalXP, currentStreak, lastActiveDate, updatedAt'
+}).upgrade(async (tx) => {
+    console.log('[DB] Миграция на версию 4...');
+
+    await tx.words.toCollection().modify(word => {
+        // Род вытаскиваем из самого слова: «der Tisch» → gender: 'der'.
+        // Для старых карточек это бесплатно и сразу чинит задание на артикли.
+        if (word.gender === undefined) {
+            const parts = String(word.word ?? '').trim().split(/\s+/);
+            const first = (parts[0] || '').toLowerCase();
+            word.gender = (parts.length > 1 && ['der', 'die', 'das'].includes(first)) ? first : null;
+        }
+
+        // Спряжение хранилось строкой «ich mache, du machst, er macht» —
+        // из неё нельзя было спросить конкретное лицо. Разбираем, что получится.
+        if (word.conjugation === undefined) {
+            word.conjugation = parsePresentString(word.present);
+        }
+
+        if (word.akkusativ === undefined) word.akkusativ = null;
+
+        // Карточка сгенерирована ИИ и человеком не проверялась
+        if (word.verified === undefined) word.verified = 0;
+    });
+
+    console.log('[DB] Миграция 4 завершена: разобраны род и спряжение.');
+});
+
+/**
+ * Разбор строки спряжения вида «ich mache, du machst, er/sie/es macht».
+ * Возвращает null, если разобрать нечего.
+ */
+function parsePresentString(present) {
+    const text = String(present ?? '').trim();
+    if (!text) return null;
+
+    const PRONOUNS = {
+        ich: 'ich', du: 'du', er: 'er', sie: 'er', es: 'er',
+        wir: 'wir', ihr: 'ihr'
+    };
+
+    const result = {};
+    for (const chunk of text.split(/[,;]/)) {
+        const match = chunk.trim().match(/^([a-zäöüß/]+)\s+(.+)$/i);
+        if (!match) continue;
+
+        // «er/sie/es macht» — берём первое местоимение
+        const pronoun = PRONOUNS[match[1].toLowerCase().split('/')[0]];
+        if (pronoun && !result[pronoun]) result[pronoun] = match[2].trim();
+    }
+
+    return Object.keys(result).length ? result : null;
+}
+
 const DEFAULT_USER = {
     id: 1,
     league: 'wooden',
@@ -106,6 +168,10 @@ export const dbService = {
             status: 'new',
             mastery: 0,
             cycleId: null,
+            gender: null,                  // род существительного отдельным полем
+            conjugation: null,             // спряжение объектом, а не строкой
+            akkusativ: null,
+            verified: 0,                   // карточку ещё не проверял человек
             ...rest,                       // переданные поля важнее значений по умолчанию
             createdAt: rest.createdAt || now,   // при импорте дата создания сохраняется
             updatedAt: now,

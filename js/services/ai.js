@@ -285,13 +285,39 @@ export const aiService = {
         return new AiError('unknown', 'ai.unknown', e?.message || '');
     },
 
+    /**
+     * Формат карточки.
+     *
+     * Что изменилось и зачем:
+     *   - gender отдельным полем. Раньше род жил только внутри строки
+     *     «der Tisch», и если модель артикль не поставила, задание на
+     *     артикли подставляло «der» и учило неправильному;
+     *   - conjugation объектом вместо строки «ich mache, du machst…»:
+     *     из строки нельзя спросить конкретное лицо, а у сильных глаголов
+     *     (ich nehme / du nimmst) как раз это и трудно;
+     *   - akkusativ у существительных: у слабых (der Student → den Studenten)
+     *     эта форма не выводится из рода и постоянно ловит людей.
+     */
     _getJsonFormat: () => {
         return `[
-            {"type":"noun", "word":"слово с артиклем (der Tisch)", "translation":"перевод", "plural":"мн.ч. (die Tische)", "dativ":"форма в Dativ (dem Tisch)", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод", "topic":"категория"},
-            {"type":"verb", "word":"инфинитив", "translation":"перевод", "present":"ich ..., du ..., er/sie/es ...", "preterite":"Präteritum", "participle_ii":"Partizip II", "auxiliary":"haben/sein", "rektion":"предлог + падеж", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод", "topic":"категория"},
-            {"type":"adjective", "word":"слово", "translation":"перевод", "comparative":"сравн.", "superlative":"превосх.", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод", "topic":"категория"},
-            {"type":"phrase", "word":"фраза", "translation":"перевод", "synonym":"синоним", "example_de":"пример", "example_ru":"перевод", "topic":"категория"}
+            {"type":"noun", "word":"der Tisch", "gender":"der", "translation":"перевод", "plural":"die Tische", "dativ":"dem Tisch", "akkusativ":"den Tisch", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
+            {"type":"verb", "word":"machen", "translation":"перевод", "conjugation":{"ich":"mache","du":"machst","er":"macht","wir":"machen","ihr":"macht","sie":"machen"}, "preterite":"machte", "participle_ii":"gemacht", "auxiliary":"haben", "rektion":"machen + Akkusativ", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
+            {"type":"adjective", "word":"hell", "translation":"перевод", "comparative":"heller", "superlative":"am hellsten", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
+            {"type":"phrase", "word":"фраза", "translation":"перевод", "synonym":"синоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"}
         ]`;
+    },
+
+    /** Требования к заполнению полей — выносим отдельно, промпт длинный. */
+    _getFieldRules: () => {
+        const lang = i18n.aiLanguage();
+        return `ПРАВИЛА ЗАПОЛНЕНИЯ:
+        1. Существительные: word ОБЯЗАТЕЛЬНО с артиклем («der Tisch»), и тот же артикль продублируй в поле gender («der», «die» или «das»). Заполни plural, dativ и akkusativ. Для слабых существительных akkusativ отличается от именительного: der Student → den Studenten.
+        2. Глаголы: conjugation — объект со всеми шестью формами Präsens. У сильных глаголов не забывай смену корневой гласной: ich nehme, du nimmst, er nimmt. Заполни preterite, participle_ii и auxiliary («haben» или «sein»).
+        3. rektion заполняй только если у глагола действительно есть управление, в виде «глагол + предлог + падеж» («warten auf + Akkusativ») или «глагол + падеж» («helfen + Dativ»). Падеж пиши полным словом.
+        4. Прилагательные: comparative и superlative («heller», «am hellsten»).
+        5. synonym и gegenteil заполняй, если они есть; выдумывать не нужно.
+        6. ЯЗЫК ПЕРЕВОДА: translation и example_ru — на языке "${lang.name}".
+        7. example_de — живое предложение, показывающее употребление слова.`;
     },
 
     // ======================================================
@@ -527,9 +553,6 @@ export const aiService = {
     /** Одна порция слов от ИИ. Исключения передаём в промпт, чтобы не повторялся. */
     _generateBatch: async (topic, requestCount, excludeList = []) => {
         const profile = config.getProfile();
-        const lang = i18n.aiLanguage();
-        const rule = `ОБЯЗАТЕЛЬНО: Существительным заполняй plural и dativ. Глаголам — спряжение present (ich, du, er) и rektion. Всем словам подбирай synonym (синоним) и gegenteil (антоним), если это возможно.
-        ЯЗЫК ПЕРЕВОДА: поля translation и example_ru должны быть на языке "${lang.name}", а не на русском, если указан другой язык.`;
 
         // Длинный список исключений раздувает промпт — берём последние 60
         const exclude = excludeList.slice(-60);
@@ -539,7 +562,7 @@ export const aiService = {
 
         const prompt = `Сгенерируй ровно ${requestCount} немецких слов уровня ${profile.level} по теме "${topic}".
         Сделай примеры предложений (example_de) интересными, опираясь на увлечения пользователя: ${profile.interests}.
-        ${rule}${excludeRule}
+        ${aiService._getFieldRules()}${excludeRule}
         Верни ТОЛЬКО плоский JSON массив. Формат: \n${aiService._getJsonFormat()}`;
 
         const responseText = await aiService.callGemini(prompt, true);

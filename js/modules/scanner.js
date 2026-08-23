@@ -102,11 +102,9 @@ export const scanner = {
         scanner.showLoader(t('scanner.loadingWord', { word: input }));
         
         try {
-            const prompt = `Пользователь ввел слово/фразу: "${input}". 
-            Определи часть речи, переведи на язык ${i18n.aiLanguage().name}.
-            Если это существительное - дай plural и dativ. 
-            Если глагол - present (ich, du, er) и rektion. 
-            Дай антоним (gegenteil) если есть, и составь живой пример.
+            const prompt = `Пользователь ввел слово/фразу: "${input}".
+            Определи часть речи и заполни карточку.
+            ${aiService._getFieldRules()}
             Верни ТОЛЬКО 1 объект в JSON массиве. Формат:
 ${aiService._getJsonFormat()}`;
             
@@ -141,12 +139,10 @@ ${aiService._getJsonFormat()}`;
         
         try {
             const profile = config.getProfile();
-            const prompt = `Проанализируй текст: "${text}". 
+            const prompt = `Проанализируй текст: "${text}".
             Найди от 5 до 10 самых полезных незнакомых слов для студента уровня ${profile.level}.
-            Определи часть речи, переведи на язык ${i18n.aiLanguage().name}.
-            Если это существительное - дай plural и dativ. 
-            Если глагол - present (ich, du, er) и rektion. 
-            Дай антоним (gegenteil) если есть, и вытащи предложение с этим словом из текста (или составь свое).
+            В поле example_de по возможности бери предложение с этим словом прямо из текста.
+            ${aiService._getFieldRules()}
             Верни JSON массив объектов. Формат:
 ${aiService._getJsonFormat()}`;
             

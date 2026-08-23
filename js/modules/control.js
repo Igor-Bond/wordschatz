@@ -147,8 +147,10 @@ export const control = {
     renderArticle: (word) => {
         // Тот же разбор, что и в упражнениях: без артикля в слове
         // подставлялся «der», и экзамен требовал неверный род
-        const { article, base: pureWord } = germanUtils.parseNoun(word.word);
+        const article = germanUtils.getGender(word);
         if (!article) return null;
+
+        const pureWord = germanUtils.stripArticle(word);
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">

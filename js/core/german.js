@@ -49,10 +49,55 @@ export const germanUtils = {
         return { article: null, base: text };
     },
 
+    /**
+     * Род существительного.
+     * Сначала смотрим отдельное поле gender, потом артикль в самом слове —
+     * старые карточки поля не имеют.
+     */
+    getGender: (word) => {
+        if (!word) return null;
+
+        const stored = String(word.gender ?? '').toLowerCase();
+        if (germanUtils.ARTICLES.includes(stored)) return stored;
+
+        return germanUtils.parseNoun(word.word).article;
+    },
+
     /** Можно ли спрашивать артикль у этого слова. */
     hasKnownArticle: (word) => {
         if (!word || word.type !== 'noun') return false;
-        return germanUtils.parseNoun(word.word).article !== null;
+        return germanUtils.getGender(word) !== null;
+    },
+
+    /** Слово без артикля: «der Tisch» → «Tisch». */
+    stripArticle: (word) => germanUtils.parseNoun(word?.word).base,
+
+    /** Цвет рода — общепринятая мнемоника: der синий, die красный, das зелёный. */
+    GENDER_COLORS: {
+        der: 'text-blue-400',
+        die: 'text-red-400',
+        das: 'text-green-400'
+    },
+
+    // ======================================================
+    //  Спряжение
+    // ======================================================
+
+    PERSONS: ['ich', 'du', 'er', 'wir', 'ihr', 'sie'],
+
+    PERSON_LABELS: { ich: 'ich', du: 'du', er: 'er/sie/es', wir: 'wir', ihr: 'ihr', sie: 'sie/Sie' },
+
+    /**
+     * Спряжение объектом.
+     * Новые карточки хранят его в conjugation, старые — строкой в present.
+     */
+    getConjugation: (word) => {
+        if (word?.conjugation && typeof word.conjugation === 'object') {
+            const filled = Object.entries(word.conjugation)
+                .filter(([, form]) => String(form ?? '').trim());
+            if (filled.length) return Object.fromEntries(filled);
+        }
+        return null;
     },
 
     // ======================================================

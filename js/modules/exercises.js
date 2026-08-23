@@ -230,8 +230,11 @@ export const exercises = {
         // молча подставлялся «der», и приложение объявляло «der Lampe»
         // правильным ответом. Слова без артикля до этого задания не доходят
         // (см. фильтр в renderCurrent), но подстраховываемся.
-        const { article, base: pureWord } = germanUtils.parseNoun(word.word);
-        if (!article) return null;   // без артикля спрашивать нечего
+        // Род берём из отдельного поля, а при его отсутствии — из самого слова
+        const article = germanUtils.getGender(word);
+        if (!article) return null;   // род неизвестен — спрашивать нечего
+
+        const pureWord = germanUtils.stripArticle(word);
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
