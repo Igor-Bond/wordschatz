@@ -226,7 +226,7 @@ export const training = {
                     когда прокручивать больше некуда.
                 -->
                 <div class="flex-1 min-h-0 relative">
-                    <div id="card-scroll" class="h-full overflow-y-auto hide-scrollbar pb-4">
+                    <div id="card-scroll" class="h-full overflow-y-auto hide-scrollbar pb-3">
                         <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative">
                             <div id="card-front" class="p-8 flex flex-col items-center justify-center text-center relative z-10 min-h-[200px] transition-all duration-200">
                                 <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4" id="card-type">${word.type}</span>
@@ -249,12 +249,19 @@ export const training = {
                         </div>
                     </div>
 
-                    <div id="card-fade" class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-slate-900 to-transparent opacity-0 transition-opacity duration-200"></div>
-                    <div id="card-more" class="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center opacity-0 transition-opacity duration-200">
-                        <span class="text-[10px] font-bold text-amber-500/90 bg-slate-900/80 border border-amber-500/30 rounded-full px-2.5 py-1">
-                            <i class="fa-solid fa-chevron-down mr-1"></i>${t('training.scrollHint')}
-                        </span>
-                    </div>
+                    <div id="card-fade" class="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900 to-transparent opacity-0 transition-opacity duration-200"></div>
+                </div>
+
+                <!--
+                    Подсказка живёт отдельной строкой, а не поверх карточки:
+                    плашка поверх закрывала перевод примера. Строка есть всегда,
+                    меняется только видимость — иначе карточка прыгала бы на её
+                    высоту, когда прокручивать становится нечего.
+                -->
+                <div id="card-more" class="shrink-0 h-6 flex justify-center items-center opacity-0 transition-opacity duration-200">
+                    <span class="text-[10px] font-bold text-amber-500/90">
+                        <i class="fa-solid fa-chevron-down mr-1"></i>${t('training.scrollHint')}
+                    </span>
                 </div>
 
                 <div id="controls-front" class="shrink-0 pb-2">

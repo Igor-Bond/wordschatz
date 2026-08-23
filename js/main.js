@@ -25,6 +25,7 @@ import { germanUtils } from './core/german.js';
 import { quiz } from './core/quiz.js';
 import { lessonStateManager } from './core/lessonState.js';
 import { install } from './core/install.js';
+import { wiktionary } from './services/wiktionary.js';
 import { masteryUtils } from './core/mastery.js';
 import { scheduler } from './core/scheduler.js';
 import { onboarding } from './modules/onboarding.js';
@@ -51,7 +52,7 @@ import { app } from './app.js';
 Object.assign(window, {
     i18n, t, plural,
     config, db, dbService, aiService, auth, sync, dateUtils, srs, germanUtils, quiz, dialog, lessonStateManager, scheduler,
-    install, masteryUtils,
+    install, masteryUtils, wiktionary,
     onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
 });
 

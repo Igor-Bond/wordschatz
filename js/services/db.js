@@ -220,6 +220,7 @@ export const dbService = {
             akkusativ: null,
             verified: 0,                   // карточку ещё не проверял человек
             recent: [],                    // последние ответы: 1 верно, 0 нет
+            mismatches: [],                // расхождения с Wiktionary
             attempts: 0,
             correct: 0,
             ...rest,                       // переданные поля важнее значений по умолчанию

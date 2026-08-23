@@ -5,6 +5,7 @@ import { masteryUtils } from '../core/mastery.js';
 import { dialog } from '../core/dialog.js';
 import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
+import { wiktionary } from '../services/wiktionary.js';
 import { i18n, t, plural } from '../i18n/i18n.js';
 import { aiService } from '../services/ai.js';
 import { dbService } from '../services/db.js';
@@ -256,6 +257,8 @@ export const profile = {
 
                 ${profile.renderCompleteness(allWords)}
 
+                ${profile.renderVerification(allWords)}
+
                 <!-- Топ слабых мест -->
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1 mt-2">${t('profile.weakSpots')}</h3>
                 <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
@@ -285,7 +288,7 @@ export const profile = {
 
     WORD_TYPES: ['noun', 'verb', 'adjective', 'phrase'],
 
-    STATUSES: ['all', 'difficult', 'learning', 'mastered', 'incomplete'],
+    STATUSES: ['all', 'difficult', 'learning', 'mastered', 'incomplete', 'mismatch'],
 
     SORTS: ['recent', 'alphabet', 'mastery'],
 
@@ -457,6 +460,145 @@ export const profile = {
     },
 
     /**
+     * Сверка с Wiktionary.
+     *
+     * Карточки пишет языковая модель, и ошибку в роде или в Perfekt заметить
+     * некому. Здесь видно, сколько слов сверено и где нашлись расхождения.
+     */
+    renderVerification: (allWords) => {
+        const checkable = allWords.filter(w => ['noun', 'verb', 'adjective'].includes(w.type));
+        if (checkable.length === 0) return '';
+
+        const S = wiktionary.STATUS;
+        const счёт = (status) => checkable.filter(w => (w.verified || 0) === status).length;
+
+        const ok = счёт(S.OK);
+        const mismatched = счёт(S.MISMATCH);
+        const notFound = счёт(S.NOT_FOUND);
+        const pending = checkable.length - ok - mismatched - notFound;
+
+        return `
+            <div class="bg-slate-800 px-4 py-3 rounded-2xl border border-slate-700 shadow-md">
+                <div class="flex items-center gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="text-xs font-bold text-slate-300">${t('profile.verification')}</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">
+                            ${pending
+                                ? t('profile.verifyPending', { count: pending })
+                                : t('profile.verifyAllDone')}
+                            ${mismatched ? ` · <span class="text-red-400 font-bold">${t('profile.verifyMismatched', { count: mismatched })}</span>` : ''}
+                            ${notFound ? ` · ${t('profile.verifyNotFound', { count: notFound })}` : ''}
+                        </div>
+                    </div>
+                    ${mismatched ? `
+                        <button onclick="profile.showMismatched()"
+                            class="shrink-0 px-3 py-2 bg-slate-900 border border-red-500/40 text-red-400 text-xs font-bold rounded-xl hover:border-red-500 active:scale-95 transition-all">
+                            ${mismatched} <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i>
+                        </button>` : ''}
+                    ${pending ? `
+                        <button onclick="profile.verifyAll()" id="prof-verify-btn" title="${profile.escapeAttr(t('profile.verifyHint'))}"
+                            class="shrink-0 px-3 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                            <i class="fa-solid fa-book-open-reader"></i>
+                        </button>` : ''}
+                </div>
+            </div>
+        `;
+    },
+
+    /** Сверить все ещё не сверенные слова. */
+    verifyAll: async () => {
+        const btn = document.getElementById('prof-verify-btn');
+        const all = await dbService.getAllWords();
+        const pending = all.filter(w =>
+            ['noun', 'verb', 'adjective'].includes(w.type) && !(w.verified > 0)
+        );
+
+        if (!pending.length) return;
+
+        const ok = await dialog.confirm(
+            t('profile.verifyConfirm', { words: plural('common.word', pending.length) })
+        );
+        if (!ok) return;
+
+        if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`; }
+
+        const results = await wiktionary.checkAll(pending, (done, total) => {
+            if (btn) btn.innerHTML = `<span class="text-[10px]">${done}/${total}</span>`;
+        });
+
+        let mismatched = 0;
+        let filled = 0;
+        let failed = 0;
+
+        for (const result of results) {
+            // Слово, до которого не достучались, остаётся в очереди
+            if (result.status === wiktionary.STATUS.UNCHECKED) { failed++; continue; }
+
+            const changes = {
+                verified: result.status,
+                verifiedAt: Date.now(),
+                mismatches: result.diffs
+            };
+
+            // Пустые поля Wiktionary закрывает бесплатно — грех не взять
+            if (Object.keys(result.fill).length) {
+                Object.assign(changes, result.fill);
+                filled++;
+            }
+
+            await dbService.updateWord(result.word.id, changes);
+            if (result.status === wiktionary.STATUS.MISMATCH) mismatched++;
+        }
+
+        profile._dictCache = [];
+        await profile.renderStats();
+        await profile.renderDictionary();
+
+        await dialog.alert(
+            t('profile.verifyDone', { checked: results.length - failed, mismatched, filled })
+            + (failed ? `\n\n${t('profile.verifyFailed', { count: failed })}` : '')
+        );
+    },
+
+    /** Разбор расхождений по одному слову. */
+    showMismatches: async (id) => {
+        const word = (await dbService.getAllWords()).find(w => w.id === id);
+        if (!word?.mismatches?.length) return;
+
+        const lines = word.mismatches
+            .map(d => `${t('fields.' + d.field)}\n     ${t('profile.diffOurs')}: ${d.ours}\n     ${t('profile.diffTheirs')}: ${d.theirs}`)
+            .join('\n\n');
+
+        const choice = await dialog.choose(
+            `${word.word}\n\n${lines}`,
+            [
+                { value: 'fix', label: t('profile.diffApply'), hint: t('profile.diffApplyHint'), primary: true },
+                { value: 'keep', label: t('profile.diffKeep'), hint: t('profile.diffKeepHint') }
+            ],
+            { title: t('profile.diffTitle') }
+        );
+
+        if (choice === null) return;
+
+        const changes = { verified: wiktionary.STATUS.OK, mismatches: [], verifiedAt: Date.now() };
+        if (choice === 'fix') {
+            for (const diff of word.mismatches) Object.assign(changes, diff.fix || {});
+        }
+
+        await dbService.updateWord(id, changes);
+        profile._dictCache = [];
+        await profile.renderDictionary();
+        await profile.renderStats();
+    },
+
+    /** Словарь, отфильтрованный по расхождениям. */
+    showMismatched: () => {
+        profile.switchTab('dict');
+        profile.dictFilters.status = 'mismatch';
+        profile.renderDictionary();
+    },
+
+    /**
      * Дозаполнение карточек через ИИ.
      *
      * Просим только недостающие поля и записываем только их: ручные правки
@@ -469,7 +611,31 @@ export const profile = {
      */
     completeCards: async (words, onProgress = null) => {
         const BATCH = 8;
-        let updated = 0;
+        const touched = new Set();
+
+        // Сначала Wiktionary: он точнее модели и не тратит квоту ключа.
+        // Модель добьёт то, чего в словарной статье нет, — примеры и синонимы
+        const остаток = [];
+        for (const word of words) {
+            let changes = {};
+            try {
+                const entry = await wiktionary.lookup(word);
+                if (entry) changes = wiktionary.fillFrom(word, entry);
+            } catch (e) {
+                console.error('[Словарь] Wiktionary недоступен:', e);
+            }
+
+            if (Object.keys(changes).length) {
+                await dbService.updateWord(word.id, changes);
+                touched.add(word.id);
+                Object.assign(word, changes);      // чтобы модель не просили о том же
+            }
+
+            if (germanUtils.missingFields(word).length) остаток.push(word);
+        }
+
+        words = остаток;
+        if (!words.length) return touched.size;
 
         for (let i = 0; i < words.length; i += BATCH) {
             const batch = words.slice(i, i + BATCH);
@@ -506,14 +672,14 @@ export const profile = {
 
                 if (Object.keys(changes).length) {
                     await dbService.updateWord(local.id, changes);
-                    updated++;
+                    touched.add(local.id);
                 }
             }
 
             if (onProgress) onProgress(Math.min(i + BATCH, words.length), words.length);
         }
 
-        return updated;
+        return touched.size;
     },
 
     /** Дозаполнить все неполные карточки словаря. */
@@ -808,6 +974,7 @@ export const profile = {
             if (status === 'mastered' && !masteryUtils.isLearned(w)) return false;
             if (status === 'learning' && (!(w.repetitions > 0) || masteryUtils.isLearned(w))) return false;
             if (status === 'incomplete' && germanUtils.missingFields(w).length === 0) return false;
+            if (status === 'mismatch' && !(w.mismatches && w.mismatches.length)) return false;
 
             if (!needle) return true;
 
@@ -868,6 +1035,8 @@ export const profile = {
                             <span class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</span>
                             ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
                             ${gaps.length ? `<span class="text-[10px] bg-amber-900/30 text-amber-500 px-1.5 rounded uppercase font-bold border border-amber-500/20" title="${profile.escapeAttr(gaps.join(', '))}">${t('profile.incompleteBadge', { count: gaps.length })}</span>` : ''}
+                            ${w.mismatches?.length ? `<span onclick="event.stopPropagation(); profile.showMismatches(${w.id})" class="text-[10px] bg-red-900/40 text-red-400 px-1.5 rounded uppercase font-bold border border-red-500/30 cursor-pointer">${t('profile.mismatchBadge', { count: w.mismatches.length })}</span>` : ''}
+                            ${w.verified === 1 ? `<span class="text-[10px] text-green-500/80" title="${profile.escapeAttr(t('profile.verifiedBadge'))}"><i class="fa-solid fa-circle-check"></i></span>` : ''}
                         </div>
                     </div>
 
@@ -968,6 +1137,11 @@ export const profile = {
             word.comparative = grammar1;
             word.superlative = grammar2;
         }
+
+        // Формы изменились — прошлая сверка к ним больше не относится,
+        // слово возвращается в очередь на проверку
+        word.verified = wiktionary.STATUS.UNCHECKED;
+        word.mismatches = [];
 
         await dbService.putWord(word);
         profile.closeEditModal();

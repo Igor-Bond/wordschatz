@@ -59,7 +59,7 @@ export const room = {
                         <i class="fa-solid fa-link text-green-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeRektion')}</span>
                     </button>
-                    <button onclick="room.startExerciseMode(['listening'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-col items-center gap-2 col-span-2 active:scale-95">
+                    <button onclick="room.startExerciseMode(['listening'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-headphones text-teal-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeListening')}</span>
                     </button>
