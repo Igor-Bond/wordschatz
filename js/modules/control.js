@@ -1,9 +1,12 @@
+import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { scheduler } from '../core/scheduler.js';
 import { dashboard } from './dashboard.js';
 
 export const control = {
+    acceptedAnswers: null,
+
     state: {
         cycleId: null, // Добавлено для закрытия темы
         questions: [],
@@ -62,7 +65,7 @@ export const control = {
                 questions.push({ word: word, type: 'translation_ru_de' });
             }
 
-            if (word.type === 'noun' && Math.random() > 0.4) {
+            if (germanUtils.hasKnownArticle(word) && Math.random() > 0.4) {
                 questions.push({ word: word, type: 'article' });
             }
 
@@ -96,14 +99,19 @@ export const control = {
                 </div>
         `;
 
+        let block = null;
         if (q.type === 'translation_de_ru' || q.type === 'translation_ru_de') {
-            html += await control.renderTranslation(q.word, q.type);
+            block = await control.renderTranslation(q.word, q.type);
         } else if (q.type === 'article') {
-            html += control.renderArticle(q.word);
+            block = control.renderArticle(q.word);
         } else if (q.type === 'verb_form') {
-            html += control.renderVerbForm(q.word);
+            block = control.renderVerbForm(q.word);
         }
 
+        // Если формы для вопроса не хватило — спрашиваем перевод
+        if (!block) block = await control.renderTranslation(q.word, 'translation_de_ru');
+
+        html += block;
         html += `</div>`;
         main.innerHTML = html;
 
@@ -136,13 +144,11 @@ export const control = {
     },
 
     renderArticle: (word) => {
-        const parts = word.word.split(' ');
-        let article = 'der';
-        let pureWord = word.word;
-        if (parts.length > 1 && ['der', 'die', 'das'].includes(parts[0].toLowerCase())) {
-            article = parts[0].toLowerCase();
-            pureWord = parts.slice(1).join(' ');
-        }
+        // Тот же разбор, что и в упражнениях: без артикля в слове
+        // подставлялся «der», и экзамен требовал неверный род
+        const { article, base: pureWord } = germanUtils.parseNoun(word.word);
+        if (!article) return null;
+
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
                 <h3 class="text-sm font-bold text-slate-400 mb-6">${t('control.whichArticle')}</h3>
@@ -157,8 +163,17 @@ export const control = {
     },
 
     renderVerbForm: (word) => {
-        const askPerfekt = !!word.participle_ii && Math.random() > 0.5;
-        const targetForm = askPerfekt ? (word.auxiliary + ' ' + word.participle_ii).trim() : (word.preterite || word.participle_ii);
+        // Perfekt как в словаре: «hat gemacht», а не «haben gemacht»
+        const perfekt = germanUtils.perfektForm(word);
+        const preteritum = germanUtils.preteritumForm(word);
+
+        const askPerfekt = perfekt && (!preteritum || Math.random() > 0.5);
+        const form = askPerfekt ? perfekt : preteritum;
+        if (!form) return null;
+
+        const targetForm = form.primary;
+        control.acceptedAnswers = form.accepted;
+
         const label = askPerfekt ? t('exercises.perfektLabel') : 'Präteritum (ich/er/sie/es)';
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
@@ -195,15 +210,18 @@ export const control = {
         const input = document.getElementById('ctrl-input');
         const btn = document.getElementById('ctrl-submit');
         
-        const selected = input.value.trim().toLowerCase();
-        const correctLower = correct.toLowerCase();
+        const selected = input.value.trim();
+
+        const accepted = control.acceptedAnswers?.length ? control.acceptedAnswers : [correct];
+        const isCorrect = germanUtils.matchesAnswer(selected, accepted);
+        control.acceptedAnswers = null;
 
         input.disabled = true;
         btn.disabled = true;
 
         const q = control.state.questions[control.state.currentIndex];
 
-        if (selected === correctLower) {
+        if (isCorrect) {
             control.state.correctCount++;
             input.classList.add('bg-green-900/50', 'border-green-500', 'text-green-400');
         } else {

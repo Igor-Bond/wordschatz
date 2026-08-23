@@ -1,3 +1,4 @@
+import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { lessonStateManager } from '../core/lessonState.js';
@@ -8,6 +9,24 @@ export const exercises = {
     /** Опыт за задание: верно и неверно (за попытку тоже что-то даём). */
     XP_CORRECT: 4,
     XP_WRONG: 1,
+
+    /** Допустимые варианты ответа для текущего задания с вводом. */
+    acceptedAnswers: null,
+
+    /**
+     * Честное перемешивание (Фишер—Йейтс).
+     * Раньше везде стоял sort(() => 0.5 - Math.random()) — это не
+     * перемешивание: компаратор неконсистентен, и правильный ответ
+     * чаще оказывался в одних и тех же позициях.
+     */
+    shuffle: (array) => {
+        const result = [...array];
+        for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+    },
 
     queue: [],
     currentIndex: 0,
@@ -65,27 +84,40 @@ export const exercises = {
         if (!hasRequested || requested.includes('translation_de_ru')) validModes.push('translation_de_ru');
         if (!hasRequested || requested.includes('translation_ru_de')) validModes.push('translation_ru_de');
         if (!hasRequested || requested.includes('match_pairs')) validModes.push('match_pairs');
-        if ((!hasRequested || requested.includes('article')) && word.type === 'noun') validModes.push('article');
+
+        // Артикль спрашиваем, только если он реально известен: иначе задание
+        // подставляло «der» и учило неправильному роду
+        if ((!hasRequested || requested.includes('article')) && germanUtils.hasKnownArticle(word)) validModes.push('article');
+
         if ((!hasRequested || requested.includes('verb_form')) && word.type === 'verb' && (word.preterite || word.participle_ii)) validModes.push('verb_form');
-        if ((!hasRequested || requested.includes('rektion')) && word.type === 'verb' && word.rektion) validModes.push('rektion');
+
+        // Управление — только если из строки удалось вытащить предлог или падеж
+        if ((!hasRequested || requested.includes('rektion')) && germanUtils.hasRektion(word)) validModes.push('rektion');
+
         if ((!hasRequested || requested.includes('fill_blanks')) && word.example_de) validModes.push('fill_blanks');
         if ((!hasRequested || requested.includes('sentence_builder')) && word.example_de) validModes.push('sentence_builder');
         if ((!hasRequested || requested.includes('listening')) && word.word) validModes.push('listening');
 
-        if (validModes.length === 0) validModes.push('translation_de_ru'); 
+        if (validModes.length === 0) validModes.push('translation_de_ru');
 
         const exType = validModes[Math.floor(Math.random() * validModes.length)];
 
-        if (exType === 'article') html += exercises.renderArticleQuiz(word);
-        else if (exType === 'verb_form') html += exercises.renderVerbQuiz(word);
-        else if (exType === 'fill_blanks') html += await exercises.renderFillBlanksQuiz(word);
-        else if (exType === 'sentence_builder') html += exercises.renderSentenceBuilder(word);
-        else if (exType === 'listening') html += exercises.renderListeningQuiz(word);
-        else if (exType === 'rektion') html += exercises.renderRektionQuiz(word);
-        else if (exType === 'match_pairs') html += await exercises.renderMatchPairsQuiz(word);
-        else if (exType === 'translation_ru_de') html += await exercises.renderTranslationQuiz(word, 'ru-de');
-        else html += await exercises.renderTranslationQuiz(word, 'de-ru');
+        let block = null;
+        if (exType === 'article') block = exercises.renderArticleQuiz(word);
+        else if (exType === 'verb_form') block = exercises.renderVerbQuiz(word);
+        else if (exType === 'fill_blanks') block = await exercises.renderFillBlanksQuiz(word);
+        else if (exType === 'sentence_builder') block = exercises.renderSentenceBuilder(word);
+        else if (exType === 'listening') block = exercises.renderListeningQuiz(word);
+        else if (exType === 'rektion') block = exercises.renderRektionQuiz(word);
+        else if (exType === 'match_pairs') block = await exercises.renderMatchPairsQuiz(word);
+        else if (exType === 'translation_ru_de') block = await exercises.renderTranslationQuiz(word, 'ru-de');
+        else block = await exercises.renderTranslationQuiz(word, 'de-ru');
 
+        // Задание может отказаться от слова, если данных не хватает —
+        // тогда подставляем перевод, он подходит любому слову
+        if (!block) block = await exercises.renderTranslationQuiz(word, 'de-ru');
+
+        html += block;
         html += `</div>`;
         main.innerHTML = html;
         
@@ -206,13 +238,13 @@ export const exercises = {
     },
 
     renderArticleQuiz: (word) => {
-        const parts = word.word.split(' ');
-        let article = 'der';
-        let pureWord = word.word;
-        if (parts.length > 1 && ['der', 'die', 'das'].includes(parts[0].toLowerCase())) {
-            article = parts[0].toLowerCase();
-            pureWord = parts.slice(1).join(' ');
-        }
+        // Артикль берём только из самого слова. Раньше при его отсутствии
+        // молча подставлялся «der», и приложение объявляло «der Lampe»
+        // правильным ответом. Слова без артикля до этого задания не доходят
+        // (см. фильтр в renderCurrent), но подстраховываемся.
+        const { article, base: pureWord } = germanUtils.parseNoun(word.word);
+        if (!article) return null;   // без артикля спрашивать нечего
+
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
                 <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.pickArticle')}</h3>
@@ -227,8 +259,19 @@ export const exercises = {
     },
 
     renderVerbQuiz: (word) => {
-        const askPerfekt = !!word.participle_ii && Math.random() > 0.5;
-        const targetForm = askPerfekt ? (word.auxiliary + ' ' + word.participle_ii).trim() : (word.preterite || word.participle_ii);
+        // Perfekt собирается как «hat gemacht» / «ist gegangen».
+        // Раньше склеивалось «haben gemacht», и правильный ответ
+        // пользователя засчитывался как ошибка.
+        const perfekt = germanUtils.perfektForm(word);
+        const preteritum = germanUtils.preteritumForm(word);
+
+        const askPerfekt = perfekt && (!preteritum || Math.random() > 0.5);
+        const form = askPerfekt ? perfekt : preteritum;
+        if (!form) return null;
+
+        const targetForm = form.primary;
+        exercises.acceptedAnswers = form.accepted;
+
         const label = askPerfekt ? t('exercises.perfektLabel') : 'Präteritum (ich/er/sie/es)';
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
@@ -305,25 +348,41 @@ export const exercises = {
     },
 
     renderRektionQuiz: (word) => {
-        const prepMatch = word.rektion.match(/^([a-zäöüß]+)\s*\+/i);
-        const correctPrep = prepMatch ? prepMatch[1].toLowerCase() : word.rektion;
-        
-        const preps = ['auf', 'an', 'für', 'über', 'um', 'mit', 'nach', 'zu', 'von', 'bei'];
-        let options = preps.filter(p => p !== correctPrep).sort(() => 0.5 - Math.random()).slice(0, 3);
-        options.push(correctPrep);
-        options = options.sort(() => 0.5 - Math.random());
+        // Раньше «предлогом» считалось первое слово до знака «+»,
+        // поэтому для «helfen + Dativ» правильным ответом становился
+        // сам глагол. Теперь строка разбирается по-настоящему.
+        const { preposition, kase } = germanUtils.parseRektion(word.rektion);
+        if (!preposition && !kase) return null;
+
+        // У глаголов с предлогом спрашиваем предлог, у остальных — падеж.
+        // Падеж и есть суть управления, раньше его не спрашивали вовсе.
+        const askPreposition = !!preposition;
+        const correct = askPreposition ? preposition : kase;
+        const pool = askPreposition
+            ? germanUtils.PREPOSITIONS
+            : ['Akkusativ', 'Dativ', 'Genitiv'];
+
+        const options = exercises.shuffle([
+            correct,
+            ...exercises.shuffle(pool.filter(p => p !== correct)).slice(0, askPreposition ? 3 : 2)
+        ]);
+
+        const hint = askPreposition && kase
+            ? `<p class="text-[11px] text-slate-500 mt-4">${t('exercises.rektionCaseHint', { kase })}</p>`
+            : '';
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.rektionQuestion')}</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${askPreposition ? t('exercises.rektionQuestion') : t('exercises.rektionCaseQuestion')}</h3>
                 <h2 class="text-4xl font-black text-slate-100 mb-2">${word.word}</h2>
                 <p class="text-slate-500 mb-8 font-bold">${word.translation}</p>
-                
+
                 <div class="grid grid-cols-2 gap-3" id="ex-buttons">
                     ${options.map(opt => `
-                        <button onclick="exercises.checkChoice(this, '${opt}', '${correctPrep}', 'rektion')" class="py-4 bg-slate-900 border-2 border-slate-700 hover:border-amber-500 text-amber-500 font-bold rounded-xl text-lg uppercase tracking-wider active:scale-95 transition-all">${opt}</button>
+                        <button onclick="exercises.checkChoice(this, '${opt}', '${correct}', 'rektion')" class="py-4 bg-slate-900 border-2 border-slate-700 hover:border-amber-500 text-amber-500 font-bold rounded-xl text-lg uppercase tracking-wider active:scale-95 transition-all">${opt}</button>
                     `).join('')}
                 </div>
+                ${hint}
             </div>
         `;
     },
@@ -525,16 +584,21 @@ export const exercises = {
         const feedback = document.getElementById('ex-feedback');
         const btn = document.getElementById('ex-submit');
         
-        const selected = input.value.trim().toLowerCase();
-        const correctLower = correct.toLowerCase();
+        const selected = input.value.trim();
+
+        // У некоторых форм допустимо несколько написаний («hat gemacht»
+        // и «haben gemacht»), поэтому сверяемся со списком, а не со строкой
+        const accepted = exercises.acceptedAnswers?.length ? exercises.acceptedAnswers : [correct];
+        const isCorrect = germanUtils.matchesAnswer(selected, accepted);
+        exercises.acceptedAnswers = null;
 
         input.disabled = true;
         btn.disabled = true;
         feedback.classList.remove('hidden');
 
-        exercises.awardXP(selected === correctLower);
+        exercises.awardXP(isCorrect);
 
-        if (selected === correctLower) {
+        if (isCorrect) {
             input.classList.remove('bg-slate-900', 'border-slate-600');
             input.classList.add('bg-green-900/40', 'border-green-500', 'text-green-400');
             
