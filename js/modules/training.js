@@ -172,6 +172,16 @@ export const training = {
             const perfekt = germanUtils.perfektForm(word);
             if (perfekt) tableRows += row('Perfekt', perfekt.primary);
 
+            tableRows += row('Konjunktiv II', word.konjunktiv2);
+
+            // Повелительное наклонение двумя формами в одной строке:
+            // «atme! / atmet!» — так его и подают учебники
+            const imperative = [word.imperative_singular, word.imperative_plural]
+                .filter(f => String(f ?? '').trim())
+                .map(f => `${f}!`)
+                .join(' / ');
+            tableRows += row('Imperativ', imperative);
+
             tableRows += row('Rektion', word.rektion);
 
             // Präsens теперь приходит объектом из шести форм. Карточка читала

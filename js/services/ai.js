@@ -301,7 +301,7 @@ export const aiService = {
     _getJsonFormat: () => {
         return `[
             {"type":"noun", "word":"der Tisch", "gender":"der", "translation":"перевод", "plural":"die Tische", "dativ":"dem Tisch", "akkusativ":"den Tisch", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
-            {"type":"verb", "word":"machen", "translation":"перевод", "conjugation":{"ich":"mache","du":"machst","er":"macht","wir":"machen","ihr":"macht","sie":"machen"}, "preterite":"machte", "participle_ii":"gemacht", "auxiliary":"haben", "rektion":"machen + Akkusativ", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
+            {"type":"verb", "word":"machen", "translation":"перевод", "conjugation":{"ich":"mache","du":"machst","er":"macht","wir":"machen","ihr":"macht","sie":"machen"}, "preterite":"machte", "participle_ii":"gemacht", "auxiliary":"haben", "imperative_singular":"mach", "imperative_plural":"macht", "konjunktiv2":"machte", "rektion":"machen + Akkusativ", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
             {"type":"adjective", "word":"hell", "translation":"перевод", "comparative":"heller", "superlative":"am hellsten", "synonym":"синоним", "gegenteil":"антоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"},
             {"type":"phrase", "word":"фраза", "translation":"перевод", "synonym":"синоним", "example_de":"пример", "example_ru":"перевод примера", "topic":"категория"}
         ]`;
@@ -312,7 +312,7 @@ export const aiService = {
         const lang = i18n.aiLanguage();
         return `ПРАВИЛА ЗАПОЛНЕНИЯ:
         1. Существительные: word ОБЯЗАТЕЛЬНО с артиклем («der Tisch»), и тот же артикль продублируй в поле gender («der», «die» или «das»). Заполни plural, dativ и akkusativ. Для слабых существительных akkusativ отличается от именительного: der Student → den Studenten.
-        2. Глаголы: conjugation — объект со всеми шестью формами Präsens. У сильных глаголов не забывай смену корневой гласной: ich nehme, du nimmst, er nimmt. Заполни preterite, participle_ii и auxiliary («haben» или «sein»).
+        2. Глаголы: conjugation — объект со всеми шестью формами Präsens. У сильных глаголов не забывай смену корневой гласной: ich nehme, du nimmst, er nimmt. Заполни preterite, participle_ii, auxiliary («haben» или «sein»), imperative_singular, imperative_plural и konjunktiv2 (форма для «ich»).
         3. rektion заполняй только если у глагола действительно есть управление, в виде «глагол + предлог + падеж» («warten auf + Akkusativ») или «глагол + падеж» («helfen + Dativ»). Падеж пиши полным словом.
         4. Прилагательные: comparative и superlative («heller», «am hellsten»).
         5. synonym и gegenteil заполняй, если они есть; выдумывать не нужно.

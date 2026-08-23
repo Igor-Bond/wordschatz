@@ -150,6 +150,11 @@ export const germanUtils = {
             if (empty(word.preterite)) missing.push('preterite');
             if (empty(word.participle_ii)) missing.push('participle_ii');
             if (empty(word.auxiliary)) missing.push('auxiliary');
+
+            // Wiktionary отдаёт эти формы даром, поэтому спрашивать их
+            // не жалко: пустыми они остаются только у слов, которых там нет
+            if (empty(word.imperative_singular)) missing.push('imperative_singular');
+            if (empty(word.konjunktiv2)) missing.push('konjunktiv2');
         } else if (word?.type === 'adjective') {
             if (empty(word.comparative)) missing.push('comparative');
             if (empty(word.superlative)) missing.push('superlative');
@@ -160,7 +165,7 @@ export const germanUtils = {
 
     /** Доля заполненных обязательных полей, 0–100. */
     completeness: (word) => {
-        const total = { noun: 7, verb: 7, adjective: 5 }[word?.type] || 3;
+        const total = { noun: 7, verb: 9, adjective: 5 }[word?.type] || 3;
         const missing = germanUtils.missingFields(word).length;
         return Math.round(((total - missing) / total) * 100);
     },

@@ -233,6 +233,9 @@ export const dbService = {
             gender: null,                  // род существительного отдельным полем
             conjugation: null,             // спряжение объектом, а не строкой
             akkusativ: null,
+            imperative_singular: null,
+            imperative_plural: null,
+            konjunktiv2: null,
             verified: 0,                   // карточку ещё не проверял человек
             recent: [],                    // последние ответы: 1 верно, 0 нет
             mismatches: [],                // расхождения с Wiktionary

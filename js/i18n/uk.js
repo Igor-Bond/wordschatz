@@ -286,6 +286,9 @@ export const uk = {
         preterite: 'Präteritum',
         participle_ii: 'Partizip II',
         auxiliary: 'Допоміжне дієслово',
+        imperative_singular: 'Imperativ, одн.',
+        imperative_plural: 'Imperativ, мн.',
+        konjunktiv2: 'Konjunktiv II',
         comparative: 'Komparativ',
         superlative: 'Superlativ'
     },

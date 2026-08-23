@@ -286,6 +286,9 @@ export const en = {
         preterite: 'Präteritum',
         participle_ii: 'Partizip II',
         auxiliary: 'Auxiliary verb',
+        imperative_singular: 'Imperative, singular',
+        imperative_plural: 'Imperative, plural',
+        konjunktiv2: 'Konjunktiv II',
         comparative: 'Comparative',
         superlative: 'Superlative'
     },

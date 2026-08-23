@@ -143,7 +143,14 @@ export const wiktionary = {
                 },
                 preterite: [fields['Präteritum_ich']].filter(Boolean),
                 participle_ii: [fields['Partizip II']].filter(Boolean),
-                auxiliary: (fields['Hilfsverb'] || '').split(',')[0].trim() || null
+                auxiliary: (fields['Hilfsverb'] || '').split(',')[0].trim() || null,
+
+                // Повелительное наклонение и Konjunktiv II статья отдаёт
+                // наравне с остальным, а мы их выбрасывали: карточка глагола
+                // из-за этого выглядела пустой на две строки
+                imperativeSingular: wiktionary._variants(fields, 'Imperativ Singular'),
+                imperativePlural: wiktionary._variants(fields, 'Imperativ Plural'),
+                konjunktiv2: wiktionary._variants(fields, 'Konjunktiv II_ich')
             };
         }
 
@@ -270,6 +277,9 @@ export const wiktionary = {
             check('preterite', word.preterite, entry.preterite);
             check('participle_ii', word.participle_ii, entry.participle_ii);
             check('auxiliary', word.auxiliary, entry.auxiliary);
+            check('imperative_singular', word.imperative_singular, entry.imperativeSingular);
+            check('imperative_plural', word.imperative_plural, entry.imperativePlural);
+            check('konjunktiv2', word.konjunktiv2, entry.konjunktiv2);
         } else {
             check('comparative', word.comparative, entry.comparative);
             check('superlative', word.superlative, entry.superlative);
@@ -303,6 +313,9 @@ export const wiktionary = {
             if (empty(word.preterite) && entry.preterite[0]) changes.preterite = entry.preterite[0];
             if (empty(word.participle_ii) && entry.participle_ii[0]) changes.participle_ii = entry.participle_ii[0];
             if (empty(word.auxiliary) && entry.auxiliary) changes.auxiliary = entry.auxiliary;
+            if (empty(word.imperative_singular) && entry.imperativeSingular[0]) changes.imperative_singular = entry.imperativeSingular[0];
+            if (empty(word.imperative_plural) && entry.imperativePlural[0]) changes.imperative_plural = entry.imperativePlural[0];
+            if (empty(word.konjunktiv2) && entry.konjunktiv2[0]) changes.konjunktiv2 = entry.konjunktiv2[0];
 
             // Спряжение дополняем по лицам: в шаблоне их три из шести,
             // остальные останутся за моделью

@@ -286,6 +286,9 @@ export const ru = {
         preterite: 'Präteritum',
         participle_ii: 'Partizip II',
         auxiliary: 'Вспомогательный глагол',
+        imperative_singular: 'Imperativ, ед. ч.',
+        imperative_plural: 'Imperativ, мн. ч.',
+        konjunktiv2: 'Konjunktiv II',
         comparative: 'Komparativ',
         superlative: 'Superlativ'
     },
