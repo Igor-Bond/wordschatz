@@ -126,6 +126,50 @@ export const app = {
     },
 
     /**
+     * Проверка подключения к ИИ прямо из настроек.
+     *
+     * Показывает, какой ключ отвечает, а какой упёрся в квоту или
+     * недействителен. Отчёт можно выделить и скопировать — ключи в нём
+     * замаскированы.
+     */
+    runDiagnostics: async () => {
+        const btn = document.getElementById('diagnose-btn');
+        const box = document.getElementById('diagnose-result');
+        if (!btn || !box) return;
+
+        // Свежий ключ из поля, даже если его ещё не сохранили
+        const typedKey = document.getElementById('settings-api-key').value.trim();
+        if (typedKey) config.set('api_key', typedKey);
+
+        btn.disabled = true;
+        box.classList.remove('hidden');
+        box.textContent = t('settings.checking');
+
+        try {
+            const report = await aiService.diagnose((done, total) => {
+                box.textContent = `${t('settings.checking')} ${done}/${total}`;
+            });
+
+            const lines = [
+                `${t('settings.model')}: ${report.модель}`,
+                ...report.результаты.map((r, i) =>
+                    `${i + 1}. ${r.ключ} — ${r.статус}` +
+                    (r.токены ? `, ${r.токены}` : '') +
+                    `, ${r.мс} мс` +
+                    (r.деталь ? `\n   ${r.деталь}` : '')
+                ),
+                '',
+                report.итог
+            ];
+            box.textContent = lines.join('\n');
+        } catch (e) {
+            box.textContent = e.message;
+        } finally {
+            btn.disabled = false;
+        }
+    },
+
+    /**
      * Полный сброс приложения.
      * Раньше чистился только localStorage, а словарь оставался в IndexedDB:
      * пользователь заново проходил onboarding и получал старые слова.

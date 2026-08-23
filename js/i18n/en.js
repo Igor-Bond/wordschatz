@@ -49,6 +49,8 @@ export const en = {
         apiKey: 'API key (Gemini)',
         model: 'AI model',
         reset: 'RESET EVERYTHING',
+        checkConnection: 'TEST CONNECTION',
+        checking: 'Testing...',
         createdBy: 'Created by Igor Bondarenko'
     },
 
@@ -182,6 +184,20 @@ export const en = {
         silver: 'Silver',
         gold: 'Gold',
         diamond: 'Diamond'
+    },
+
+    ai: {
+        noKey: 'No API key configured. Add one in settings.',
+        invalidKey: 'All configured API keys are invalid. Check them in settings.',
+        quota: 'Request limit reached on every key. Wait a minute and try again.',
+        overloaded: 'The AI service is overloaded. Try again in a minute.',
+        offline: 'Cannot reach the AI service. Check your connection.',
+        network: 'Connection to the AI service failed.',
+        blocked: 'The response was blocked by safety filters. Try a different topic or wording.',
+        emptyResponse: 'The model returned an empty response. Please try again.',
+        badJson: 'The model’s response could not be parsed. Please try again.',
+        modelUnavailable: 'The selected model is not available for your key.',
+        unknown: 'Unknown AI error.'
     },
 
     card: {
