@@ -24,6 +24,7 @@ import { dialog } from './core/dialog.js';
 import { germanUtils } from './core/german.js';
 import { quiz } from './core/quiz.js';
 import { lessonStateManager } from './core/lessonState.js';
+import { install } from './core/install.js';
 import { scheduler } from './core/scheduler.js';
 import { onboarding } from './modules/onboarding.js';
 import { dashboard } from './modules/dashboard.js';
@@ -49,6 +50,7 @@ import { app } from './app.js';
 Object.assign(window, {
     i18n, t, plural,
     config, db, dbService, aiService, auth, sync, dateUtils, srs, germanUtils, quiz, dialog, lessonStateManager, scheduler,
+    install,
     onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
 });
 
@@ -85,6 +87,13 @@ function registerServiceWorker() {
 }
 
 window.addEventListener('load', registerServiceWorker);
+
+// Событие готовности к установке приходит уже после первого рендера профиля —
+// перерисовываем блок, иначе кнопка появится только при следующем заходе
+install.onChange(() => {
+    const stats = document.getElementById('prof-mode-stats');
+    if (stats && !stats.classList.contains('hidden')) profile.renderStats();
+});
 
 // Язык выставляем до первого рендера: разметка собирается строками,
 // живой перерисовки при смене языка нет

@@ -579,17 +579,22 @@ export const aiService = {
      * @param {string} topic
      * @param {number} count сколько слов нужно на выходе
      * @param {Function} onProgress вызывается как (собрано, нужно)
+     * @param {Array} excludeWords слова, которых не должно быть в наборе —
+     *        например, уже показанные в предпросмотре, включая снятые галочкой
      */
-    generateSet: async (topic, count, onProgress = null) => {
+    generateSet: async (topic, count, onProgress = null, excludeWords = []) => {
         const target = parseInt(count) || 10;
         const BATCH_SIZE = aiService.LIMITS.BATCH_SIZE;
         const MAX_ATTEMPTS = Math.ceil(target / BATCH_SIZE) + 3;
 
-        // Всё, что уже есть в словаре
-        let known = new Set();
+        // Всё, что уже есть в словаре, плюс переданные исключения
+        let known = new Set(excludeWords.map(w =>
+            aiService._normalizeWord(typeof w === 'string' ? w : w.word)
+        ));
+
         try {
             const saved = await dbService.getAllWords();
-            known = new Set(saved.map(w => aiService._normalizeWord(w.word)));
+            saved.forEach(w => known.add(aiService._normalizeWord(w.word)));
         } catch (e) {
             console.error('Не удалось прочитать словарь для фильтрации:', e);
         }

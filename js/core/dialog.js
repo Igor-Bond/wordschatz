@@ -70,7 +70,7 @@ export const dialog = {
             <div class="bg-slate-800 rounded-2xl border ${danger ? 'border-red-500/40' : 'border-slate-700'} shadow-2xl w-full max-w-sm overflow-hidden translate-y-4 sm:translate-y-0 scale-100 sm:scale-95 transition-transform duration-150"
                  role="dialog" aria-modal="true">
                 ${title ? `<div class="px-5 pt-5 pb-1"><h3 class="text-lg font-bold text-slate-100">${dialog._esc(title)}</h3></div>` : ''}
-                <div class="px-5 ${title ? 'pt-1' : 'pt-5'} pb-5">
+                <div class="px-5 ${title ? 'pt-1' : 'pt-5'} pb-5 max-h-[55vh] overflow-y-auto">
                     <p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">${dialog._esc(message)}</p>
                 </div>
                 <div class="p-4 pb-[max(env(safe-area-inset-bottom),16px)] bg-slate-900/50 border-t border-slate-700 ${stacked ? 'space-y-2' : 'flex gap-2'}">

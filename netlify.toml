@@ -1,0 +1,40 @@
+# Настройки хостинга Netlify.
+#
+# Правила вида «/* → /index.html 200» здесь намеренно нет: маршрутизации на
+# стороне клиента в приложении не существует (ни pushState, ни хэшей), а такой
+# перехват всех адресов мешает отдавать sw.js и manifest.json как есть —
+# без них Chrome не считает сайт устанавливаемым приложением.
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    # Служебный скрипт нельзя кэшировать: иначе обновление приложения
+    # не доедет до тех, у кого он уже сохранён
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Content-Type = "application/manifest+json; charset=utf-8"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

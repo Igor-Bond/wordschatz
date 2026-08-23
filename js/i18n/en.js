@@ -154,6 +154,8 @@ export const en = {
         selectedCount: 'Selected: <b id="cycle-selected-count" class="text-slate-100">{selected}</b> of {total}',
         daysOfStudy: 'of study',
         approve: 'START THE TOPIC',
+        topUp: 'ADD {count} MORE WORDS',
+        topUpEmpty: 'The AI found no new words for this topic. Try starting with what you have.',
         nothingSelected: 'Select at least one word.',
         belowGoal:
             'You selected {count} words — fewer than your daily goal ({goal}).\n' +
@@ -310,6 +312,30 @@ export const en = {
         finishExam: 'FINISH THE EXAM'
     },
 
+    install: {
+        title: 'Install the app',
+        subtitle: 'Works offline, opens from your home screen',
+        button: 'INSTALL',
+        check: 'WHY CAN’T I INSTALL?',
+        done: 'Done! The icon will appear on your home screen.',
+        already: 'The app is already installed and running from your home screen.',
+        notReady: 'The browser is not offering installation yet. Reopening the site in a minute usually helps.',
+        iosHint: 'On iPhone: Share → Add to Home Screen.',
+        noEvent: 'the browser did not offer installation',
+        needReload: 'the page needs a reload',
+        diagTitle: 'Install check',
+        allOk: 'All requirements are met. If there is no install button, open the browser menu (⋮) → Install app.',
+        someFailed: 'Requirements not met: {count}.',
+        manualHint: 'Manually: Chrome on Android — menu (⋮) → Install app. If it only offers “Add to Home screen”, one of the requirements above is not met.',
+        checkSecure: 'Secure connection (HTTPS)',
+        checkManifest: 'Manifest loads',
+        checkIcons: 'Has 192 and 512 px icons',
+        checkIconFile: 'Icon served by the server',
+        checkDisplay: 'Display mode',
+        checkSw: 'Service Worker registered',
+        checkSwActive: 'Service Worker controls the page',
+        checkPromptable: 'Browser ready to install'
+    },
     room: {
         title: 'Practice room',
         microTrainers: 'Micro trainers',
@@ -328,6 +354,8 @@ export const en = {
         storyTitle: 'Interactive AI story',
         storyHint: 'Read a story with tap-to-translate',
         notEnough: 'Not enough suitable words for this mode! At least 4 words are needed.',
+        nothingStudied: 'You have not studied any words yet. The Room is for reinforcement — start with the cards in your daily plan.',
+        notEnoughStudied: 'You have studied only a few words so far. The Room uses only words you have already seen on cards.',
         notEnoughHard: 'You may not have any “hard” words of this type.',
         notEnoughNouns: 'Add more nouns to your dictionary.',
         notEnoughVerbs: 'Add more verbs with Präteritum/Perfekt forms filled in.',

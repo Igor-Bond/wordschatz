@@ -96,15 +96,18 @@ export const exercises = {
 
         let title = exercises.isRoomMode ? t('exercises.freeTraining') : t('exercises.practice');
 
+        // Шапка с прогрессом закреплена, само задание прокручивается:
+        // у длинных заданий вроде сборки предложения содержимое не помещается
         let html = `
-            <div class="max-w-lg mx-auto min-h-full flex flex-col pt-2 pb-6 fade-in">
-                <div class="flex items-center justify-between mb-2">
+            <div class="max-w-lg mx-auto h-full flex flex-col pt-2 fade-in">
+                <div class="flex items-center justify-between mb-2 shrink-0">
                     <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-400/10 px-2 py-1 rounded border border-purple-400/20 shadow-sm">${title}</span>
                     <span class="text-xs font-bold text-slate-500">${t('exercises.taskOf', { current: exercises.currentIndex + 1, total: exercises.queue.length })}</span>
                 </div>
-                <div class="w-full bg-slate-800 rounded-full h-2 mb-6 border border-slate-700 overflow-hidden shrink-0 mt-1">
+                <div class="w-full bg-slate-800 rounded-full h-2 mb-4 border border-slate-700 overflow-hidden shrink-0 mt-1">
                     <div class="bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                 </div>
+                <div class="flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-2">
         `;
 
         let validModes = [];
@@ -153,7 +156,7 @@ export const exercises = {
         if (!block) block = await exercises.renderTranslationQuiz(word, 'de-ru');
 
         html += block;
-        html += `</div>`;
+        html += `</div></div>`;   // закрываем прокручиваемую область и контейнер
         main.innerHTML = html;
         
         setTimeout(() => {
@@ -167,8 +170,11 @@ export const exercises = {
     // ==========================================
     renderMatchPairsQuiz: async (word) => {
         // Пары той же части речи: иначе колонки легко сопоставлялись
-        // по грамматике, без знания слов
-        const allWords = await dbService.getAllWords();
+        // по грамматике, без знания слов.
+        // В отличие от выбора ответа, здесь «лишние» слова тоже нужно
+        // сопоставить — значит, они должны быть пройденными
+        const studied = await dbService.getStudiedWords();
+        const allWords = studied.length >= 4 ? studied : await dbService.getAllWords();
         const distractors = quiz.pickDistractors(word, allWords, 3);
         const pairs = [...distractors, word];
 

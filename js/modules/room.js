@@ -82,8 +82,18 @@ export const room = {
     },
 
     startExerciseMode: async (allowedModes) => {
-        let allWords = await dbService.getAllWords();
-        
+        // Комната — это закрепление, а не первое знакомство. Слова, которые
+        // ещё ни разу не показали карточкой, спрашивать нельзя: раньше сюда
+        // попадал весь словарь, включая заготовленные на будущие дни слова.
+        let allWords = await dbService.getStudiedWords();
+
+        if (allWords.length === 0) {
+            await dialog.alert(t('room.nothingStudied'));
+            return;
+        }
+
+        const studiedCount = allWords.length;
+
         const hardModeToggle = document.getElementById('room-hard-mode');
         const isHardMode = hardModeToggle && hardModeToggle.checked;
 
@@ -107,7 +117,8 @@ export const room = {
 
         if (compatibleWords.length < 4) {
             let errorMsg = t('room.notEnough') + '\n\n';
-            if (isHardMode) errorMsg += t('room.notEnoughHard');
+            if (studiedCount < 4) errorMsg += t('room.notEnoughStudied');
+            else if (isHardMode) errorMsg += t('room.notEnoughHard');
             else if (allowedModes.includes('article')) errorMsg += t('room.notEnoughNouns');
             else if (allowedModes.includes('verb_form')) errorMsg += t('room.notEnoughVerbs');
             else if (allowedModes.includes('rektion')) errorMsg += t('room.notEnoughRektion');
@@ -144,8 +155,11 @@ export const room = {
 
     startStory: async () => {
         const container = document.getElementById('room-game-container');
-        const allWords = await dbService.getAllWords();
-        
+        // История тоже про закрепление: берём пройденное, а весь словарь —
+        // только пока проходить нечего
+        const studied = await dbService.getStudiedWords();
+        const allWords = studied.length > 0 ? studied : await dbService.getAllWords();
+
         if (allWords.length === 0) {
             container.innerHTML = `
                 <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center fade-in">
@@ -163,7 +177,7 @@ export const room = {
         `;
 
         try {
-            const sampleWords = allWords.slice(0, 7);
+            const sampleWords = quiz.shuffle(allWords).slice(0, 7);
             const storyData = await aiService.generateStory(sampleWords);
 
             room.currentFullTranslation = storyData.story_ru;

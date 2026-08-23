@@ -210,6 +210,11 @@ export const cycle = {
         const selected = cycle.state.words.filter(w => w.selected).length;
         const days = Math.ceil(selected / profile.dailyGoal);
 
+        // Сняли галочки — набор стал короче задуманного, и тема пройдёт
+        // не за то число дней, которое выбрали. Предлагаем добрать.
+        const target = cycle.state.days * profile.dailyGoal;
+        const missing = Math.max(0, target - selected);
+
         const badgeColors = {
             noun: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
             verb: 'text-green-400 bg-green-400/10 border-green-400/20',
@@ -260,6 +265,13 @@ export const cycle = {
                         <span class="text-slate-400">${t('cycle.selectedCount', { selected, total: cycle.state.words.length })}</span>
                         <span class="text-slate-400"><b id="cycle-days-count" class="text-amber-500">${plural('common.day', days)}</b> ${t('cycle.daysOfStudy')}</span>
                     </div>
+
+                    ${missing > 0 ? `
+                        <button onclick="cycle.topUp()" id="cycle-topup-btn"
+                            class="w-full mb-2 py-2.5 bg-slate-800 border border-amber-500/40 text-amber-500 text-xs font-bold rounded-xl hover:bg-slate-700 active:scale-95 transition-all">
+                            ${t('cycle.topUp', { count: missing })}
+                        </button>
+                    ` : ''}
                     <div class="flex gap-2">
                         <button onclick="cycle.renderTopicPicker()" class="px-4 py-3.5 bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl active:scale-95 transition-all">
                             <i class="fa-solid fa-arrow-left"></i>
@@ -283,6 +295,43 @@ export const cycle = {
     selectAll: (value) => {
         cycle.state.words.forEach(w => { w.selected = value; });
         cycle.renderPreview();
+    },
+
+    /**
+     * Догенерировать недостающие слова.
+     *
+     * Кнопкой, а не автоматически: генерация тратит квоту, и делать это
+     * без спроса неправильно. Исключаем и словарь, и всё уже показанное —
+     * снятые галочкой слова тоже, иначе они пришли бы обратно.
+     */
+    topUp: async () => {
+        const profile = config.getProfile();
+        const target = cycle.state.days * profile.dailyGoal;
+        const selected = cycle.state.words.filter(w => w.selected).length;
+        const missing = target - selected;
+
+        if (missing <= 0) return;
+
+        const shown = cycle.state.words.map(w => w.word);
+        cycle.renderLoader(cycle.state.topic, selected, target);
+
+        try {
+            const extra = await aiService.generateSet(
+                cycle.state.topic,
+                missing,
+                (done) => cycle.updateLoader(selected + done, target),
+                shown
+            );
+
+            if (!extra.length) throw new Error(t('cycle.topUpEmpty'));
+
+            cycle.state.words = [...cycle.state.words, ...extra.map(w => ({ ...w, selected: true }))];
+            cycle.renderPreview();
+        } catch (error) {
+            // Уже собранное не теряем: показываем предпросмотр и сообщаем
+            cycle.renderPreview();
+            await dialog.alert(error.message);
+        }
     },
 
     // ======================================================

@@ -158,16 +158,24 @@ export const training = {
         let grammarBlock = tableRows ? `<div class="bg-[#1b2234] rounded-xl px-4 py-1 mb-5 border border-slate-700/70 shadow-inner">${tableRows}</div>` : '';
 
         main.innerHTML = `
-            <div class="max-w-lg mx-auto min-h-full flex flex-col pt-2 pb-6 fade-in">
-                <div class="flex items-center justify-between mb-2">
+            <!--
+                Экран урока разбит на три части: шапка с прогрессом, прокручиваемая
+                карточка и закреплённые внизу кнопки. Раньше всё было одним потоком,
+                и у слова с полным набором полей содержимое занимало 948 px при
+                видимых 746 — кнопки оценки уходили под экран, и до них
+                приходилось долистывать.
+            -->
+            <div class="max-w-lg mx-auto h-full flex flex-col pt-2 fade-in">
+                <div class="flex items-center justify-between mb-2 shrink-0">
                     <span class="text-[10px] font-bold text-${stepColor} uppercase tracking-wider bg-${stepColor}/10 px-2 py-1 rounded border border-${stepColor}/20 shadow-sm">${stepTitle}</span>
                     <span class="text-xs font-bold text-slate-500">${t('training.wordOf', { current: training.currentIndex + 1, total: training.queue.length })}</span>
                 </div>
-                <div class="w-full bg-slate-800 rounded-full h-2 mb-6 border border-slate-700 overflow-hidden shrink-0 mt-1">
+                <div class="w-full bg-slate-800 rounded-full h-2 mb-4 border border-slate-700 overflow-hidden shrink-0 mt-1">
                     <div class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                 </div>
 
-                <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative mb-6">
+                <div id="card-scroll" class="flex-1 min-h-0 overflow-y-auto hide-scrollbar pb-4">
+                <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative">
                     <div class="p-8 flex flex-col items-center justify-center text-center relative z-10 min-h-[200px]">
                         <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">${word.type}</span>
                         <div class="flex items-center justify-center gap-4 mb-2 w-full">
@@ -187,14 +195,15 @@ export const training = {
                         </div>
                     </div>
                 </div>
+                </div>
 
-                <div id="controls-front" class="mt-auto">
+                <div id="controls-front" class="shrink-0 pb-2">
                     <button onclick="training.flipCard()" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xl font-black rounded-xl shadow-lg active:scale-95 transition-all">
                         ${t('training.showAnswer')}
                     </button>
                 </div>
 
-                <div id="controls-back" class="mt-auto hidden grid-cols-4 gap-2">
+                <div id="controls-back" class="shrink-0 pb-2 hidden grid-cols-4 gap-2">
                     <button onclick="training.rate(1)" class="flex flex-col items-center justify-center py-3.5 bg-[#3a2024] border border-[#522a2f] text-[#ff7171] rounded-xl active:scale-95 transition-transform hover:bg-[#47272c]">
                         <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(1, word)}</span>
                         <span class="font-bold">${t('training.again')}</span>

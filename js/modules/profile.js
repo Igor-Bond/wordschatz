@@ -1,5 +1,6 @@
 import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
+import { install } from '../core/install.js';
 import { dialog } from '../core/dialog.js';
 import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
@@ -230,6 +231,8 @@ export const profile = {
                 <!-- Аналитика словаря -->
                 ${profile.renderAccountCard()}
 
+                ${profile.renderInstallCard()}
+
                 ${profile.renderActivityChart(activity)}
 
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1">${t('profile.dictStats')}</h3>
@@ -353,6 +356,56 @@ export const profile = {
      * Аккаунт и синхронизация (§37 ТЗ).
      * Если Firebase не настроен, блок не показывается вовсе.
      */
+    /**
+     * Установка на устройство.
+     *
+     * Пункт «Установить приложение» в меню браузера находят не все, а в
+     * некоторых оболочках он делает обычный ярлык на сайт. Своя кнопка
+     * вызывает то же системное окно, а проверка объясняет, почему браузер
+     * установку не предлагает.
+     */
+    renderInstallCard: () => {
+        if (install.isStandalone()) return '';
+
+        const button = install.canPrompt
+            ? `<button onclick="profile.installApp()" id="prof-install-btn"
+                   class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-bold rounded-xl active:scale-95 transition-all">
+                   <i class="fa-solid fa-download mr-2"></i>${t('install.button')}
+               </button>`
+            : `<p class="text-xs text-slate-500 mb-3">${install.isIos() ? t('install.iosHint') : t('install.notReady')}</p>
+               <button onclick="install.showDiagnostics()"
+                   class="w-full py-2.5 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                   ${t('install.check')}
+               </button>`;
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md" id="prof-install-card">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-full bg-slate-900 border border-slate-600 flex items-center justify-center text-amber-500 shrink-0">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold text-slate-200">${t('install.title')}</p>
+                        <p class="text-[10px] text-slate-500">${t('install.subtitle')}</p>
+                    </div>
+                </div>
+                ${button}
+            </div>
+        `;
+    },
+
+    installApp: async () => {
+        const btn = document.getElementById('prof-install-btn');
+        if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
+
+        const outcome = await install.prompt();
+
+        if (outcome === 'unavailable') await install.showDiagnostics();
+        else if (outcome === 'accepted') await dialog.alert(t('install.done'));
+
+        await profile.renderStats();
+    },
+
     renderAccountCard: () => {
         if (!auth.isConfigured()) return '';
 
