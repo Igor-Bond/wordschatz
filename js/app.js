@@ -1,6 +1,7 @@
 import { auth } from './services/auth.js';
 import { sync } from './services/sync.js';
 import { reminder } from './core/reminder.js';
+import { install } from './core/install.js';
 import { speech } from './core/speech.js';
 import { dialog } from './core/dialog.js';
 import { config } from './config.js';
@@ -170,6 +171,24 @@ export const app = {
             } catch (e) {
                 cache.textContent = '—';
             }
+        }
+
+        // Размеры экрана и безопасные зоны: жалобы вида «меню уехало вниз»
+        // без этих чисел разбираются гаданием, а DevTools на телефоне нет
+        const screen = document.getElementById('about-screen');
+        if (screen) {
+            const проба = document.createElement('div');
+            проба.style.cssText = 'position:fixed;bottom:0;padding-bottom:env(safe-area-inset-bottom);padding-top:env(safe-area-inset-top);visibility:hidden';
+            document.body.appendChild(проба);
+
+            const стиль = getComputedStyle(проба);
+            const снизу = parseInt(стиль.paddingBottom) || 0;
+            const сверху = parseInt(стиль.paddingTop) || 0;
+            проба.remove();
+
+            const режим = install.isStandalone() ? t('settings.screenApp') : t('settings.screenBrowser');
+            screen.textContent = `${window.innerWidth}×${window.innerHeight} · ${режим}`
+                + (сверху || снизу ? ` · ${t('settings.screenSafe', { top: сверху, bottom: снизу })}` : '');
         }
 
         const voice = document.getElementById('about-voice');

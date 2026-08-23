@@ -1,4 +1,5 @@
 import { wiktionary } from '../services/wiktionary.js';
+import { imageUtils } from '../core/image.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t } from '../i18n/i18n.js';
@@ -21,6 +22,7 @@ export const scanner = {
                     <button onclick="scanner.switchTab('single')" id="tab-single" class="flex-1 py-2 text-sm font-bold rounded-lg bg-amber-500 text-slate-900 shadow transition-all">${t('scanner.tabSingle')}</button>
                     <button onclick="scanner.switchTab('topic')" id="tab-topic" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all">${t('scanner.tabTopic')}</button>
                     <button onclick="scanner.switchTab('text')" id="tab-text" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all">${t('scanner.tabText')}</button>
+                    <button onclick="scanner.switchTab('photo')" id="tab-photo" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all">${t('scanner.tabPhoto')}</button>
                 </div>
 
                 <!-- Режим: Одно слово -->
@@ -63,6 +65,38 @@ export const scanner = {
                     </div>
                 </div>
 
+                <!--
+                    Режим: Фото (§10 ТЗ).
+                    capture="environment" открывает камеру сразу на телефоне,
+                    но не мешает выбрать готовый снимок из галереи.
+                -->
+                <div id="mode-photo" class="space-y-4 hidden">
+                    <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
+                        <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.photoLabel')}</label>
+
+                        <input type="file" id="scan-photo-input" accept="image/*" capture="environment"
+                            class="hidden" onchange="scanner.photoPicked(this)">
+
+                        <button onclick="document.getElementById('scan-photo-input').click()"
+                            class="w-full py-4 bg-slate-900 border-2 border-dashed border-slate-600 text-slate-300 rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera text-xl"></i>
+                            <span class="font-bold">${t('scanner.photoPick')}</span>
+                        </button>
+
+                        <div id="scan-photo-preview" class="hidden mt-4">
+                            <img id="scan-photo-image" alt="" class="w-full rounded-xl border border-slate-700 max-h-64 object-contain bg-slate-900">
+                            <p id="scan-photo-size" class="text-[10px] text-slate-500 mt-1 text-center"></p>
+
+                            <button onclick="scanner.analyzePhoto()" id="scan-photo-btn"
+                                class="w-full mt-4 py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg hover:bg-amber-400 transition-transform active:scale-95 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> ${t('scanner.analyze')}
+                            </button>
+                        </div>
+
+                        <p class="text-[10px] text-slate-500 mt-3">${t('scanner.photoHint')}</p>
+                    </div>
+                </div>
+
                 <!-- Зона результатов (Лоадер и карточки) -->
                 <div id="scan-results" class="mt-8 space-y-4"></div>
             </div>
@@ -70,7 +104,7 @@ export const scanner = {
     },
 
     switchTab: (tab) => {
-        const tabs = ['single', 'topic', 'text'];
+        const tabs = ['single', 'topic', 'text', 'photo'];
         
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-${t}`);
@@ -171,6 +205,80 @@ ${aiService._getJsonFormat()}`;
             let result = aiService._parseJsonResponse(rawResponse, profile.level, t('scanner.topicFromText'));
             
             scanner.currentResults = result.map(w => ({...w, selected: true}));
+            await scanner.verify(scanner.currentResults);
+            scanner.renderResults(scanner.currentResults);
+        } catch (error) {
+            document.getElementById('scan-results').innerHTML = `<p class="text-red-400 text-center bg-red-900/20 p-4 rounded-xl border border-red-900/50">${error.message}</p>`;
+        }
+    },
+
+    /** Подготовленный снимок: base64 без префикса. */
+    photo: null,
+
+    /**
+     * Выбран файл: уменьшаем и показываем предпросмотр.
+     *
+     * Уменьшение обязательно. Токенов оно почти не экономит — плитки Gemini
+     * относительны размеру снимка, — но фотография с телефона в base64
+     * весит около пяти мегабайт, и по мобильной сети такой запрос не доходит.
+     */
+    photoPicked: async (input) => {
+        const file = input.files?.[0];
+        if (!file) return;
+
+        const preview = document.getElementById('scan-photo-preview');
+        const size = document.getElementById('scan-photo-size');
+
+        try {
+            const prepared = await imageUtils.prepare(file);
+            scanner.photo = prepared.base64;
+
+            document.getElementById('scan-photo-image').src = `data:image/jpeg;base64,${prepared.base64}`;
+            size.textContent = t('scanner.photoReady', {
+                width: prepared.width,
+                height: prepared.height,
+                kb: Math.round(prepared.bytes / 1024)
+            });
+            preview.classList.remove('hidden');
+        } catch (e) {
+            console.error('[Сканер] Не удалось подготовить снимок:', e);
+            scanner.photo = null;
+            preview.classList.add('hidden');
+            await dialog.alert(t('scanner.photoFailed'));
+        }
+
+        // Иначе повторный выбор того же файла не вызовет change
+        input.value = '';
+    },
+
+    /** Разбор снимка: слова с фотографии страницы, вывески или предмета. */
+    analyzePhoto: async () => {
+        if (!scanner.photo) return;
+
+        scanner.showLoader(t('scanner.loadingPhoto'));
+
+        try {
+            const profile = config.getProfile();
+
+            const prompt = `На изображении может быть немецкий текст (страница книги, вывеска, упаковка) либо предметы.
+            Если есть текст — выбери из него от 5 до 10 самых полезных слов для студента уровня ${profile.level}.
+            Если текста нет — назови по-немецки то, что изображено, не более десяти предметов.
+            В поле example_de по возможности бери предложение прямо с изображения.
+            Не выдумывай слов, которых на изображении нет.
+            ${aiService._getFieldRules()}
+            Верни JSON массив объектов. Формат:
+${aiService._getJsonFormat()}`;
+
+            const rawResponse = await aiService.callGemini(prompt, true, scanner.photo);
+            const result = aiService._parseJsonResponse(rawResponse, profile.level, t('scanner.topicFromPhoto'));
+
+            if (!result.length) {
+                document.getElementById('scan-results').innerHTML =
+                    `<p class="text-center text-slate-500">${t('scanner.photoNothing')}</p>`;
+                return;
+            }
+
+            scanner.currentResults = result.map(w => ({ ...w, selected: true }));
             await scanner.verify(scanner.currentResults);
             scanner.renderResults(scanner.currentResults);
         } catch (error) {
