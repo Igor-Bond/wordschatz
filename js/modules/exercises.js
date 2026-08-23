@@ -1,3 +1,4 @@
+import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { lessonStateManager } from '../core/lessonState.js';
 import { training } from './training.js';
@@ -39,13 +40,13 @@ export const exercises = {
         const word = exercises.queue[exercises.currentIndex];
         const progress = (exercises.currentIndex / exercises.queue.length) * 100;
 
-        let title = exercises.isRoomMode ? 'СВОБОДНАЯ ТРЕНИРОВКА' : 'ПРАКТИКА (ЭТАП 2)';
+        let title = exercises.isRoomMode ? t('exercises.freeTraining') : t('exercises.practice');
 
         let html = `
             <div class="max-w-lg mx-auto min-h-full flex flex-col pt-2 pb-6 fade-in">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-400/10 px-2 py-1 rounded border border-purple-400/20 shadow-sm">${title}</span>
-                    <span class="text-xs font-bold text-slate-500">Задание ${exercises.currentIndex + 1} из ${exercises.queue.length}</span>
+                    <span class="text-xs font-bold text-slate-500">${t('exercises.taskOf', { current: exercises.currentIndex + 1, total: exercises.queue.length })}</span>
                 </div>
                 <div class="w-full bg-slate-800 rounded-full h-2 mb-6 border border-slate-700 overflow-hidden shrink-0 mt-1">
                     <div class="bg-purple-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
@@ -106,7 +107,7 @@ export const exercises = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
-                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">Найдите пары</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${t('exercises.matchPairs')}</h3>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-3 flex flex-col">${deBtns.map(renderBtn).join('')}</div>
                     <div class="space-y-3 flex flex-col">${ruBtns.map(renderBtn).join('')}</div>
@@ -182,7 +183,7 @@ export const exercises = {
         
         const questionText = direction === 'ru-de' ? word.translation : word.word;
         const btnClass = direction === 'ru-de' ? 'text-xl' : 'text-base';
-        const label = direction === 'ru-de' ? 'Как это будет по-немецки?' : 'Выберите верный перевод';
+        const label = direction === 'ru-de' ? t('exercises.howInGerman') : t('exercises.pickTranslation');
 
         let btns = options.map(opt => {
             const answerText = direction === 'ru-de' ? opt.word : opt.translation;
@@ -208,7 +209,7 @@ export const exercises = {
         }
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">Выберите правильный артикль</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.pickArticle')}</h3>
                 <h2 class="text-4xl font-black text-slate-100 mb-8 break-words">${pureWord}</h2>
                 <div class="grid grid-cols-3 gap-3" id="ex-buttons">
                     <button onclick="exercises.checkChoice(this, 'der', '${article}', 'article')" class="py-4 bg-blue-900/30 border-2 border-blue-900/50 text-blue-400 font-bold rounded-xl text-xl hover:bg-blue-900/50 active:scale-95 transition-all">DER</button>
@@ -222,17 +223,17 @@ export const exercises = {
     renderVerbQuiz: (word) => {
         const askPerfekt = !!word.participle_ii && Math.random() > 0.5;
         const targetForm = askPerfekt ? (word.auxiliary + ' ' + word.participle_ii).trim() : (word.preterite || word.participle_ii);
-        const label = askPerfekt ? 'Perfekt (со вспом. глаголом)' : 'Präteritum (ich/er/sie/es)';
+        const label = askPerfekt ? t('exercises.perfektLabel') : 'Präteritum (ich/er/sie/es)';
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">Напишите форму глагола</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.writeVerbForm')}</h3>
                 <h2 class="text-3xl font-black text-slate-100 mb-2">${word.word}</h2>
                 <p class="text-slate-500 mb-8 font-bold">${word.translation}</p>
                 <div class="mb-6 text-left">
                     <label class="block text-xs font-bold text-amber-500 mb-2">${label}</label>
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold transition-colors" autocomplete="off">
                 </div>
-                <button onclick="exercises.checkInput('${targetForm.replace(/'/g, "\\'")}', 'verb_form')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">ПРОВЕРИТЬ</button>
+                <button onclick="exercises.checkInput('${targetForm.replace(/'/g, "\\'")}', 'verb_form')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
             </div>
         `;
@@ -280,8 +281,8 @@ export const exercises = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">Заполните пропуск</h3>
-                <p class="text-slate-400 text-xs mb-4">Перевод: ${word.example_ru || word.translation}</p>
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.fillBlank')}</h3>
+                <p class="text-slate-400 text-xs mb-4">${t('exercises.translationLabel')}: ${word.example_ru || word.translation}</p>
                 <h2 class="text-2xl font-black text-slate-100 mb-8 leading-relaxed">${masked}</h2>
                 
                 <div class="flex flex-wrap justify-center gap-2 mb-6">
@@ -289,9 +290,9 @@ export const exercises = {
                 </div>
 
                 <div class="mb-6">
-                    <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" placeholder="Слово...">
+                    <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" placeholder="${t('exercises.wordPlaceholder')}">
                 </div>
-                <button onclick="exercises.checkInput('${targetMatch.replace(/'/g, "\\'")}', 'fill_blanks')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">ПРОВЕРИТЬ</button>
+                <button onclick="exercises.checkInput('${targetMatch.replace(/'/g, "\\'")}', 'fill_blanks')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
             </div>
         `;
@@ -308,7 +309,7 @@ export const exercises = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">Какое управление (Rektion) у глагола?</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.rektionQuestion')}</h3>
                 <h2 class="text-4xl font-black text-slate-100 mb-2">${word.word}</h2>
                 <p class="text-slate-500 mb-8 font-bold">${word.translation}</p>
                 
@@ -324,17 +325,17 @@ export const exercises = {
     renderListeningQuiz: (word) => {
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">Аудирование</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.listening')}</h3>
                 
                 <button onclick="training.playAudio('${word.word.replace(/'/g, "\\'")}')" class="w-20 h-20 mx-auto bg-amber-500 text-slate-900 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(245,158,11,0.4)] mb-8 active:scale-95 transition-transform" id="training-audio-btn">
                     <i class="fa-solid fa-headphones"></i>
                 </button>
 
                 <div class="mb-6 text-left">
-                    <label class="block text-xs font-bold text-amber-500 mb-2">Напишите то, что услышали</label>
+                    <label class="block text-xs font-bold text-amber-500 mb-2">${t('exercises.writeWhatYouHear')}</label>
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" autocomplete="off">
                 </div>
-                <button onclick="exercises.checkInput('${word.word.replace(/'/g, "\\'")}', 'listening')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">ПРОВЕРИТЬ</button>
+                <button onclick="exercises.checkInput('${word.word.replace(/'/g, "\\'")}', 'listening')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
                 
                 <script>setTimeout(() => training.playAudio('${word.word.replace(/'/g, "\\'")}'), 300);</script>
@@ -352,7 +353,7 @@ export const exercises = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
-                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">Соберите предложение</h3>
+                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${t('exercises.buildSentence')}</h3>
                 <p class="text-slate-400 text-sm mb-4 text-center border-b border-slate-700 pb-4">${word.example_ru || word.translation}</p>
                 
                 <div id="sb-target" class="min-h-[60px] bg-slate-900/50 rounded-xl border border-slate-600 p-3 mb-6 flex flex-wrap gap-2 content-start cursor-pointer" onclick="exercises.builderRemoveLast()"></div>
@@ -364,7 +365,7 @@ export const exercises = {
                 </div>
                 
                 <button onclick="exercises.skipBuilder()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 font-bold rounded-xl active:scale-95 transition-all text-sm mb-2" id="sb-skip-btn">
-                    СЛОЖНО, ПРОПУСТИТЬ
+                    ${t('exercises.tooHardSkip')}
                 </button>
                 
                 <div id="ex-feedback" class="mt-2 hidden font-bold text-lg p-3 rounded-xl text-center transition-all"></div>
@@ -421,7 +422,7 @@ export const exercises = {
             }
 
             feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-red-600 border border-red-400 text-white";
-            feedback.innerHTML = `<i class="fa-solid fa-xmark mr-2"></i> Falsch! Нажмите на область, чтобы убрать слово.`;
+            feedback.innerHTML = `<i class="fa-solid fa-xmark mr-2"></i> Falsch! ${t('exercises.tapToRemove')}`;
             if (skipBtn) skipBtn.disabled = false; 
         }
     },
@@ -445,7 +446,7 @@ export const exercises = {
         feedback.classList.remove('hidden');
         feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-slate-900/80 border border-slate-600/50 text-slate-300";
         feedback.innerHTML = `
-            <span class="text-slate-400 text-xs font-normal block mb-1 uppercase tracking-widest">Правильный ответ:</span>
+            <span class="text-slate-400 text-xs font-normal block mb-1 uppercase tracking-widest">${t('exercises.correctAnswer')}</span>
             <b class="text-amber-500 text-base leading-snug block">${correctSentence}</b>
         `;
         
@@ -522,7 +523,7 @@ export const exercises = {
             feedback.innerHTML = `
                 <div class="flex items-center justify-center mb-1"><i class="fa-solid fa-xmark mr-2"></i> Falsch!</div>
                 <div class="text-red-100 text-sm font-normal pt-2 border-t border-red-400/50">
-                    Правильно: <b class="text-white text-base tracking-wide">${correct}</b>
+                    ${t('exercises.correctIs')}: <b class="text-white text-base tracking-wide">${correct}</b>
                 </div>`;
             setTimeout(exercises.next, 3000);
         }

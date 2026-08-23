@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { dateUtils } from '../core/dates.js';
 
@@ -9,15 +10,15 @@ export const profile = {
         main.innerHTML = `
             <div class="fade-in max-w-lg mx-auto mt-2 pb-10">
                 <div class="flex justify-between items-center mb-6 px-1">
-                    <h2 class="text-2xl font-bold text-slate-100">Профиль и Данные</h2>
+                    <h2 class="text-2xl font-bold text-slate-100">${t('profile.title')}</h2>
                     <button onclick="document.getElementById('settings-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('settings-modal').classList.remove('opacity-0'), 10);" class="w-10 h-10 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shadow">
                         <i class="fa-solid fa-gear"></i>
                     </button>
                 </div>
                 
                 <div class="flex bg-slate-800 rounded-xl p-1 mb-6 border border-slate-700">
-                    <button onclick="profile.switchTab('stats')" id="tab-prof-stats" class="flex-1 py-2 text-sm font-bold rounded-lg bg-amber-500 text-slate-900 shadow transition-all">Статистика</button>
-                    <button onclick="profile.switchTab('dict')" id="tab-prof-dict" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all">Мой словарь</button>
+                    <button onclick="profile.switchTab('stats')" id="tab-prof-stats" class="flex-1 py-2 text-sm font-bold rounded-lg bg-amber-500 text-slate-900 shadow transition-all">${t('profile.tabStats')}</button>
+                    <button onclick="profile.switchTab('dict')" id="tab-prof-dict" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all">${t('profile.tabDict')}</button>
                 </div>
 
                 <div id="prof-mode-stats" class="space-y-4 fade-in">
@@ -30,18 +31,18 @@ export const profile = {
             <div id="edit-word-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
                 <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] scale-95 transition-transform duration-200" id="edit-modal-content">
                     <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                        <h3 class="text-lg font-bold text-slate-100">Карточка слова</h3>
+                        <h3 class="text-lg font-bold text-slate-100">${t('profile.wordCard')}</h3>
                         <button onclick="profile.closeEditModal()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
                     </div>
                     
                     <div class="p-4 overflow-y-auto space-y-4 flex-1 hide-scrollbar">
                         <input type="hidden" id="edit-id">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Слово на немецком</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.germanWord')}</label>
                             <input type="text" id="edit-word" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 font-bold text-lg transition-colors">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Перевод</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.translation')}</label>
                             <input type="text" id="edit-translation" class="w-full bg-slate-900 border border-slate-600 text-amber-500 font-bold rounded-lg px-3 py-2 outline-none focus:border-amber-500 transition-colors">
                         </div>
                         <div class="grid grid-cols-2 gap-3">
@@ -55,17 +56,17 @@ export const profile = {
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Пример на немецком</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.exampleDe')}</label>
                             <textarea id="edit-example-de" class="w-full bg-slate-900 border border-slate-600 text-slate-200 italic rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-20 transition-colors"></textarea>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Перевод примера</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.exampleTranslation')}</label>
                             <textarea id="edit-example-ru" class="w-full bg-slate-900 border border-slate-600 text-slate-400 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-20 transition-colors"></textarea>
                         </div>
                     </div>
                     
                     <div class="p-4 border-t border-slate-700 bg-slate-900/50">
-                        <button onclick="profile.saveWordEdit()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow transition-transform active:scale-95">СОХРАНИТЬ</button>
+                        <button onclick="profile.saveWordEdit()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow transition-transform active:scale-95">${t('common.save')}</button>
                     </div>
                 </div>
             </div>
@@ -103,7 +104,7 @@ export const profile = {
             const totalXP = user.totalXP || 0;
             const currentStreak = user.currentStreak || 0;
             
-            let userProfile = { name: 'Студент' };
+            let userProfile = { name: t('profile.defaultName') };
             if (typeof config !== 'undefined' && config.getProfile) {
                 userProfile = config.getProfile() || userProfile;
             }
@@ -132,19 +133,27 @@ export const profile = {
             
             const topMistakeWords = await Promise.all(topMistakeIds.map(id => dbService.getWordById(id)));
 
-            // Расчет Лиг
-            const leagues = [
-                { name: 'Деревянная', min: 0, max: 100, color: 'text-amber-700', bg: 'bg-amber-900/30' },
-                { name: 'Каменная', min: 100, max: 300, color: 'text-slate-400', bg: 'bg-slate-500/30' },
-                { name: 'Бронзовая', min: 300, max: 1000, color: 'text-orange-500', bg: 'bg-orange-500/30' },
-                { name: 'Серебряная', min: 1000, max: 2500, color: 'text-gray-300', bg: 'bg-gray-400/30' },
-                { name: 'Золотая', min: 2500, max: 5000, color: 'text-yellow-400', bg: 'bg-yellow-500/30' },
-                { name: 'Алмазная', min: 5000, max: Infinity, color: 'text-cyan-400', bg: 'bg-cyan-500/30' }
-            ];
+            // Лиги и пороги берём из dbService — здесь только оформление,
+            // раньше весь список дублировался с расхождением в порогах
+            const LEAGUE_STYLES = {
+                wooden:  { color: 'text-amber-700',  bg: 'bg-amber-900/30' },
+                stone:   { color: 'text-slate-400',  bg: 'bg-slate-500/30' },
+                bronze:  { color: 'text-orange-500', bg: 'bg-orange-500/30' },
+                silver:  { color: 'text-gray-300',   bg: 'bg-gray-400/30' },
+                gold:    { color: 'text-yellow-400', bg: 'bg-yellow-500/30' },
+                diamond: { color: 'text-cyan-400',   bg: 'bg-cyan-500/30' }
+            };
+
+            const leagues = dbService.LEAGUES.map(l => ({
+                key: l.key,
+                name: t('leagues.' + l.key),
+                min: l.minXP,
+                ...LEAGUE_STYLES[l.key]
+            }));
 
             let currentLeague = leagues[0];
             let nextLeague = leagues[1];
-            
+
             for (let i = 0; i < leagues.length; i++) {
                 if (totalXP >= leagues[i].min) {
                     currentLeague = leagues[i];
@@ -152,10 +161,11 @@ export const profile = {
                 }
             }
 
+            const isMaxLeague = currentLeague.key === leagues[leagues.length - 1].key;
             let progressPct = 100;
-            let xpText = `${totalXP} XP (Макс.)`;
-            
-            if (currentLeague.name !== 'Алмазная') {
+            let xpText = t('profile.xpMax', { xp: totalXP });
+
+            if (!isMaxLeague) {
                 const range = nextLeague.min - currentLeague.min;
                 const earnedInLeague = totalXP - currentLeague.min;
                 progressPct = Math.round((earnedInLeague / range) * 100);
@@ -176,7 +186,7 @@ export const profile = {
                                 <div class="text-xs text-slate-400">${w.translation}</div>
                             </div>
                             <div class="text-red-400 text-xs bg-red-400/10 px-2 py-1 rounded font-bold border border-red-500/20">
-                                ${count} ошиб.
+                                ${plural('profile.mistakes', count)}
                             </div>
                         </div>
                     `;
@@ -185,7 +195,7 @@ export const profile = {
                 mistakesHtml = `
                     <div class="text-center py-6 text-slate-500 flex flex-col items-center">
                         <i class="fa-solid fa-check-circle text-3xl mb-2 opacity-50"></i>
-                        <p class="text-sm">Ошибок пока нет. Отличная работа!</p>
+                        <p class="text-sm">${t('profile.noMistakes')}</p>
                     </div>`;
             }
 
@@ -193,7 +203,7 @@ export const profile = {
                 <!-- Блок Лиги и XP -->
                 <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-slate-100">Текущая лига</h3>
+                        <h3 class="text-lg font-bold text-slate-100">${t('profile.currentLeague')}</h3>
                         <span class="text-xs font-bold px-2.5 py-1 rounded-md ${currentLeague.bg} ${currentLeague.color} border border-current">
                             <i class="fa-solid fa-trophy mr-1"></i> ${currentLeague.name}
                         </span>
@@ -207,29 +217,29 @@ export const profile = {
                     <div class="flex justify-between text-xs font-bold text-slate-500">
                         <span>${currentLeague.name}</span>
                         <span class="text-amber-500 tracking-wide">${xpText}</span>
-                        <span>${nextLeague.name !== currentLeague.name ? nextLeague.name : 'Максимум'}</span>
+                        <span>${nextLeague.name !== currentLeague.name ? nextLeague.name : t('profile.maxLeague')}</span>
                     </div>
                 </div>
 
                 <!-- Аналитика словаря -->
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1">Статистика словаря</h3>
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1">${t('profile.dictStats')}</h3>
                 <div class="grid grid-cols-3 gap-3">
                     <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center flex flex-col justify-center shadow-md">
                         <div class="text-2xl font-black text-slate-100">${totalWords}</div>
-                        <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">Всего слов</div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">${t('profile.totalWords')}</div>
                     </div>
                     <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center flex flex-col justify-center shadow-md border-b-2 border-b-green-500/50">
                         <div class="text-2xl font-black text-green-400">${masteredCount}</div>
-                        <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">Выучено (100%)</div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">${t('profile.mastered')}</div>
                     </div>
                     <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center flex flex-col justify-center relative overflow-hidden shadow-md border-b-2 border-b-red-500/50">
                         <div class="text-2xl font-black text-red-400">${difficultCount}</div>
-                        <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">Сложные</div>
+                        <div class="text-[10px] text-slate-500 uppercase mt-1 font-bold">${t('profile.difficult')}</div>
                     </div>
                 </div>
 
                 <!-- Топ слабых мест -->
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1 mt-2">Слабые места (Топ 5)</h3>
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1 mt-2">${t('profile.weakSpots')}</h3>
                 <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
                     ${mistakesHtml}
                 </div>
@@ -239,7 +249,7 @@ export const profile = {
             container.innerHTML = `
                 <div class="p-6 text-center text-red-400 bg-slate-800 rounded-xl border border-red-900/50">
                     <i class="fa-solid fa-triangle-exclamation text-4xl mb-4"></i>
-                    <h3 class="font-bold mb-2 text-lg">Ошибка загрузки статистики</h3>
+                    <h3 class="font-bold mb-2 text-lg">${t('profile.statsError')}</h3>
                     <p class="text-sm text-slate-500">${error.message}</p>
                 </div>
             `;
@@ -253,12 +263,12 @@ export const profile = {
         let html = `
             <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-4 flex justify-between gap-2">
                 <button onclick="profile.exportData()" class="flex-1 py-3 bg-slate-900 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:text-amber-500 hover:border-amber-500 active:scale-95 transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-download"></i> ЭКСПОРТ
+                    <i class="fa-solid fa-download"></i> ${t('profile.export')}
                 </button>
                 
                 <input type="file" id="import-file" accept=".json" class="hidden" onchange="profile.importData(event)">
                 <button onclick="document.getElementById('import-file').click()" class="flex-1 py-3 bg-slate-900 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:text-green-500 hover:border-green-500 active:scale-95 transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-upload"></i> ИМПОРТ
+                    <i class="fa-solid fa-upload"></i> ${t('profile.import')}
                 </button>
             </div>
             
@@ -266,7 +276,7 @@ export const profile = {
         `;
 
         if (allWords.length === 0) {
-            html += `<p class="text-center text-slate-500 py-6">Ваш словарь пока пуст.</p>`;
+            html += `<p class="text-center text-slate-500 py-6">${t('profile.emptyDict')}</p>`;
         } else {
             allWords.forEach(w => {
                 const safeWordStr = (w.word || '').replace(/'/g, "\\'"); 
@@ -278,8 +288,8 @@ export const profile = {
                             <h4 class="text-lg font-bold text-slate-100">${w.word}</h4>
                             <p class="text-sm text-amber-500 truncate">${w.translation}</p>
                             <div class="flex items-center gap-2 mt-1">
-                                <p class="text-[10px] text-slate-500 uppercase">Освоение: ${w.mastery || 0}%</p>
-                                ${w.isDifficult ? '<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">Сложное</span>' : ''}
+                                <p class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</p>
+                                ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
                             </div>
                         </div>
                         
@@ -364,7 +374,7 @@ export const profile = {
     },
 
     deleteWord: async (id, wordStr) => {
-        if (confirm(`Удалить слово "${wordStr}" из словаря?`)) {
+        if (confirm(t('profile.deleteConfirm', { word: wordStr }))) {
             await dbService.deleteWord(id);
             profile.renderDictionary();
             profile.renderStats();
@@ -378,7 +388,7 @@ export const profile = {
     exportData: async () => {
         const backup = await dbService.exportAll();
 
-        if (backup.words.length === 0) return alert('Словарь пуст, нечего экспортировать!');
+        if (backup.words.length === 0) return alert(t('profile.exportEmpty'));
 
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -407,14 +417,14 @@ export const profile = {
                     // Копии старого формата — просто список слов
                     await profile.importLegacyWords(data);
                 } else {
-                    throw new Error('Неизвестный формат файла');
+                    throw new Error(t('profile.unknownFormat'));
                 }
 
                 profile.renderDictionary();
                 profile.renderStats();
             } catch (err) {
                 console.error('Импорт не удался:', err);
-                alert('Не удалось прочитать файл. Убедитесь, что это резервная копия WortSchatz.\n\n' + err.message);
+                alert(t('profile.importFailed') + '\n\n' + err.message);
             }
         };
         reader.readAsText(file);
@@ -422,12 +432,12 @@ export const profile = {
     },
 
     importFullBackup: async (data) => {
-        const when = data.exportedAt ? data.exportedAt.slice(0, 10) : 'неизвестно когда';
-        const replace = confirm(
-            `Резервная копия от ${when}: слов — ${data.words.length}, тем — ${data.cycles?.length || 0}.\n\n` +
-            `ОК — полное восстановление: текущие словарь и прогресс будут заменены копией.\n` +
-            `Отмена — только добавить слова из копии к текущему словарю.`
-        );
+        const when = data.exportedAt ? data.exportedAt.slice(0, 10) : t('profile.unknownDate');
+        const replace = confirm(t('profile.importChoice', {
+            date: when,
+            words: data.words.length,
+            cycles: data.cycles?.length || 0
+        }));
 
         if (replace) {
             const result = await dbService.restoreFromBackup(data);
@@ -443,13 +453,11 @@ export const profile = {
                 }
             }
 
-            alert(
-                `Восстановлено:\n` +
-                `• слов — ${result.words}\n` +
-                `• тем — ${result.cycles}\n` +
-                `• дней плана — ${result.dayPlans}\n\n` +
-                `Прогресс, XP и лига восстановлены. Приложение перезагрузится.`
-            );
+            alert(t('profile.restored', {
+                words: result.words,
+                cycles: result.cycles,
+                dayPlans: result.dayPlans
+            }));
             location.reload();
             return;
         }
@@ -457,15 +465,11 @@ export const profile = {
         // Слияние: чужие темы и планы не переносим, слова остаются вне тем
         const words = data.words.map(({ id, cycleId, ...w }) => ({ ...w, cycleId: null }));
         const { count } = await dbService.saveMultipleWords(words);
-        alert(`Добавлено новых слов: ${count}. Прогресс по ним сохранён из копии.`);
+        alert(t('profile.mergedFromBackup', { count }));
     },
 
     importLegacyWords: async (words) => {
         const { count } = await dbService.saveMultipleWords(words);
-        alert(
-            `Импортировано слов: ${count}.\n\n` +
-            `Это копия старого формата — в ней нет данных о прогрессе, ` +
-            `слова добавлены как новые.`
-        );
+        alert(t('profile.importedLegacy', { count }));
     }
 };

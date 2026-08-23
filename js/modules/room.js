@@ -9,12 +9,12 @@ export const room = {
         
         main.innerHTML = `
             <div class="fade-in max-w-lg mx-auto mt-2 pb-10">
-                <h2 class="text-2xl font-bold text-slate-100 mb-6 text-center">Тренировочная комната</h2>
+                <h2 class="text-2xl font-bold text-slate-100 mb-6 text-center">${t('room.title')}</h2>
                 
                 <h3 class="text-sm font-bold text-amber-500 mb-4 px-1 uppercase tracking-wider flex justify-between items-center">
-                    Микро-тренажеры
+                    ${t('room.microTrainers')}
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <span class="text-xs text-slate-400">Только сложные</span>
+                        <span class="text-xs text-slate-400">${t('room.onlyHard')}</span>
                         <input type="checkbox" id="room-hard-mode" class="accent-amber-500 w-4 h-4">
                     </label>
                 </h3>
@@ -22,50 +22,50 @@ export const room = {
                 <div class="grid grid-cols-2 gap-3 mb-8">
                     <button onclick="room.startExerciseMode(['translation_de_ru'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-language text-blue-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Обратный<br>перевод (DE➔RU)</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeDeRu')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['translation_ru_de'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-language text-blue-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Прямой<br>перевод (RU➔DE)</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeRuDe')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['match_pairs'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-purple-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-layer-group text-purple-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Найди<br>пару</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeMatch')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['article'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-pink-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-font text-pink-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Артикли<br>(Der/Die/Das)</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeArticles')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['verb_form'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-pink-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-spell-check text-pink-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Формы<br>глаголов</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeVerbForms')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['fill_blanks'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-amber-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-keyboard text-amber-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Слова<br>в контексте</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeContext')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['sentence_builder'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-green-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-puzzle-piece text-green-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Сборка<br>предложений</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeBuilder')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['rektion'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-green-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-link text-green-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Rektion<br>(Управление)</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeRektion')}</span>
                     </button>
                     <button onclick="room.startExerciseMode(['listening'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-col items-center gap-2 col-span-2 active:scale-95">
                         <i class="fa-solid fa-headphones text-teal-500 text-2xl"></i>
-                        <span class="text-xs font-bold text-slate-300 text-center">Аудирование на слух</span>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeListening')}</span>
                     </button>
                 </div>
 
-                <h3 class="text-sm font-bold text-slate-500 mb-4 px-1 uppercase tracking-wider">Иммерсивные режимы</h3>
+                <h3 class="text-sm font-bold text-slate-500 mb-4 px-1 uppercase tracking-wider">${t('room.immersive')}</h3>
                 
                 <div class="grid grid-cols-1 gap-3">
                     <div onclick="room.startStory()" class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg hover:border-green-500 cursor-pointer transition-all flex items-center gap-4 group">
                         <div class="w-10 h-10 bg-green-500/10 text-green-500 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-book-open-reader"></i></div>
                         <div>
-                            <h3 class="font-bold text-slate-100 text-sm group-hover:text-green-400 transition-colors">Интерактивный ИИ-Рассказ</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Чтение истории с авто-переводом по клику</p>
+                            <h3 class="font-bold text-slate-100 text-sm group-hover:text-green-400 transition-colors">${t('room.storyTitle')}</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">${t('room.storyHint')}</p>
                         </div>
                     </div>
                 </div>
@@ -100,12 +100,12 @@ export const room = {
         });
 
         if (compatibleWords.length < 4) {
-            let errorMsg = 'Недостаточно подходящих слов для этого режима! Нужно хотя бы 4 слова.\n\n';
-            if (isHardMode) errorMsg += 'Возможно, у вас нет "сложных" слов такого типа.';
-            else if (allowedModes.includes('article')) errorMsg += 'Добавьте в словарь больше существительных (Noun).';
-            else if (allowedModes.includes('verb_form')) errorMsg += 'Добавьте в словарь больше глаголов (Verb) с заполненными формами Präteritum/Perfekt.';
-            else if (allowedModes.includes('rektion')) errorMsg += 'Добавьте глаголы, у которых заполнено поле Rektion (управление).';
-            else if (allowedModes.includes('fill_blanks') || allowedModes.includes('sentence_builder')) errorMsg += 'Добавьте слова, у которых заполнен пример использования (Пример на DE).';
+            let errorMsg = t('room.notEnough') + '\n\n';
+            if (isHardMode) errorMsg += t('room.notEnoughHard');
+            else if (allowedModes.includes('article')) errorMsg += t('room.notEnoughNouns');
+            else if (allowedModes.includes('verb_form')) errorMsg += t('room.notEnoughVerbs');
+            else if (allowedModes.includes('rektion')) errorMsg += t('room.notEnoughRektion');
+            else if (allowedModes.includes('fill_blanks') || allowedModes.includes('sentence_builder')) errorMsg += t('room.notEnoughExamples');
             
             alert(errorMsg);
             return;
@@ -126,10 +126,10 @@ export const room = {
                     <div class="w-24 h-24 bg-purple-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.4)] border-4 border-slate-900">
                         <i class="fa-solid fa-dumbbell text-5xl text-slate-900"></i>
                     </div>
-                    <h2 class="text-3xl font-black text-slate-100 mb-2">Тренировка завершена!</h2>
-                    <p class="text-slate-400 mb-8">Отличная разминка в Комнате. Слова закреплены.</p>
+                    <h2 class="text-3xl font-black text-slate-100 mb-2">${t('room.doneTitle')}</h2>
+                    <p class="text-slate-400 mb-8">${t('room.doneText')}</p>
                     <button onclick="room.render()" class="w-full py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg active:scale-95 transition-transform">
-                        ВЕРНУТЬСЯ В КОМНАТУ
+                        ${t('room.backToRoom')}
                     </button>
                 </div>
             `;
@@ -143,7 +143,7 @@ export const room = {
         if (allWords.length === 0) {
             container.innerHTML = `
                 <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center fade-in">
-                    <p class="text-slate-400 mb-4">Ваш словарь пуст. Сначала добавьте слова!</p>
+                    <p class="text-slate-400 mb-4">${t('room.emptyDict')}</p>
                 </div>
             `;
             return;
@@ -152,7 +152,7 @@ export const room = {
         container.innerHTML = `
             <div class="flex flex-col items-center justify-center py-10 fade-in">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-amber-500 border-opacity-50 mb-4"></div>
-                <p class="text-slate-400 font-medium animate-pulse">ИИ сочиняет интерактивную историю...</p>
+                <p class="text-slate-400 font-medium animate-pulse">${t('room.storyLoading')}</p>
             </div>
         `;
 
@@ -170,14 +170,14 @@ export const room = {
             container.innerHTML = `
                 <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl fade-in space-y-6">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <h3 class="font-bold text-amber-500 text-lg"><i class="fa-solid fa-hand-pointer mr-2"></i> Интерактивный рассказ</h3>
-                        <button onclick="room.startStory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-slate-300 transition-colors">Новая история</button>
+                        <h3 class="font-bold text-amber-500 text-lg"><i class="fa-solid fa-hand-pointer mr-2"></i> ${t('room.storyHeader')}</h3>
+                        <button onclick="room.startStory()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-slate-300 transition-colors">${t('room.newStory')}</button>
                     </div>
 
                     <div id="tap-translation-box" class="hidden bg-amber-500/10 border border-amber-500/50 p-3 rounded-xl text-amber-300 text-sm flex justify-between items-center gap-2">
                         <span id="tap-translation-text"></span>
                         <div class="flex items-center gap-2 shrink-0">
-                            <button id="tap-add-btn" class="hidden text-xs bg-amber-500 text-slate-900 font-bold px-2.5 py-1 rounded-lg hover:bg-amber-400 transition-colors"> + Добавить </button>
+                            <button id="tap-add-btn" class="hidden text-xs bg-amber-500 text-slate-900 font-bold px-2.5 py-1 rounded-lg hover:bg-amber-400 transition-colors"> + ${t('room.addWord')} </button>
                             <button onclick="document.getElementById('tap-translation-box').classList.add('hidden')" class="text-xs opacity-70 hover:opacity-100 p-1"><i class="fa-solid fa-xmark"></i></button>
                         </div>
                     </div>
@@ -189,7 +189,7 @@ export const room = {
                         
                         <div>
                             <button id="toggle-trans-btn" onclick="room.toggleFullTranslation()" class="w-full py-3 bg-slate-900 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 transition-all">
-                                ПОКАЗАТЬ ПЕРЕВОД ТЕКСТА
+                                ${t('room.showTranslation')}
                             </button>
                             <div id="full-translation-container" class="hidden mt-3 bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 fade-in">
                                 <p class="text-slate-400 text-sm leading-relaxed">${storyData.story_ru}</p>
@@ -212,13 +212,13 @@ export const room = {
         
         box.classList.remove('hidden');
         addBtn.classList.add('hidden');
-        textSpan.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Ищем "${cleanWord}"...`;
+        textSpan.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> ${t('room.searching', { word: cleanWord })}`;
 
         const allWords = await dbService.getAllWords();
         const found = allWords.find(w => w.word.toLowerCase().includes(cleanWord));
 
         if (found) {
-            textSpan.innerHTML = `<b>${found.word}</b> — <span class="text-white">${found.translation}</span> <span class="text-xs opacity-75 ml-2">(уже в словаре)</span>`;
+            textSpan.innerHTML = `<b>${found.word}</b> — <span class="text-white">${found.translation}</span> <span class="text-xs opacity-75 ml-2">${t('room.alreadyInDict')}</span>`;
         } else {
             try {
                 const prompt = `Переведи немецкое слово "${cleanWord}" на язык ${i18n.aiLanguage().name} кратко. Верни JSON в формате: {"word": "${cleanWord}", "translation": "перевод", "type": "noun/verb/adjective/phrase"}`;
@@ -230,19 +230,19 @@ export const room = {
                 addBtn.classList.remove('hidden');
                 addBtn.onclick = async () => {
                     addBtn.disabled = true;
-                    addBtn.innerText = "Добавлено!";
+                    addBtn.innerText = t('room.added');
                     
                     await dbService.addWord({
                         word: wordData.word,
                         translation: wordData.translation,
                         type: wordData.type || 'phrase',
-                        topic: 'Интерактивный рассказ',
+                        topic: t('room.storyHeader'),
                         example_de: `Er hat ${wordData.word} verwendet.`,
-                        example_ru: `Он использовал ${wordData.translation}.`
+                        example_ru: t('room.usedExample', { word: wordData.translation })
                     });
                 };
             } catch (e) {
-                textSpan.innerText = `Не удалось перевести "${cleanWord}"`;
+                textSpan.innerText = t('room.translateFailed', { word: cleanWord });
             }
         }
     },
@@ -253,11 +253,11 @@ export const room = {
         
         if (cont.classList.contains('hidden')) {
             cont.classList.remove('hidden');
-            btn.innerText = "СКРЫТЬ ПЕРЕВОД ТЕКСТА";
+            btn.innerText = t('room.hideTranslation');
             btn.className = "w-full py-3 bg-slate-800 border border-slate-600 text-amber-500 text-xs font-bold rounded-xl transition-all";
         } else {
             cont.classList.add('hidden');
-            btn.innerText = "ПОКАЗАТЬ ПЕРЕВОД ТЕКСТА";
+            btn.innerText = t('room.showTranslation');
             btn.className = "w-full py-3 bg-slate-900 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 transition-all";
         }
     }

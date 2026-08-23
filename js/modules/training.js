@@ -1,3 +1,4 @@
+import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { srs } from '../core/srs.js';
 import { lessonStateManager } from '../core/lessonState.js';
@@ -131,7 +132,7 @@ export const training = {
         const progress = ((training.currentIndex) / training.queue.length) * 100;
         const word = training.currentWord;
 
-        let stepTitle = training.state.status === 'review' ? 'ПОВТОРЕНИЕ' : 'НОВЫЕ СЛОВА';
+        let stepTitle = training.state.status === 'review' ? t('training.review') : t('training.newWords');
         let stepColor = training.state.status === 'review' ? 'blue-400' : 'green-400';
 
         let tableRows = '';
@@ -151,8 +152,8 @@ export const training = {
             if (word.superlative) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Superlativ</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.superlative}</span></div>`;
         }
 
-        if (word.synonym) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Синонимы</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.synonym}</span></div>`;
-        if (word.gegenteil) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">Антонимы</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.gegenteil}</span></div>`;
+        if (word.synonym) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${t('card.synonyms')}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.synonym}</span></div>`;
+        if (word.gegenteil) tableRows += `<div class="flex justify-between items-center py-2.5 border-b border-slate-700/50"><span class="text-slate-400 text-sm">${t('card.antonyms')}</span><span class="font-bold text-slate-100 text-sm text-right pl-4">${word.gegenteil}</span></div>`;
 
         let grammarBlock = tableRows ? `<div class="bg-[#1b2234] rounded-xl px-4 py-1 mb-5 border border-slate-700/70 shadow-inner">${tableRows}</div>` : '';
 
@@ -160,7 +161,7 @@ export const training = {
             <div class="max-w-lg mx-auto min-h-full flex flex-col pt-2 pb-6 fade-in">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[10px] font-bold text-${stepColor} uppercase tracking-wider bg-${stepColor}/10 px-2 py-1 rounded border border-${stepColor}/20 shadow-sm">${stepTitle}</span>
-                    <span class="text-xs font-bold text-slate-500">Слово ${training.currentIndex + 1} из ${training.queue.length}</span>
+                    <span class="text-xs font-bold text-slate-500">${t('training.wordOf', { current: training.currentIndex + 1, total: training.queue.length })}</span>
                 </div>
                 <div class="w-full bg-slate-800 rounded-full h-2 mb-6 border border-slate-700 overflow-hidden shrink-0 mt-1">
                     <div class="bg-amber-500 h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
@@ -189,26 +190,26 @@ export const training = {
 
                 <div id="controls-front" class="mt-auto">
                     <button onclick="training.flipCard()" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 text-xl font-black rounded-xl shadow-lg active:scale-95 transition-all">
-                        ПОКАЗАТЬ ОТВЕТ
+                        ${t('training.showAnswer')}
                     </button>
                 </div>
 
                 <div id="controls-back" class="mt-auto hidden grid-cols-4 gap-2">
                     <button onclick="training.rate(1)" class="flex flex-col items-center justify-center py-3.5 bg-[#3a2024] border border-[#522a2f] text-[#ff7171] rounded-xl active:scale-95 transition-transform hover:bg-[#47272c]">
                         <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(1, word)}</span>
-                        <span class="font-bold">Снова</span>
+                        <span class="font-bold">${t('training.again')}</span>
                     </button>
                     <button onclick="training.rate(2)" class="flex flex-col items-center justify-center py-3.5 bg-[#3b271d] border border-[#553625] text-[#ff9e5e] rounded-xl active:scale-95 transition-transform hover:bg-[#4d3326]">
                         <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(2, word)}</span>
-                        <span class="font-bold">Трудно</span>
+                        <span class="font-bold">${t('training.hard')}</span>
                     </button>
                     <button onclick="training.rate(3)" class="flex flex-col items-center justify-center py-3.5 bg-[#1d3528] border border-[#264b38] text-[#5cd589] rounded-xl active:scale-95 transition-transform hover:bg-[#254433]">
                         <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(3, word)}</span>
-                        <span class="font-bold">Хорошо</span>
+                        <span class="font-bold">${t('training.good')}</span>
                     </button>
                     <button onclick="training.rate(4)" class="flex flex-col items-center justify-center py-3.5 bg-[#1e2a45] border border-[#293d68] text-[#719fff] rounded-xl active:scale-95 transition-transform hover:bg-[#263556]">
                         <span class="text-[10px] opacity-70 mb-0.5">${srs.describeNext(4, word)}</span>
-                        <span class="font-bold">Легко</span>
+                        <span class="font-bold">${t('training.easy')}</span>
                     </button>
                 </div>
             </div>
@@ -291,31 +292,31 @@ export const training = {
                     <i class="fa-solid fa-trophy text-5xl text-slate-900"></i>
                 </div>
                 
-                <h2 class="text-3xl font-black text-slate-100 mb-2">Отличная работа!</h2>
-                <p class="text-slate-400 mb-8">План на сегодня успешно выполнен.</p>
+                <h2 class="text-3xl font-black text-slate-100 mb-2">${t('training.doneTitle')}</h2>
+                <p class="text-slate-400 mb-8">${t('training.doneText')}</p>
                 
                 <div class="w-full bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg mb-8 space-y-4">
                     <div class="flex justify-between items-center">
-                        <span class="text-slate-400 font-bold">Выучено новых:</span>
+                        <span class="text-slate-400 font-bold">${t('training.learnedNew')}</span>
                         <span class="text-green-400 font-black text-xl">+${stateData.newWords || 0}</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-slate-400 font-bold">Повторено:</span>
+                        <span class="text-slate-400 font-bold">${t('training.reviewed')}</span>
                         <span class="text-blue-400 font-black text-xl">${stateData.reviewed || 0}</span>
                     </div>
                     <div class="h-px w-full bg-slate-700 my-2"></div>
                     <div class="flex justify-between items-center">
-                        <span class="text-amber-500 font-bold">Получено XP:</span>
+                        <span class="text-amber-500 font-bold">${t('training.xpEarned')}</span>
                         <span class="text-amber-500 font-black text-2xl">+${stateData.xpEarned || 0}</span>
                     </div>
                     <div class="flex justify-between items-center pt-2">
-                        <span class="text-slate-400 font-bold">Текущая лига:</span>
-                        <span class="text-white font-bold px-3 py-1 bg-slate-700 rounded-lg">${user.league || 'Каменная'}</span>
+                        <span class="text-slate-400 font-bold">${t('training.currentLeague')}</span>
+                        <span class="text-white font-bold px-3 py-1 bg-slate-700 rounded-lg">${t('leagues.' + dbService.normalizeLeague(user.league))}</span>
                     </div>
                 </div>
                 
                 <button onclick="app.navigate('plan')" class="w-full py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg active:scale-95 transition-transform">
-                    ВЕРНУТЬСЯ НА БАЗУ
+                    ${t('training.backToBase')}
                 </button>
             </div>
         `;

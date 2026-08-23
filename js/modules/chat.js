@@ -17,9 +17,9 @@ export const chat = {
                             <i class="fa-solid fa-robot text-xl"></i>
                         </div>
                         <div>
-                            <h2 class="font-bold text-slate-100 leading-tight">AI-Репетитор</h2>
+                            <h2 class="font-bold text-slate-100 leading-tight">${t('chat.title')}</h2>
                             <p class="text-[10px] text-green-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> Онлайн
+                                <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> ${t('chat.online')}
                             </p>
                         </div>
                     </div>
@@ -51,7 +51,7 @@ export const chat = {
         if (chat.history.length === 0) {
             chat.history.push({ 
                 role: 'ai', 
-                text: `Hallo, ${profile.name}! Я твой ИИ-репетитор. Мы можем просто поболтать на немецком, а если ты сделаешь ошибку — я мягко её исправлю. О чем хочешь поговорить сегодня?` 
+                text: t('chat.greeting', { name: profile.name })
             });
         }
         
@@ -76,7 +76,7 @@ export const chat = {
         
         // Кнопка озвучки только для ИИ
         const audioBtn = isAI 
-            ? `<button onclick="chat.playAudio(this, '${text.replace(/'/g, "\\'")}')" class="mt-2 text-slate-500 hover:text-amber-500 transition-colors text-xs flex items-center gap-1"><i class="fa-solid fa-volume-high"></i> Озвучить</button>`
+            ? `<button onclick="chat.playAudio(this, '${text.replace(/'/g, "\\'")}')" class="mt-2 text-slate-500 hover:text-amber-500 transition-colors text-xs flex items-center gap-1"><i class="fa-solid fa-volume-high"></i> ${t('chat.speak')}</button>`
             : '';
 
         msgDiv.innerHTML = `
@@ -132,7 +132,7 @@ export const chat = {
             
             // Формируем историю для контекста ИИ
             const conversationHistory = chat.history.map(msg => 
-                `${msg.role === 'ai' ? 'Репетитор' : 'Студент'}: ${msg.text}`
+                `${msg.role === 'ai' ? t('chat.roleTutor') : t('chat.roleStudent')}: ${msg.text}`
             ).join('\n');
             
             const prompt = `Ты — дружелюбный и поддерживающий ИИ-репетитор немецкого языка. 
@@ -161,7 +161,7 @@ export const chat = {
             
         } catch (error) {
             document.getElementById(typingId).remove();
-            chat.renderMessage('ai', 'Извините, произошла ошибка сети. Попробуйте еще раз. (' + error.message + ')');
+            chat.renderMessage('ai', t('chat.networkError') + ' (' + error.message + ')');
             chat.history.pop(); 
         } finally {
             inputEl.disabled = false;
@@ -171,7 +171,7 @@ export const chat = {
     },
 
     clearHistory: () => {
-        if (confirm('Вы уверены, что хотите очистить историю чата?')) {
+        if (confirm(t('chat.clearConfirm'))) {
             chat.history = [];
             chat.render();
         }
@@ -179,7 +179,7 @@ export const chat = {
 
     playAudio: (btn, text) => {
         // Очищаем текст от русского языка, оставляя только немецкий
-        const germanText = text.replace(/[А-Яа-яЁё]/g, '').trim();
+        const germanText = text.replace(/[А-Яа-яЁёІіЇїЄєҐґ]/g, '').trim();
         
         if (!germanText) return;
         
