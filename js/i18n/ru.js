@@ -205,6 +205,40 @@ export const ru = {
         unknown: 'Неизвестная ошибка ИИ.'
     },
 
+
+    auth: {
+        signIn: 'Войти через Google',
+        signOut: 'Выйти',
+        signedInAs: 'Вход выполнен: {email}',
+        notSignedIn: 'Вход не выполнен — данные хранятся только на этом устройстве',
+        title: 'Синхронизация между устройствами',
+        hint: 'Войдите, чтобы словарь и прогресс были доступны на других устройствах. Без входа приложение работает как раньше, всё останется здесь.',
+        skip: 'Пока без входа',
+        notConfigured: 'Firebase не настроен: нет файла js/firebase.config.js',
+        popupClosed: 'Окно входа закрыто',
+        network: 'Нет связи с Google. Проверьте интернет.',
+        unauthorizedDomain: 'Этот домен не разрешён в настройках Firebase. Добавьте его в Authentication → Settings → Authorized domains.',
+        tooManyRequests: 'Слишком много попыток. Подождите немного.',
+        unknown: 'Не удалось войти',
+        conflictTitle: 'Данные есть и здесь, и в облаке',
+        conflictText: 'На этом устройстве {local}, в облаке {remote}. Что делать?',
+        conflictMerge: 'Объединить',
+        conflictMergeHint: 'Слова из облака добавятся к местным, ничего не пропадёт',
+        conflictCloud: 'Взять из облака',
+        conflictCloudHint: 'Местные слова будут удалены и заменены облачными'
+    },
+
+    sync: {
+        inProgress: 'Синхронизация...',
+        done: 'Синхронизировано',
+        never: 'Ещё не синхронизировалось',
+        lastSync: 'Синхронизация: {when}',
+        now: 'Синхронизировать сейчас',
+        error: 'Не удалось синхронизировать',
+        offline: 'Нет связи с облаком',
+        permissionDenied: 'Доступ запрещён. Проверьте правила безопасности Firestore.',
+        quota: 'Исчерпана дневная квота Firestore. Попробуйте завтра.'
+    },
     card: {
         synonyms: 'Синонимы',
         antonyms: 'Антонимы'

@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -36,6 +36,12 @@ const PRECACHE_URLS = [
     'js/i18n/en.js',
     'js/app.js',
     'js/services/db.js',
+    'js/services/auth.js',
+    'js/services/sync.js',
+    'js/firebase.config.js',
+    'vendor/firebase/firebase-app.js',
+    'vendor/firebase/firebase-auth.js',
+    'vendor/firebase/firebase-firestore.js',
     'js/services/ai.js',
     'js/core/dates.js',
     'js/core/german.js',

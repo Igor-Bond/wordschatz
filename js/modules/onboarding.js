@@ -1,3 +1,5 @@
+import { auth } from '../services/auth.js';
+import { sync } from '../services/sync.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { i18n, t, plural, LANGUAGES } from '../i18n/i18n.js';
@@ -33,12 +35,67 @@ export const onboarding = {
             2: onboarding.renderLanguage,
             3: onboarding.renderLevel,
             4: onboarding.renderPace,
-            5: onboarding.renderApiKey
+            5: onboarding.renderApiKey,
+            6: onboarding.renderSignIn
         };
 
         view.innerHTML = (steps[onboarding.step] || onboarding.renderName)();
 
         if (onboarding.step === 4) onboarding.bindGoalHighlight();
+    },
+
+    /**
+     * Шаг 6. Вход в аккаунт (§37).
+     *
+     * Стоит последним и его можно пропустить: приложение полностью работает
+     * локально, а вход нужен только для синхронизации между устройствами.
+     * Заставлять входить ради первого урока незачем.
+     */
+    renderSignIn: () => `
+        <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-cloud-arrow-up text-5xl text-amber-500 mb-4"></i>
+                <h2 class="text-2xl font-bold text-slate-100">${t('auth.title')}</h2>
+                <p class="text-sm text-slate-400 mt-3 leading-relaxed">${t('auth.hint')}</p>
+            </div>
+
+            <button onclick="onboarding.signIn()" id="ob-signin-btn"
+                class="w-full py-4 bg-white hover:bg-slate-100 text-slate-800 text-base font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3">
+                <svg viewBox="0 0 48 48" class="w-5 h-5" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.7 6.9l7.3 5.7c4.3-3.9 6.8-9.7 6.8-17.1z"/>
+                    <path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/>
+                    <path fill="#34A853" d="M24 48c6.3 0 11.7-2.1 15.6-5.7l-7.3-5.7c-2 1.4-4.7 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/>
+                </svg>
+                ${t('auth.signIn')}
+            </button>
+
+            <p id="ob-signin-error" class="hidden text-xs text-red-400 text-center mt-3"></p>
+
+            <button onclick="onboarding.finish()"
+                class="w-full mt-4 py-3 text-slate-500 hover:text-slate-300 text-sm font-bold transition-colors">
+                ${t('auth.skip')}
+            </button>
+        </div>`,
+
+    signIn: async () => {
+        const btn = document.getElementById('ob-signin-btn');
+        const error = document.getElementById('ob-signin-error');
+
+        btn.disabled = true;
+        btn.classList.add('opacity-60');
+        error.classList.add('hidden');
+
+        try {
+            const user = await auth.signIn();
+            // При входе переходом по адресу страница перезагрузится сама
+            if (user) await onboarding.finish();
+        } catch (e) {
+            error.textContent = e.message;
+            error.classList.remove('hidden');
+            btn.disabled = false;
+            btn.classList.remove('opacity-60');
+        }
     },
 
     // --- Шаг 1. Имя ---
@@ -194,6 +251,13 @@ export const onboarding = {
         } else if (onboarding.step === 4) {
             const goal = document.querySelector('input[name="ob-goal"]:checked');
             if (goal) onboarding.data.dailyGoal = goal.value;
+        } else if (onboarding.step === 5) {
+            const key = document.getElementById('ob-apikey').value.trim();
+            if (!key) return await dialog.alert(t('onboarding.apiRequired'));
+            onboarding.data.apiKey = key;
+
+            // Шаг входа показываем, только если Firebase настроен
+            if (!auth.isConfigured()) return await onboarding.finish();
         }
 
         onboarding.step++;
@@ -201,10 +265,6 @@ export const onboarding = {
     },
 
     finish: async () => {
-        const key = document.getElementById('ob-apikey').value.trim();
-        if (!key) return await dialog.alert(t('onboarding.apiRequired'));
-        onboarding.data.apiKey = key;
-
         config.set('name', onboarding.data.name);
         config.set('ui_lang', onboarding.data.uiLang);
         config.set('level', onboarding.data.level);
@@ -218,5 +278,8 @@ export const onboarding = {
         document.getElementById('app-view').classList.add('flex');
 
         app.initApp();
+
+        // Первая выгрузка в облако, если вход выполнен
+        if (auth.isSignedIn) sync.run({ silent: true }).catch(() => {});
     }
 };

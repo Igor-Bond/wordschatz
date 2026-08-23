@@ -205,6 +205,40 @@ export const en = {
         unknown: 'Unknown AI error.'
     },
 
+
+    auth: {
+        signIn: 'Sign in with Google',
+        signOut: 'Sign out',
+        signedInAs: 'Signed in as {email}',
+        notSignedIn: 'Not signed in — data stays on this device only',
+        title: 'Sync across devices',
+        hint: 'Sign in to keep your dictionary and progress available on other devices. Without signing in the app works as before, everything stays here.',
+        skip: 'Continue without signing in',
+        notConfigured: 'Firebase is not configured: js/firebase.config.js is missing',
+        popupClosed: 'Sign-in window was closed',
+        network: 'Cannot reach Google. Check your connection.',
+        unauthorizedDomain: 'This domain is not allowed in Firebase. Add it under Authentication → Settings → Authorized domains.',
+        tooManyRequests: 'Too many attempts. Please wait a moment.',
+        unknown: 'Could not sign in',
+        conflictTitle: 'Data exists both here and in the cloud',
+        conflictText: 'This device has {local}, the cloud has {remote}. What should we do?',
+        conflictMerge: 'Merge',
+        conflictMergeHint: 'Cloud words are added to the local ones, nothing is lost',
+        conflictCloud: 'Take the cloud copy',
+        conflictCloudHint: 'Local words are deleted and replaced by the cloud ones'
+    },
+
+    sync: {
+        inProgress: 'Syncing...',
+        done: 'Synced',
+        never: 'Never synced',
+        lastSync: 'Synced: {when}',
+        now: 'Sync now',
+        error: 'Sync failed',
+        offline: 'No connection to the cloud',
+        permissionDenied: 'Access denied. Check your Firestore security rules.',
+        quota: 'Firestore daily quota exhausted. Try again tomorrow.'
+    },
     card: {
         synonyms: 'Synonyms',
         antonyms: 'Antonyms'

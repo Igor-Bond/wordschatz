@@ -1,7 +1,9 @@
+import { auth } from '../services/auth.js';
+import { sync } from '../services/sync.js';
 import { dialog } from '../core/dialog.js';
 import { germanUtils } from '../core/german.js';
 import { config } from '../config.js';
-import { t, plural } from '../i18n/i18n.js';
+import { i18n, t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { dateUtils } from '../core/dates.js';
 
@@ -226,6 +228,8 @@ export const profile = {
                 </div>
 
                 <!-- Аналитика словаря -->
+                ${profile.renderAccountCard()}
+
                 ${profile.renderActivityChart(activity)}
 
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider px-1">${t('profile.dictStats')}</h3>
@@ -343,6 +347,127 @@ export const profile = {
         `;
 
         profile.renderDictList();
+    },
+
+    /**
+     * Аккаунт и синхронизация (§37 ТЗ).
+     * Если Firebase не настроен, блок не показывается вовсе.
+     */
+    renderAccountCard: () => {
+        if (!auth.isConfigured()) return '';
+
+        const user = auth.user;
+        const last = Number(config.get(sync.LAST_SYNC_KEY) || 0);
+        const when = last
+            ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(last))
+            : t('sync.never');
+
+        if (!user) {
+            return `
+                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                    <p class="text-xs text-slate-400 mb-3">${t('auth.notSignedIn')}</p>
+                    <button onclick="profile.signIn()" id="prof-signin-btn"
+                        class="w-full py-3 bg-white hover:bg-slate-100 text-slate-800 text-sm font-bold rounded-xl active:scale-95 transition-all">
+                        ${t('auth.signIn')}
+                    </button>
+                    <p id="prof-auth-error" class="hidden text-xs text-red-400 mt-2"></p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-full bg-slate-900 border border-slate-600 flex items-center justify-center text-amber-500 shrink-0">
+                        <i class="fa-solid fa-cloud"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-slate-300 truncate">${profile.escapeAttr(user.email || user.displayName || '')}</p>
+                        <p id="prof-sync-status" class="text-[10px] text-slate-500">${t('sync.lastSync', { when })}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="profile.syncNow()" id="prof-sync-btn"
+                        class="flex-1 py-2.5 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                        ${t('sync.now')}
+                    </button>
+                    <button onclick="profile.signOut()"
+                        class="px-4 py-2.5 bg-slate-900 border border-slate-600 text-slate-400 text-xs font-bold rounded-xl hover:border-red-900 hover:text-red-400 active:scale-95 transition-all">
+                        ${t('auth.signOut')}
+                    </button>
+                </div>
+                <p id="prof-auth-error" class="hidden text-xs text-red-400 mt-2"></p>
+            </div>
+        `;
+    },
+
+    signIn: async () => {
+        const btn = document.getElementById('prof-signin-btn');
+        const error = document.getElementById('prof-auth-error');
+        if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
+
+        try {
+            const user = await auth.signIn();
+            if (!user) return;   // ушли на вход переходом по адресу
+
+            await profile.resolveFirstSignIn(user.uid);
+            await profile.render();
+        } catch (e) {
+            if (error) { error.textContent = e.message; error.classList.remove('hidden'); }
+            if (btn) { btn.disabled = false; btn.classList.remove('opacity-60'); }
+        }
+    },
+
+    /**
+     * Первый вход там, где локальный словарь уже не пуст.
+     * Молча сливать или молча затирать нельзя — спрашиваем.
+     */
+    resolveFirstSignIn: async (uid) => {
+        const state = await sync.inspectFirstSignIn(uid);
+
+        if (state.conflict) {
+            const choice = await dialog.choose(
+                t('auth.conflictText', {
+                    local: plural('common.word', state.localWords),
+                    remote: plural('common.word', state.remoteWords)
+                }),
+                [
+                    { value: 'merge', label: t('auth.conflictMerge'), hint: t('auth.conflictMergeHint'), primary: true },
+                    { value: 'cloud', label: t('auth.conflictCloud'), hint: t('auth.conflictCloudHint'), danger: true }
+                ],
+                { title: t('auth.conflictTitle') }
+            );
+
+            if (choice === null) return;
+            if (choice === 'cloud') {
+                await sync.replaceLocalWithCloud(uid);
+                location.reload();
+                return;
+            }
+        }
+
+        await sync.run();
+    },
+
+    syncNow: async () => {
+        const btn = document.getElementById('prof-sync-btn');
+        const status = document.getElementById('prof-sync-status');
+        if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
+        if (status) status.textContent = t('sync.inProgress');
+
+        try {
+            await sync.run();
+            await profile.render();
+        } catch (e) {
+            if (status) status.textContent = e.message;
+        } finally {
+            if (btn) { btn.disabled = false; btn.classList.remove('opacity-60'); }
+        }
+    },
+
+    signOut: async () => {
+        await auth.signOut();
+        await profile.render();
     },
 
     /**

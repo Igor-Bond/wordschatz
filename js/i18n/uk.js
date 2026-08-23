@@ -205,6 +205,40 @@ export const uk = {
         unknown: 'Невідома помилка ШІ.'
     },
 
+
+    auth: {
+        signIn: 'Увійти через Google',
+        signOut: 'Вийти',
+        signedInAs: 'Вхід виконано: {email}',
+        notSignedIn: 'Вхід не виконано — дані зберігаються лише на цьому пристрої',
+        title: 'Синхронізація між пристроями',
+        hint: 'Увійдіть, щоб словник і прогрес були доступні на інших пристроях. Без входу застосунок працює як раніше, усе залишиться тут.',
+        skip: 'Поки без входу',
+        notConfigured: 'Firebase не налаштований: немає файлу js/firebase.config.js',
+        popupClosed: 'Вікно входу закрито',
+        network: 'Немає зв’язку з Google. Перевірте інтернет.',
+        unauthorizedDomain: 'Цей домен не дозволений у налаштуваннях Firebase. Додайте його в Authentication → Settings → Authorized domains.',
+        tooManyRequests: 'Забагато спроб. Зачекайте трохи.',
+        unknown: 'Не вдалося увійти',
+        conflictTitle: 'Дані є і тут, і в хмарі',
+        conflictText: 'На цьому пристрої {local}, у хмарі {remote}. Що робимо?',
+        conflictMerge: 'Обʼєднати',
+        conflictMergeHint: 'Слова з хмари додадуться до місцевих, нічого не зникне',
+        conflictCloud: 'Взяти з хмари',
+        conflictCloudHint: 'Місцеві слова буде видалено і замінено хмарними'
+    },
+
+    sync: {
+        inProgress: 'Синхронізація...',
+        done: 'Синхронізовано',
+        never: 'Ще не синхронізувалося',
+        lastSync: 'Синхронізація: {when}',
+        now: 'Синхронізувати зараз',
+        error: 'Не вдалося синхронізувати',
+        offline: 'Немає звʼязку з хмарою',
+        permissionDenied: 'Доступ заборонено. Перевірте правила безпеки Firestore.',
+        quota: 'Вичерпано денну квоту Firestore. Спробуйте завтра.'
+    },
     card: {
         synonyms: 'Синоніми',
         antonyms: 'Антоніми'

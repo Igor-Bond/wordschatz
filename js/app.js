@@ -1,3 +1,5 @@
+import { auth } from './services/auth.js';
+import { sync } from './services/sync.js';
 import { dialog } from './core/dialog.js';
 import { config } from './config.js';
 import { aiService } from './services/ai.js';
@@ -22,8 +24,30 @@ export const app = {
             document.getElementById('app-view').classList.remove('hidden');
             document.getElementById('app-view').classList.add('flex');
             app.initApp();
+
+            // Сессия и синхронизация — в фоне, чтобы не задерживать первый экран
+            app.restoreCloudSession();
         } else {
             onboarding.start();
+        }
+    },
+
+    /**
+     * Восстановление входа и фоновая синхронизация.
+     *
+     * SDK Firebase весит почти мегабайт, поэтому поднимается только если
+     * пользователь раньше входил: без облака приложение работает как прежде.
+     */
+    restoreCloudSession: async () => {
+        if (!auth.isConfigured()) return;
+
+        try {
+            const user = await auth.restore();
+            if (!user) return;
+
+            await sync.run({ silent: true });
+        } catch (e) {
+            console.error('[Облако] Фоновая синхронизация не удалась:', e);
         }
     },
 

@@ -16,6 +16,8 @@ import { config } from './config.js';
 import { i18n, t, plural, LANGUAGES } from './i18n/i18n.js';
 import { db, dbService } from './services/db.js';
 import { aiService } from './services/ai.js';
+import { auth } from './services/auth.js';
+import { sync } from './services/sync.js';
 import { dateUtils } from './core/dates.js';
 import { srs } from './core/srs.js';
 import { dialog } from './core/dialog.js';
@@ -46,7 +48,7 @@ import { app } from './app.js';
  */
 Object.assign(window, {
     i18n, t, plural,
-    config, db, dbService, aiService, dateUtils, srs, germanUtils, quiz, dialog, lessonStateManager, scheduler,
+    config, db, dbService, aiService, auth, sync, dateUtils, srs, germanUtils, quiz, dialog, lessonStateManager, scheduler,
     onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
 });
 
