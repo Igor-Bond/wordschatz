@@ -171,12 +171,25 @@ export const auth = {
         const map = {
             'auth/popup-closed-by-user': 'auth.popupClosed',
             'auth/network-request-failed': 'auth.network',
-            'auth/unauthorized-domain': 'auth.unauthorizedDomain',
-            'auth/too-many-requests': 'auth.tooManyRequests'
+            'auth/too-many-requests': 'auth.tooManyRequests',
+            'auth/operation-not-allowed': 'auth.providerDisabled',
+            'auth/invalid-api-key': 'auth.badConfig',
+            'auth/configuration-not-found': 'auth.badConfig'
         };
 
+        // Домен подставляем в текст: иначе непонятно, что именно добавлять
+        // в список разрешённых, а он зависит от того, откуда открыто
+        // приложение — localhost, домен Netlify или что-то ещё
+        if (e?.code === 'auth/unauthorized-domain') {
+            const error = new Error(t('auth.unauthorizedDomain', { domain: location.hostname }));
+            error.code = e.code;
+            return error;
+        }
+
         const key = map[e?.code];
-        const error = new Error(key ? t(key) : (e?.message || t('auth.unknown')));
+        const error = new Error(
+            key ? t(key) : `${e?.message || t('auth.unknown')}${e?.code ? ` [${e.code}]` : ''}`
+        );
         error.code = e?.code;
         return error;
     }
