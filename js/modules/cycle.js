@@ -1,3 +1,4 @@
+import { wiktionary } from '../services/wiktionary.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -153,6 +154,11 @@ export const cycle = {
                 throw new Error(t('cycle.emptyResult'));
             }
 
+            // Вторая фаза: сверка с Wiktionary до того, как слова попадут
+            // в план. Неверный род или форма, замеченные потом, — это дни
+            // заучивания неправильного
+            cycle.state.check = await cycle.verify(words);
+
             cycle.state.words = words.map(w => ({ ...w, selected: true }));
             cycle.renderPreview();
         } catch (error) {
@@ -160,12 +166,56 @@ export const cycle = {
         }
     },
 
+    /**
+     * Сверка сгенерированного набора со словарной статьёй.
+     * Возвращает сводку для показа в предпросмотре.
+     */
+    verify: async (words) => {
+        cycle.updateLoader(0, words.length, t('cycle.verifying'));
+
+        const result = await wiktionary.enrich(words, (done, total) => {
+            cycle.updateLoader(done, total, t('cycle.verifying'));
+        });
+
+        console.log(`[Тема] Сверка: исправлено ${result.fixed}, дополнено ${result.filled}, не проверено ${result.unchecked}`);
+        return result;
+    },
+
+    /**
+     * Итог сверки в предпросмотре.
+     *
+     * Исправления делаются молча, но пользователь должен знать, что модель
+     * ошибалась и насколько часто: это единственный способ понять, стоит ли
+     * доверять карточкам, которые сверить не удалось.
+     */
+    renderCheckSummary: () => {
+        const check = cycle.state.check;
+        if (!check) return '';
+
+        const части = [];
+        if (check.fixed) части.push(t('cycle.checkFixed', { count: check.fixed }));
+        if (check.filled) части.push(t('cycle.checkFilled', { count: check.filled }));
+        if (check.unchecked) части.push(t('cycle.checkUnchecked', { count: check.unchecked }));
+
+        const текст = части.length ? части.join(' · ') : t('cycle.checkClean');
+        const тревожно = check.fixed > 0 || check.unchecked > 0;
+
+        return `
+            <div class="mb-4 px-3 py-2 rounded-xl border text-xs flex items-start gap-2 ${
+                тревожно ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-green-500/10 border-green-500/30 text-green-300'
+            }">
+                <i class="fa-solid ${тревожно ? 'fa-triangle-exclamation' : 'fa-circle-check'} mt-0.5 shrink-0"></i>
+                <span>${текст}</span>
+            </div>
+        `;
+    },
+
     renderLoader: (topic, done, total) => {
         const main = document.getElementById('main-content');
         main.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-center fade-in max-w-sm mx-auto">
                 <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-amber-500 mb-6"></div>
-                <h3 class="text-xl font-bold text-slate-100 mb-2">${t('cycle.loadingTitle')}</h3>
+                <h3 class="text-xl font-bold text-slate-100 mb-2" id="cycle-progress-title">${t('cycle.loadingTitle')}</h3>
                 <p class="text-slate-400 text-sm mb-6">${t('cycle.loadingTopic', { topic: cycle.esc(topic) })}</p>
 
                 <div class="w-full bg-slate-800 rounded-full h-2 border border-slate-700 overflow-hidden">
@@ -177,11 +227,17 @@ export const cycle = {
         `;
     },
 
-    updateLoader: (done, total) => {
+    /**
+     * @param {string} label подпись фазы; без неё показывается сбор слов
+     */
+    updateLoader: (done, total, label = null) => {
         const bar = document.getElementById('cycle-progress-bar');
         const text = document.getElementById('cycle-progress-text');
-        if (bar) bar.style.width = `${Math.round((done / total) * 100)}%`;
+        const title = document.getElementById('cycle-progress-title');
+
+        if (bar) bar.style.width = `${Math.round((done / Math.max(total, 1)) * 100)}%`;
         if (text) text.innerText = t('cycle.loadingProgress', { done, total });
+        if (title && label) title.innerText = label;
     },
 
     renderError: (message) => {
@@ -228,6 +284,8 @@ export const cycle = {
                     <h2 class="text-2xl font-bold text-slate-100">${t('cycle.previewTitle', { topic: cycle.esc(cycle.state.topic) })}</h2>
                     <p class="text-slate-400 text-sm mt-1">${t('cycle.previewHint')}</p>
                 </div>
+
+                ${cycle.renderCheckSummary()}
 
                 <div class="flex gap-2 mb-4">
                     <button onclick="cycle.selectAll(true)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">${t('common.selectAll')}</button>
@@ -324,6 +382,9 @@ export const cycle = {
             );
 
             if (!extra.length) throw new Error(t('cycle.topUpEmpty'));
+
+            // Добранные слова идут в тот же план, значит и сверяются так же
+            cycle.state.check = await cycle.verify(extra);
 
             cycle.state.words = [...cycle.state.words, ...extra.map(w => ({ ...w, selected: true }))];
             cycle.renderPreview();

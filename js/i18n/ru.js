@@ -157,6 +157,11 @@ export const ru = {
         loadingTopic: 'Тема «{topic}»',
         loadingProgress: '{done} из {total}',
         loadingHint: 'Большой набор собирается несколькими запросами — это может занять до минуты.',
+        verifying: 'Сверяем формы со словарём',
+        checkFixed: 'исправлено форм: {count}',
+        checkFilled: 'дополнено карточек: {count}',
+        checkUnchecked: 'не удалось сверить: {count}',
+        checkClean: 'Все формы совпали с Wiktionary.',
         emptyResult: 'ИИ не вернул ни одного нового слова. Попробуйте другую тему.',
 
         previewTitle: 'Тема «{topic}»',

@@ -157,6 +157,11 @@ export const uk = {
         loadingTopic: 'Тема «{topic}»',
         loadingProgress: '{done} із {total}',
         loadingHint: 'Великий набір збирається кількома запитами — це може зайняти до хвилини.',
+        verifying: 'Звіряємо форми зі словником',
+        checkFixed: 'виправлено форм: {count}',
+        checkFilled: 'доповнено карток: {count}',
+        checkUnchecked: 'не вдалося звірити: {count}',
+        checkClean: 'Усі форми збіглися з Wiktionary.',
         emptyResult: 'ШІ не повернув жодного нового слова. Спробуйте іншу тему.',
 
         previewTitle: 'Тема «{topic}»',

@@ -75,28 +75,42 @@ export const wiktionary = {
         .trim(),
 
     /**
-     * Параметры сводного шаблона в виде словаря.
+     * Все сводные шаблоны с этим именем, каждый — словарём параметров.
+     *
+     * Шаблон на странице не один: у омографов вроде «der See» (озеро) и
+     * «die See» (море) отдельный раздел и отдельный блок форм на каждое
+     * значение. Разбирая только первый, мы бы «исправляли» верную карточку
+     * по формам чужого слова.
+     *
      * Значения бывают с вариантами: «Dativ Singular» и «Dativ Singular*».
      */
-    parseTemplate: (wikitext, name) => {
-        const start = wikitext.indexOf(`{{${name}`);
-        if (start < 0) return null;
+    parseTemplates: (wikitext, name) => {
+        const templates = [];
+        let from = 0;
 
-        // Шаблон заканчивается «}}» на отдельной строке
-        const end = wikitext.indexOf('\n}}', start);
-        const body = wikitext.slice(start, end < 0 ? wikitext.length : end);
+        while (true) {
+            const start = wikitext.indexOf(`{{${name}`, from);
+            if (start < 0) break;
 
-        const fields = {};
-        for (const line of body.split('\n')) {
-            const match = line.match(/^\|([^=]+)=(.*)$/);
-            if (!match) continue;
+            // Шаблон заканчивается «}}» на отдельной строке
+            const end = wikitext.indexOf('\n}}', start);
+            const body = wikitext.slice(start, end < 0 ? wikitext.length : end);
+            from = end < 0 ? wikitext.length : end + 3;
 
-            const key = match[1].trim();
-            const value = wiktionary._cleanValue(match[2]);
-            if (value) fields[key] = value;
+            const fields = {};
+            for (const line of body.split('\n')) {
+                const match = line.match(/^\|([^=]+)=(.*)$/);
+                if (!match) continue;
+
+                const key = match[1].trim();
+                const value = wiktionary._cleanValue(match[2]);
+                if (value) fields[key] = value;
+            }
+
+            if (Object.keys(fields).length) templates.push(fields);
         }
 
-        return Object.keys(fields).length ? fields : null;
+        return templates;
     },
 
     /** Все значения параметра вместе с вариантами «*», «2», «3». */
@@ -105,26 +119,16 @@ export const wiktionary = {
         .map(([, v]) => v)
         .filter(Boolean),
 
-    /**
-     * Разбор статьи в формы, сравнимые с нашей карточкой.
-     * @returns {Object|null} { type, gender, plural[], dativ[], ... }
-     */
-    parseEntry: (wikitext, type) => {
-        const templateName = TEMPLATES[type];
-        if (!templateName) return null;
-
-        const fields = wiktionary.parseTemplate(wikitext, templateName);
-        if (!fields) return null;
-
+    /** Один блок форм в сравнимом виде. */
+    _readTemplate: (fields, type) => {
         if (type === 'noun') {
-            const genus = (fields['Genus'] || fields['Genus 1'] || '').toLowerCase();
+            const genus = (fields['Genus'] || fields['Genus 1'] || '').toLowerCase().trim();
             return {
                 type,
                 gender: GENUS[genus] || null,
                 plural: wiktionary._variants(fields, 'Nominativ Plural'),
                 dativ: wiktionary._variants(fields, 'Dativ Singular'),
-                akkusativ: wiktionary._variants(fields, 'Akkusativ Singular'),
-                singular: fields['Nominativ Singular'] || null
+                akkusativ: wiktionary._variants(fields, 'Akkusativ Singular')
             };
         }
 
@@ -150,6 +154,40 @@ export const wiktionary = {
         };
     },
 
+    /**
+     * Разбор статьи в формы, сравнимые с нашей карточкой.
+     *
+     * Если значений у слова несколько, выбираем блок по роду нашей карточки:
+     * «das Band» сверяется с формами среднего рода (die Bänder), а не
+     * мужского (die Bände). Когда род не совпал ни с одним блоком, не
+     * утверждаем ничего: поправить верную карточку хуже, чем пропустить
+     * неверную.
+     *
+     * @returns {Object|null} формы либо { ambiguous: true }
+     */
+    parseEntry: (wikitext, type, word = null) => {
+        const templateName = TEMPLATES[type];
+        if (!templateName) return null;
+
+        const templates = wiktionary.parseTemplates(wikitext, templateName);
+        if (!templates.length) return null;
+
+        const variants = templates.map(f => wiktionary._readTemplate(f, type));
+        if (variants.length === 1) return variants[0];
+
+        if (type === 'noun') {
+            const ourGender = word ? germanUtils.getGender(word) : null;
+            const matching = variants.filter(v => v.gender && v.gender === ourGender);
+
+            if (matching.length === 1) return matching[0];
+            return { type, ambiguous: true };
+        }
+
+        // Несколько блоков у глагола или прилагательного — это разные
+        // значения с разными формами, различить их нечем
+        return { type, ambiguous: true };
+    },
+
     /** Одно слово: разметка → разобранные формы. */
     lookup: async (word) => {
         const title = wiktionary.pageTitle(word);
@@ -158,7 +196,7 @@ export const wiktionary = {
         const wikitext = await wiktionary.fetchWikitext(title);
         if (!wikitext) return null;
 
-        return wiktionary.parseEntry(wikitext, word.type);
+        return wiktionary.parseEntry(wikitext, word.type, word);
     },
 
     /** Форма без артикля и лишних пробелов — для сравнения. */
@@ -191,7 +229,7 @@ export const wiktionary = {
      * @returns {Array} [{ field, ours, theirs, fix }]
      */
     compare: (word, entry) => {
-        if (!entry) return [];
+        if (!entry || entry.ambiguous) return [];
 
         const diffs = [];
         const gender = entry.gender || germanUtils.getGender(word);
@@ -244,7 +282,9 @@ export const wiktionary = {
      * Артикли подставляем сами: в шаблоне лежат голые формы.
      */
     fillFrom: (word, entry) => {
-        if (!entry) return {};
+        // У многозначного слова формы разных значений различаются
+        // (die Bände против die Bänder) — заполнять наугад нельзя
+        if (!entry || entry.ambiguous) return {};
 
         const changes = {};
         const empty = (v) => !String(v ?? '').trim();
@@ -283,6 +323,62 @@ export const wiktionary = {
         }
 
         return changes;
+    },
+
+    /**
+     * Сверка карточек до сохранения в базу.
+     *
+     * Раньше ошибку модели можно было заметить только после того, как слово
+     * попало в план и его несколько дней учили неправильно. Здесь неверные
+     * формы правятся сразу, а пустые заполняются — и то и другое бесплатно.
+     *
+     * Карточки меняются на месте.
+     *
+     * @param {Array} cards карточки от ИИ, ещё не в базе
+     * @param {Function} onProgress (обработано, всего)
+     * @returns {Promise<{fixed:number, filled:number, unchecked:number}>}
+     */
+    enrich: async (cards, onProgress = null) => {
+        let fixed = 0, filled = 0, unchecked = 0;
+
+        for (let i = 0; i < cards.length; i++) {
+            const card = cards[i];
+
+            if (['noun', 'verb', 'adjective'].includes(card.type)) {
+                try {
+                    const entry = await wiktionary.lookup(card);
+
+                    if (!entry) {
+                        card.verified = wiktionary.STATUS.NOT_FOUND;
+                    } else {
+                        const fill = wiktionary.fillFrom(card, entry);
+                        if (Object.keys(fill).length) { Object.assign(card, fill); filled++; }
+
+                        const diffs = wiktionary.compare(card, entry);
+                        if (diffs.length) {
+                            for (const diff of diffs) Object.assign(card, diff.fix || {});
+                            fixed++;
+                        }
+
+                        card.verified = wiktionary.STATUS.OK;
+                        card.mismatches = [];
+                    }
+
+                    card.verifiedAt = Date.now();
+                } catch (e) {
+                    // Сеть отвалилась — слово просто остаётся непроверенным
+                    // и попадёт в общую очередь сверки
+                    console.error('[Wiktionary] Не сверилось при генерации:', card.word, e);
+                    card.verified = wiktionary.STATUS.UNCHECKED;
+                    unchecked++;
+                }
+            }
+
+            if (onProgress) onProgress(i + 1, cards.length);
+            if (i < cards.length - 1) await new Promise(r => setTimeout(r, PAUSE_MS));
+        }
+
+        return { fixed, filled, unchecked };
     },
 
     /**

@@ -157,6 +157,11 @@ export const en = {
         loadingTopic: 'Topic “{topic}”',
         loadingProgress: '{done} of {total}',
         loadingHint: 'A large set is built over several requests — this can take up to a minute.',
+        verifying: 'Checking forms against the dictionary',
+        checkFixed: 'forms corrected: {count}',
+        checkFilled: 'cards completed: {count}',
+        checkUnchecked: 'could not check: {count}',
+        checkClean: 'Every form matched Wiktionary.',
         emptyResult: 'The AI returned no new words. Try another topic.',
 
         previewTitle: 'Topic “{topic}”',
