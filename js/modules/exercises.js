@@ -1,3 +1,4 @@
+import { quiz } from '../core/quiz.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -12,21 +13,6 @@ export const exercises = {
 
     /** Допустимые варианты ответа для текущего задания с вводом. */
     acceptedAnswers: null,
-
-    /**
-     * Честное перемешивание (Фишер—Йейтс).
-     * Раньше везде стоял sort(() => 0.5 - Math.random()) — это не
-     * перемешивание: компаратор неконсистентен, и правильный ответ
-     * чаще оказывался в одних и тех же позициях.
-     */
-    shuffle: (array) => {
-        const result = [...array];
-        for (let i = result.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [result[i], result[j]] = [result[j], result[i]];
-        }
-        return result;
-    },
 
     queue: [],
     currentIndex: 0,
@@ -131,14 +117,16 @@ export const exercises = {
     // НАЙДИ ПАРУ (MATCH PAIRS)
     // ==========================================
     renderMatchPairsQuiz: async (word) => {
+        // Пары той же части речи: иначе колонки легко сопоставлялись
+        // по грамматике, без знания слов
         const allWords = await dbService.getAllWords();
-        const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 3);
+        const distractors = quiz.pickDistractors(word, allWords, 3);
         const pairs = [...distractors, word];
-        
+
         exercises.matchPairsState = { selectedDe: null, selectedRu: null, matchedCount: 0, totalPairs: pairs.length };
-        
-        let deBtns = pairs.map(p => ({ id: p.id, text: p.word, lang: 'de' })).sort(() => 0.5 - Math.random());
-        let ruBtns = pairs.map(p => ({ id: p.id, text: p.translation, lang: 'ru' })).sort(() => 0.5 - Math.random());
+
+        const deBtns = quiz.shuffle(pairs.map(p => ({ id: p.id, text: p.word, lang: 'de' })));
+        const ruBtns = quiz.shuffle(pairs.map(p => ({ id: p.id, text: p.translation, lang: 'ru' })));
         
         const renderBtn = (obj) => `<button id="mp-${obj.lang}-${obj.id}" onclick="exercises.clickMatchPair('${obj.lang}', ${obj.id})" class="mp-btn p-3 bg-slate-900 border-2 border-slate-700 text-slate-300 font-bold rounded-xl active:scale-95 transition-all text-sm h-16 flex items-center justify-center text-center break-words leading-tight hover:bg-slate-800">${obj.text}</button>`;
 
@@ -216,9 +204,9 @@ export const exercises = {
     // ==========================================
     renderTranslationQuiz: async (word, direction = 'de-ru') => {
         const allWords = await dbService.getAllWords();
-        const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 3);
-        const options = [...distractors, word].sort(() => 0.5 - Math.random());
-        
+        // Дистракторы той же части речи и по возможности той же темы
+        const options = quiz.buildOptions(word, allWords, 3);
+
         const questionText = direction === 'ru-de' ? word.translation : word.word;
         const btnClass = direction === 'ru-de' ? 'text-xl' : 'text-base';
         const label = direction === 'ru-de' ? t('exercises.howInGerman') : t('exercises.pickTranslation');
@@ -325,8 +313,9 @@ export const exercises = {
         if (!found) masked = `_____ ${word.example_de}`;
 
         const allWords = await dbService.getAllWords();
-        const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 2).map(w => w.word);
-        const hints = [...distractors, targetMatch].sort(() => 0.5 - Math.random());
+        // Подсказки той же части речи — случайные слова не создавали выбора
+        const distractors = quiz.pickDistractors(word, allWords, 2).map(w => w.word);
+        const hints = quiz.shuffle([...distractors, targetMatch]);
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
@@ -362,9 +351,9 @@ export const exercises = {
             ? germanUtils.PREPOSITIONS
             : ['Akkusativ', 'Dativ', 'Genitiv'];
 
-        const options = exercises.shuffle([
+        const options = quiz.shuffle([
             correct,
-            ...exercises.shuffle(pool.filter(p => p !== correct)).slice(0, askPreposition ? 3 : 2)
+            ...quiz.shuffle(pool.filter(p => p !== correct)).slice(0, askPreposition ? 3 : 2)
         ]);
 
         const hint = askPreposition && kase
@@ -413,7 +402,7 @@ export const exercises = {
         const words = cleanSentence.split(' ').filter(w => w.length > 0);
         
         exercises.builderState.correct = [...words];
-        exercises.builderState.words = [...words].sort(() => 0.5 - Math.random());
+        exercises.builderState.words = quiz.shuffle(words);
         exercises.builderState.selected = [];
 
         return `

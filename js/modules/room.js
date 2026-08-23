@@ -1,3 +1,4 @@
+import { quiz } from '../core/quiz.js';
 import { dbService } from '../services/db.js';
 import { i18n, t } from '../i18n/i18n.js';
 import { aiService } from '../services/ai.js';
@@ -111,7 +112,7 @@ export const room = {
             return;
         }
         
-        const sessionWords = compatibleWords.sort(() => 0.5 - Math.random()).slice(0, 10);
+        const sessionWords = quiz.shuffle(compatibleWords).slice(0, 10);
         
         exercises.isRoomMode = true;
         exercises.allowedModes = allowedModes;

@@ -1,3 +1,4 @@
+import { quiz } from '../core/quiz.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -32,7 +33,7 @@ export const control = {
                 words = await dbService.getWordsByCycle(cycleId);
             } else {
                 const allWords = await dbService.getStudiedWords();
-                words = allWords.sort(() => 0.5 - Math.random()).slice(0, 20);
+                words = quiz.shuffle(allWords).slice(0, 20);
             }
 
             if (words.length < 5) {
@@ -56,7 +57,7 @@ export const control = {
 
     generateQuestions: (words) => {
         let questions = [];
-        const shuffledWords = [...words].sort(() => 0.5 - Math.random());
+        const shuffledWords = quiz.shuffle(words);
         
         shuffledWords.forEach(word => {
             questions.push({ word: word, type: 'translation_de_ru' });
@@ -74,7 +75,7 @@ export const control = {
             }
         });
 
-        return questions.sort(() => 0.5 - Math.random()).slice(0, 25);
+        return quiz.shuffle(questions).slice(0, 25);
     },
 
     renderCurrent: async () => {
@@ -123,8 +124,8 @@ export const control = {
 
     renderTranslation: async (word, type) => {
         const allWords = await dbService.getAllWords();
-        const distractors = allWords.filter(w => w.id !== word.id).sort(() => 0.5 - Math.random()).slice(0, 3);
-        const options = [...distractors, word].sort(() => 0.5 - Math.random());
+        // Дистракторы той же части речи, как и в упражнениях
+        const options = quiz.buildOptions(word, allWords, 3);
         
         const questionText = type === 'translation_ru_de' ? word.translation : word.word;
         const btnClass = type === 'translation_ru_de' ? 'text-xl' : 'text-base';
