@@ -1,0 +1,54 @@
+# --- Зависимости и сборка (на будущее: Vite/npm) ---
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# --- Секреты ---
+# API-ключи Gemini не должны попадать в репозиторий
+.env
+.env.*
+!.env.example
+*.key
+secrets.json
+
+# --- Логи ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# --- Локальные данные и бэкапы приложения ---
+wortschatz_backup_*.json
+
+# --- Редакторы и IDE ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Служебные файлы ОС ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+
+# --- Netlify ---
+.netlify/
+
+# --- Временные файлы ---
+tmp/
+temp/
+*.tmp
+*.bak
