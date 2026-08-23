@@ -400,6 +400,8 @@ export const en = {
     room: {
         title: 'Practice room',
         microTrainers: 'Micro trainers',
+        topicLabel: 'Topic to practise',
+        allTopics: 'All topics',
         onlyHard: 'Hard words only',
         modeDeRu: 'Reverse<br>translation (DE➔EN)',
         modeRuDe: 'Direct<br>translation (EN➔DE)',
@@ -417,6 +419,7 @@ export const en = {
         notEnough: 'Not enough suitable words for this mode! At least 4 words are needed.',
         nothingStudied: 'You have not studied any words yet. The Room is for reinforcement — start with the cards in your daily plan.',
         notEnoughStudied: 'You have studied only a few words so far. The Room uses only words you have already seen on cards.',
+        notEnoughInTopic: 'The topic “{topic}” has no studied words for this mode. Pick another topic or “All topics”.',
         notEnoughHard: 'You may not have any “hard” words of this type.',
         notEnoughNouns: 'Add more nouns to your dictionary.',
         notEnoughVerbs: 'Add more verbs with Präteritum/Perfekt forms filled in.',

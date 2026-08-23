@@ -8,7 +8,17 @@ import { aiService } from '../services/ai.js';
 import { exercises } from './exercises.js';
 
 export const room = {
-    render: () => {
+
+    /**
+     * Тема, по которой тренируемся. Пусто — все темы сразу.
+     *
+     * Комната брала весь пройденный словарь целиком, и вернуться к одной
+     * теме было нельзя: слова из «Электроники» перемешивались с «Едой»,
+     * а повторить перед экзаменом нужную тему — обычное желание.
+     */
+    topic: '',
+
+    render: async () => {
         document.body.classList.remove('lesson-mode');
         const main = document.getElementById('main-content');
         
@@ -16,6 +26,8 @@ export const room = {
             <div class="fade-in max-w-lg mx-auto mt-2 pb-10">
                 <h2 class="text-2xl font-bold text-slate-100 mb-6 text-center">${t('room.title')}</h2>
                 
+                ${await room.renderTopicPicker()}
+
                 <h3 class="text-sm font-bold text-amber-500 mb-4 px-1 uppercase tracking-wider flex justify-between items-center">
                     ${t('room.microTrainers')}
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -84,11 +96,74 @@ export const room = {
         `;
     },
 
+    /**
+     * Выбор темы над тренажёрами.
+     *
+     * Список — только из пройденных слов: предлагать темы, к которым ещё
+     * не приступали, значит обещать тренировку, которой не будет. Рядом
+     * с названием стоит, сколько слов доступно.
+     */
+    renderTopicPicker: async () => {
+        const studied = await dbService.getStudiedWords();
+        if (studied.length === 0) return '';
+
+        const counts = new Map();
+        for (const w of studied) {
+            const topic = String(w.topic ?? '').trim();
+            if (topic) counts.set(topic, (counts.get(topic) || 0) + 1);
+        }
+
+        // Одна тема на весь словарь — выбирать не из чего
+        if (counts.size < 2) return '';
+
+        // Выбранной темы могло не остаться после удаления слов
+        if (room.topic && !counts.has(room.topic)) room.topic = '';
+
+        const chip = (value, label, count) => `
+            <button onclick="room.pickTopic('${room.esc(value)}')"
+                class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-all active:scale-95 ${
+                    room.topic === value
+                        ? 'bg-amber-500 border-amber-500 text-slate-900'
+                        : 'bg-slate-900 border-slate-600 text-slate-300 hover:border-amber-500 hover:text-amber-500'
+                }">
+                ${room.esc(label)} <span class="opacity-60">${count}</span>
+            </button>`;
+
+        const chips = [...counts.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([topic, count]) => chip(topic, topic, count))
+            .join('');
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg mb-6">
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">${t('room.topicLabel')}</div>
+                <div class="flex flex-wrap gap-2">
+                    ${chip('', t('room.allTopics'), studied.length)}
+                    ${chips}
+                </div>
+            </div>`;
+    },
+
+    /** Экранирование для подстановки в атрибут onclick. */
+    esc: (str) => String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'),
+
+    pickTopic: async (topic) => {
+        room.topic = topic;
+        await room.render();
+    },
+
+    /** Пройденные слова выбранной темы. */
+    _pool: async () => {
+        const studied = await dbService.getStudiedWords();
+        if (!room.topic) return studied;
+        return studied.filter(w => String(w.topic ?? '').trim() === room.topic);
+    },
+
     startExerciseMode: async (allowedModes) => {
         // Комната — это закрепление, а не первое знакомство. Слова, которые
         // ещё ни разу не показали карточкой, спрашивать нельзя: раньше сюда
         // попадал весь словарь, включая заготовленные на будущие дни слова.
-        let allWords = await dbService.getStudiedWords();
+        let allWords = await room._pool();
 
         if (allWords.length === 0) {
             await dialog.alert(t('room.nothingStudied'));
@@ -124,9 +199,19 @@ export const room = {
             return isValid;
         });
 
-        if (compatibleWords.length < 4) {
-            let errorMsg = t('room.notEnough') + '\n\n';
-            if (studiedCount < 4) errorMsg += t('room.notEnoughStudied');
+        // Порог в четыре слова остался с тех пор, когда неверные варианты
+        // брались из этого же списка. Сейчас они приходят из всего словаря,
+        // поэтому тему из трёх слов запускать можно — иначе выбор темы был
+        // бы бесполезен для всего, кроме самых больших тем
+        const minimum = room.topic ? 1 : 4;
+
+        if (compatibleWords.length < minimum) {
+            // При выбранной теме общая фраза «нужно хотя бы 4 слова» неверна:
+            // порог там другой, и дело не в количестве, а в самой теме
+            let errorMsg = room.topic ? '' : t('room.notEnough') + '\n\n';
+
+            if (room.topic) errorMsg += t('room.notEnoughInTopic', { topic: room.topic });
+            else if (studiedCount < 4) errorMsg += t('room.notEnoughStudied');
             else if (isHardMode) errorMsg += t('room.notEnoughHard');
             else if (allowedModes.includes('article')) errorMsg += t('room.notEnoughNouns');
             else if (allowedModes.includes('verb_form')) errorMsg += t('room.notEnoughVerbs');
@@ -166,7 +251,7 @@ export const room = {
         const container = document.getElementById('room-game-container');
         // История тоже про закрепление: берём пройденное, а весь словарь —
         // только пока проходить нечего
-        const studied = await dbService.getStudiedWords();
+        const studied = await room._pool();
         const allWords = studied.length > 0 ? studied : await dbService.getAllWords();
 
         if (allWords.length === 0) {

@@ -49,35 +49,15 @@ export const profile = {
                         <h3 class="text-lg font-bold text-slate-100">${t('profile.wordCard')}</h3>
                         <button onclick="profile.closeEditModal()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
                     </div>
-                    
-                    <div class="p-4 overflow-y-auto space-y-4 flex-1 hide-scrollbar">
+                    <!--
+                        Поля собираются кодом под часть речи. Раньше здесь были
+                        два безымянных поля «Dativ / Rektion / Komp.» и
+                        «Plural / Präteritum»: карточка глагола показывает
+                        двенадцать полей, а починить в редакторе можно было
+                        четыре.
+                    -->
+                    <div class="p-4 overflow-y-auto space-y-3 flex-1 hide-scrollbar" id="edit-fields">
                         <input type="hidden" id="edit-id">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.germanWord')}</label>
-                            <input type="text" id="edit-word" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 font-bold text-lg transition-colors">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.translation')}</label>
-                            <input type="text" id="edit-translation" class="w-full bg-slate-900 border border-slate-600 text-amber-500 font-bold rounded-lg px-3 py-2 outline-none focus:border-amber-500 transition-colors">
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Dativ / Rektion / Komp.</label>
-                                <input type="text" id="edit-grammar1" class="w-full bg-slate-900 border border-slate-600 text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm transition-colors">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Plural / Präteritum</label>
-                                <input type="text" id="edit-grammar2" class="w-full bg-slate-900 border border-slate-600 text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm transition-colors">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.exampleDe')}</label>
-                            <textarea id="edit-example-de" class="w-full bg-slate-900 border border-slate-600 text-slate-200 italic rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-20 transition-colors"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">${t('profile.exampleTranslation')}</label>
-                            <textarea id="edit-example-ru" class="w-full bg-slate-900 border border-slate-600 text-slate-400 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-20 transition-colors"></textarea>
-                        </div>
                     </div>
                     
                     <div class="p-4 border-t border-slate-700 bg-slate-900/50">
@@ -1087,18 +1067,96 @@ export const profile = {
         profile.renderDictList();
     },
 
+    /**
+     * Поля редактора под часть речи.
+     *
+     * Возвращает список `[имя поля, подпись]`. Подписи берутся из общего
+     * словаря `fields.*` — тех же, что в разборе расхождений с Wiktionary,
+     * чтобы одно и то же поле называлось одинаково везде.
+     */
+    editableFields: (type) => {
+        const common = [
+            ['translation', t('profile.translation')],
+            ['ipa', t('fields.ipa')],
+            ['synonym', t('card.synonyms')],
+            ['gegenteil', t('card.antonyms')],
+            ['topic', t('cycle.topicLabel')]
+        ];
+
+        const byType = {
+            noun: [
+                ['gender', t('fields.gender')],
+                ['plural', t('fields.plural')],
+                ['dativ', t('fields.dativ')],
+                ['akkusativ', t('fields.akkusativ')]
+            ],
+            verb: [
+                ['preterite', t('fields.preterite')],
+                ['participle_ii', t('fields.participle_ii')],
+                ['auxiliary', t('fields.auxiliary')],
+                ['konjunktiv2', t('fields.konjunktiv2')],
+                ['imperative_singular', t('fields.imperative_singular')],
+                ['imperative_plural', t('fields.imperative_plural')],
+                ['rektion', 'Rektion']
+            ],
+            adjective: [
+                ['comparative', t('fields.comparative')],
+                ['superlative', t('fields.superlative')]
+            ]
+        };
+
+        return [...common, ...(byType[type] || [])];
+    },
+
     openEditModal: async (id) => {
         const word = await dbService.getWordById(id);
         if (!word) return;
 
-        document.getElementById('edit-id').value = word.id;
-        document.getElementById('edit-word').value = word.word || '';
-        document.getElementById('edit-translation').value = word.translation || '';
-        document.getElementById('edit-example-de').value = word.example_de || '';
-        document.getElementById('edit-example-ru').value = word.example_ru || '';
+        const поле = (name, label, value, extra = '') => `
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">${profile.escapeAttr(label)}</label>
+                <input type="text" data-edit="${name}" value="${profile.escapeAttr(value ?? '')}" ${extra}
+                    class="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm transition-colors">
+            </div>`;
 
-        document.getElementById('edit-grammar1').value = word.dativ || word.rektion || word.comparative || '';
-        document.getElementById('edit-grammar2').value = word.plural || word.preterite || word.superlative || '';
+        const область = (name, label, value, css) => `
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">${profile.escapeAttr(label)}</label>
+                <textarea data-edit="${name}" class="w-full bg-slate-900 border border-slate-600 ${css} rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-16 transition-colors">${profile.escapeAttr(value ?? '')}</textarea>
+            </div>`;
+
+        let html = `<input type="hidden" id="edit-id" value="${word.id}">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 mb-1">${t('profile.germanWord')}</label>
+                <input type="text" data-edit="word" value="${profile.escapeAttr(word.word || '')}"
+                    class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 font-bold text-lg transition-colors">
+            </div>`;
+
+        for (const [name, label] of profile.editableFields(word.type)) {
+            html += поле(name, label, word[name]);
+        }
+
+        // Спряжение — шесть отдельных полей: одной строкой его было
+        // не отредактировать, а именно в нём модель чаще всего ошибается
+        if (word.type === 'verb') {
+            const conjugation = germanUtils.getConjugation(word) || {};
+            html += `
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Präsens</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${germanUtils.PERSONS.map(p => `
+                            <input type="text" data-conj="${p}" value="${profile.escapeAttr(conjugation[p] || '')}"
+                                placeholder="${germanUtils.PERSON_LABELS[p]}"
+                                class="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-amber-500 text-sm transition-colors">
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+
+        html += область('example_de', t('profile.exampleDe'), word.example_de, 'text-slate-200 italic');
+        html += область('example_ru', t('profile.exampleTranslation'), word.example_ru, 'text-slate-400');
+
+        document.getElementById('edit-fields').innerHTML = html;
 
         const modal = document.getElementById('edit-word-modal');
         const content = document.getElementById('edit-modal-content');
@@ -1126,23 +1184,27 @@ export const profile = {
         const word = await dbService.getWordById(id);
         if (!word) return;
 
-        word.word = document.getElementById('edit-word').value.trim();
-        word.translation = document.getElementById('edit-translation').value.trim();
-        word.example_de = document.getElementById('edit-example-de').value.trim();
-        word.example_ru = document.getElementById('edit-example-ru').value.trim();
-        
-        const grammar1 = document.getElementById('edit-grammar1').value.trim();
-        const grammar2 = document.getElementById('edit-grammar2').value.trim();
-        
-        if (word.type === 'noun') {
-            word.dativ = grammar1;
-            word.plural = grammar2;
-        } else if (word.type === 'verb') {
-            word.rektion = grammar1;
-            word.preterite = grammar2;
-        } else if (word.type === 'adjective') {
-            word.comparative = grammar1;
-            word.superlative = grammar2;
+        // Поля собраны кодом, поэтому и читаются по разметке, а не по
+        // выписанному вручную списку: добавить поле теперь значит добавить
+        // его в editableFields, и оно само появится и сохранится
+        document.querySelectorAll('#edit-fields [data-edit]').forEach(el => {
+            word[el.dataset.edit] = el.value.trim();
+        });
+
+        if (word.type === 'verb') {
+            const conjugation = {};
+            document.querySelectorAll('#edit-fields [data-conj]').forEach(el => {
+                const value = el.value.trim();
+                if (value) conjugation[el.dataset.conj] = value;
+            });
+            word.conjugation = Object.keys(conjugation).length ? conjugation : null;
+        }
+
+        // Род правим и в самом слове: иначе карточка осталась бы
+        // противоречивой — «die» в поле и «der» в подписи
+        if (word.type === 'noun' && word.gender) {
+            const base = germanUtils.parseNoun(word.word).base;
+            if (base) word.word = `${word.gender} ${base}`;
         }
 
         // Формы изменились — прошлая сверка к ним больше не относится,
