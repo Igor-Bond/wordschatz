@@ -42,6 +42,18 @@ body.lesson-mode #app-header {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/*
+ * Блик на полосе прогресса лиги.
+ *
+ * В разметке стоит animate-[shimmer_2s_infinite] — Tailwind превращает это
+ * в animation: shimmer 2s infinite, но сами кадры нигде не были описаны,
+ * и блик не двигался с самого начала.
+ */
+@keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+}
+
 /* Безопасная зона для iPhone и Android-жестов */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
     nav {

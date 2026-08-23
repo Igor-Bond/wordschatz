@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v40';
+const APP_VERSION = 'v41';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -19,6 +19,7 @@ const PRECACHE_URLS = [
     'index.html',
     'manifest.json',
     'css/style.css',
+    'css/tailwind.css',
 
     // Локальные зависимости
     'vendor/tailwind.min.js',

@@ -1,0 +1,14 @@
+/*
+ * Вход для сборки Tailwind.
+ *
+ * Отсюда получается css/tailwind.css — только те классы, что реально
+ * встречаются в разметке. Собственные стили приложения лежат отдельно,
+ * в css/style.css, и подключаются вторым файлом: их не нужно пересобирать
+ * при каждой правке разметки.
+ *
+ * Сборка: powershell -ExecutionPolicy Bypass -File .\tools\build-css.ps1
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -16,8 +16,37 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WortSchatz">
 
-    <!-- Локальные зависимости: без них приложение не работало бы офлайн -->
-    <script src="vendor/tailwind.min.js"></script>
+    <!--
+        Локальные зависимости: без них приложение не работало бы офлайн.
+
+        Стили Tailwind собраны заранее (tools/build-css.ps1) — вместо
+        компилятора Play CDN на 441 КБ, который работал в браузере при
+        каждом запуске. Если сборка ещё не выполнена, файла нет, и ниже
+        включается прежний компилятор: приложение не должно остаться
+        без стилей из-за невыполненной команды.
+    -->
+    <link rel="stylesheet" href="css/tailwind.css" id="tailwind-css">
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            // Проверяем не код ответа, а появились ли правила: сервер может
+            // отдать на несуществующий файл страницу с кодом 200, и тогда
+            // onerror не срабатывает, а стилей всё равно нет
+            const link = document.getElementById('tailwind-css');
+            let loaded = false;
+            try {
+                loaded = !!link && !!link.sheet && link.sheet.cssRules.length > 0;
+            } catch (e) {
+                loaded = false;
+            }
+
+            if (loaded) return;
+
+            console.warn('[Стили] css/tailwind.css не собран, включаю компилятор в браузере. Запустите tools/build-css.ps1');
+            const fallback = document.createElement('script');
+            fallback.src = 'vendor/tailwind.min.js';
+            document.head.appendChild(fallback);
+        });
+    </script>
     <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css">
     <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css">
     <link rel="stylesheet" href="css/style.css">
