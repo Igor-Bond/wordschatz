@@ -246,7 +246,8 @@ export const en = {
         writeWhatYouHear: 'Write what you hear',
         buildSentence: 'Build the sentence',
         tooHardSkip: 'TOO HARD, SKIP',
-        tapToRemove: 'Tap the area to remove a word.',
+        tapToRemove: 'Tap a word to send it back to the pool.',
+        builderHint: 'Tap any word to remove it from any position',
         correctAnswer: 'Correct answer:',
         correctIs: 'Correct'
     },

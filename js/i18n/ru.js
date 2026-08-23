@@ -246,7 +246,8 @@ export const ru = {
         writeWhatYouHear: 'Напишите то, что услышали',
         buildSentence: 'Соберите предложение',
         tooHardSkip: 'СЛОЖНО, ПРОПУСТИТЬ',
-        tapToRemove: 'Нажмите на область, чтобы убрать слово.',
+        tapToRemove: 'Нажмите на слово, чтобы вернуть его в набор.',
+        builderHint: 'Нажмите на слово, чтобы убрать его с любой позиции',
         correctAnswer: 'Правильный ответ:',
         correctIs: 'Правильно'
     },

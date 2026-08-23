@@ -413,8 +413,9 @@ export const exercises = {
                 <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${t('exercises.buildSentence')}</h3>
                 <p class="text-slate-400 text-sm mb-4 text-center border-b border-slate-700 pb-4">${word.example_ru || word.translation}</p>
                 
-                <div id="sb-target" class="min-h-[60px] bg-slate-900/50 rounded-xl border border-slate-600 p-3 mb-6 flex flex-wrap gap-2 content-start cursor-pointer" onclick="exercises.builderRemoveLast()"></div>
-                
+                <div id="sb-target" class="min-h-[60px] bg-slate-900/50 rounded-xl border border-slate-600 p-3 mb-2 flex flex-wrap gap-2 content-start"></div>
+                <p class="text-[11px] text-slate-500 text-center mb-5">${t('exercises.builderHint')}</p>
+
                 <div id="sb-source" class="flex flex-wrap gap-2 justify-center mb-6">
                     ${exercises.builderState.words.map((w, i) => `
                         <button id="sb-word-${i}" onclick="exercises.builderAdd(${i})" class="px-4 py-2 bg-slate-800 border border-slate-600 text-slate-200 rounded-lg shadow font-medium active:scale-95 transition-transform hover:bg-slate-700">${w}</button>
@@ -430,30 +431,55 @@ export const exercises = {
         `;
     },
 
+    /**
+     * В selected хранятся индексы слов из набора, а не сами слова.
+     * Так можно вернуть в набор именно ту кнопку, которую убрали, и
+     * корректно обрабатывать предложения с повторяющимися словами
+     * («der Mann und der Hund»).
+     */
     builderAdd: (index) => {
-        const word = exercises.builderState.words[index];
-        exercises.builderState.selected.push(word);
-        document.getElementById(`sb-word-${index}`).classList.add('hidden');
+        if (exercises.builderState.selected.includes(index)) return;
+
+        exercises.builderState.selected.push(index);
+        document.getElementById(`sb-word-${index}`)?.classList.add('hidden');
         exercises.updateBuilderUI();
     },
 
-    builderRemoveLast: () => {
-        if (exercises.builderState.selected.length === 0) return;
-        const word = exercises.builderState.selected.pop();
-        const btns = document.querySelectorAll('#sb-source button.hidden');
-        for(let btn of btns) {
-            if(btn.innerText === word) {
-                btn.classList.remove('hidden');
-                break;
-            }
-        }
+    /**
+     * Убирает слово с любой позиции, а не только последнее.
+     * Раньше клик по области собранного предложения удалял только
+     * последнее слово, и ошибка в середине означала пересбор всей фразы.
+     */
+    builderRemoveAt: (position) => {
+        const [index] = exercises.builderState.selected.splice(position, 1);
+        if (index === undefined) return;
+
+        document.getElementById(`sb-word-${index}`)?.classList.remove('hidden');
+
+        // Ответ изменился — прежний отклик «Falsch» больше не актуален
+        const feedback = document.getElementById('ex-feedback');
+        if (feedback) feedback.classList.add('hidden');
+
         exercises.updateBuilderUI();
     },
+
+    /** Собранное предложение словами. */
+    builderSentence: () => exercises.builderState.selected
+        .map(i => exercises.builderState.words[i])
+        .join(' '),
+
 
     updateBuilderUI: () => {
         const target = document.getElementById('sb-target');
-        target.innerHTML = exercises.builderState.selected.map(w => `<span class="px-3 py-1 bg-amber-500 text-slate-900 rounded shadow font-bold">${w}</span>`).join('');
-        
+
+        // Каждое слово — отдельная кнопка: нажатие возвращает его в набор
+        target.innerHTML = exercises.builderState.selected.map((index, position) => `
+            <button onclick="exercises.builderRemoveAt(${position})"
+                class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded shadow font-bold active:scale-95 transition-transform">
+                ${exercises.builderState.words[index]}
+            </button>
+        `).join('');
+
         if (exercises.builderState.selected.length === exercises.builderState.correct.length) {
             exercises.checkBuilder();
         }
@@ -464,7 +490,7 @@ export const exercises = {
         const skipBtn = document.getElementById('sb-skip-btn');
         if (skipBtn) skipBtn.disabled = true;
 
-        const isCorrect = exercises.builderState.selected.join(' ') === exercises.builderState.correct.join(' ');
+        const isCorrect = exercises.builderSentence() === exercises.builderState.correct.join(' ');
 
         exercises.awardXP(isCorrect);
         feedback.classList.remove('hidden');
@@ -476,7 +502,7 @@ export const exercises = {
             // ЛОГИРОВАНИЕ ОШИБКИ
             const currentWord = exercises.queue[exercises.currentIndex];
             if (typeof dbService !== 'undefined' && dbService.logMistake) {
-                dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderState.selected.join(' '));
+                dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderSentence());
             }
 
             feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-red-600 border border-red-400 text-white";
