@@ -129,6 +129,22 @@ export const auth = {
     hasSignedInBefore: () => localStorage.getItem(auth.SIGNED_IN_KEY) === '1',
 
     /**
+     * Пометка «мы только что уходили на вход переходом по адресу».
+     *
+     * Нужна, чтобы не обвинять вход в неудаче там, где его и не было:
+     * сообщение «вход не завершился» получал всякий, у кого просто остался
+     * незаконченный первый запуск.
+     */
+    REDIRECT_KEY: 'ws_cloud_redirect_pending',
+
+    /** Забирает пометку: второй раз она уже не сработает. */
+    takeRedirectFlag: () => {
+        const был = localStorage.getItem(auth.REDIRECT_KEY) === '1';
+        localStorage.removeItem(auth.REDIRECT_KEY);
+        return был;
+    },
+
+    /**
      * Восстановление сессии при запуске.
      * Если пользователь раньше не входил — SDK не трогаем совсем.
      */
@@ -173,9 +189,28 @@ export const auth = {
             // Всплывающее окно заблокировано или недоступно в установленном
             // PWA — уходим на вход переходом, страница вернётся сама
             if (auth._popupUnavailable(e)) {
+                // На Safari вход переходом до конца не доходит: он уводит на
+                // домен Firebase и возвращается обратно, а прочитать своё
+                // же состояние SDK уже не может — хранилище разделено по
+                // доменам. Лечится это размещением обработчика входа на
+                // своём домене, чего GitHub Pages не умеет. Поэтому там,
+                // где переход заведомо не сработает, честнее сказать прямо,
+                // чем уводить человека и вернуть его ни с чем
+                if (!auth._redirectCanWork()) {
+                    const error = new Error(t('auth.popupNeeded'));
+                    error.code = 'auth/popup-required';
+                    throw error;
+                }
+
                 console.warn('[Авторизация] Всплывающее окно недоступно, переходим по адресу.');
-                // Помечаем заранее: после возврата страница должна поднять сессию
+
+                // Помечаем заранее: после возврата страница должна поднять
+                // сессию, и только при этой пометке уместно сообщать о
+                // неудавшемся входе. Без неё «вход не завершился» показывался
+                // всякому, у кого остался черновик первого запуска
                 auth._rememberSignIn(true);
+                localStorage.setItem(auth.REDIRECT_KEY, '1');
+
                 await sdk.signInWithRedirect(authInstance, provider);
                 return null;
             }
@@ -189,6 +224,23 @@ export const auth = {
 
         await sdk.signOut(authInstance);
         auth._notify(null);
+    },
+
+    /**
+     * Дойдёт ли вход переходом по адресу до конца.
+     *
+     * Safari и всё на его движке (а на iPhone это все браузеры) разделяют
+     * хранилище по доменам, и вернувшись с домена Firebase, SDK не находит
+     * своего состояния. Обходится это только размещением обработчика входа
+     * на собственном домене — на GitHub Pages такого нет.
+     */
+    _redirectCanWork: (ua = navigator.userAgent || '', touchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) => {
+        // На iPhone и iPad движок один у всех браузеров, включая Chrome:
+        // ограничение хранилища от смены оболочки не зависит
+        const iOS = /iPad|iPhone|iPod|CriOS|FxiOS/.test(ua) || touchMac;
+        const safari = /Safari/.test(ua) && !/Chrome|Chromium|Android|Edg|OPR/.test(ua);
+
+        return !iOS && !safari;
     },
 
     _popupUnavailable: (e) => [

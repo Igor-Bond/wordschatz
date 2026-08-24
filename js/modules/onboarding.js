@@ -70,17 +70,19 @@ export const onboarding = {
 
         onboarding.renderStep();
 
-        // Вход мог состояться, пока нас не было. Спрашиваем только если
-        // уходили: иначе это мегабайт SDK тем, кто облако не трогал
-        if (восстановлен && auth.hasSignedInBefore()) {
-            const user = await auth.restore().catch(() => null);
-            if (user) return await onboarding.finish();
+        // Спрашиваем облако, только если мы действительно уходили на вход
+        // переходом по адресу. Раньше условием было «есть черновик и стоит
+        // отметка о прошлом входе» — и сообщение о неудаче видел всякий, у
+        // кого просто остался незаконченный первый запуск.
+        if (!auth.takeRedirectFlag()) return;
 
-            // Не вышло — пометку снимаем, иначе каждый запуск будет
-            // поднимать SDK впустую
-            auth._rememberSignIn(false);
-            onboarding.showSignInError(t('auth.redirectFailed'));
-        }
+        const user = await auth.restore().catch(() => null);
+        if (user) return await onboarding.finish();
+
+        // Не вышло — отметку снимаем, иначе каждый запуск будет поднимать
+        // SDK впустую. Причина почти всегда одна, и она не в пользователе
+        auth._rememberSignIn(false);
+        onboarding.showSignInError(t('auth.redirectFailed'));
     },
 
     showSignInError: (message) => {
