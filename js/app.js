@@ -6,6 +6,7 @@ import { speech } from './core/speech.js';
 import { dialog } from './core/dialog.js';
 import { config } from './config.js';
 import { VERSION } from './version.js';
+import { viewport } from './core/viewport.js';
 import { aiService } from './services/ai.js';
 import { i18n, t, plural } from './i18n/i18n.js';
 import { dbService } from './services/db.js';
@@ -165,6 +166,11 @@ export const app = {
      * было узнать только через консоль браузера, которой на телефоне нет.
      */
     fillAbout: async () => {
+        // Пересчитываем высоту перед показом чисел: без события подстановка
+        // могла остаться с момента запуска, и диагностика показывала бы не
+        // то, что есть сейчас
+        viewport.apply();
+
         const version = document.getElementById('about-version');
         if (version) version.textContent = 'v' + VERSION;
 
