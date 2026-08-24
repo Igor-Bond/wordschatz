@@ -266,6 +266,29 @@ export const wiktionary = {
         .trim(),
 
     /**
+     * Варианты написания одного и того же глагола по виду.
+     *
+     * Самая частая ложная тревога в русском — видовая пара: карточка учит
+     * «убирать», словарь знает «убрать». Это одно слово, а совпадения по
+     * строке нет и вложения тоже. Меряется это на настоящем наборе: из
+     * двадцати слов подозрений было три, и одно из них — ровно такое.
+     *
+     * Правило узкое и объяснимое: несовершенный вид получается вставкой
+     * «ыва», «ива» или «и» перед окончанием, — снимаем её и сравниваем
+     * ещё и так. Пары вроде «стол» и «стул» под правило не подпадают и
+     * по-прежнему считаются разными словами.
+     */
+    _aspectVariants: (value) => {
+        const формы = new Set([value]);
+
+        формы.add(value.replace(/ирать$/, 'рать'));      // убирать → убрать
+        формы.add(value.replace(/(ыва|ива)ть$/, 'ать'));  // показывать → показать
+        формы.add(value.replace(/(ыва|ива)ться$/, 'аться'));
+
+        return [...формы];
+    },
+
+    /**
      * Сходится ли перевод карточки с переводами из статьи.
      *
      * Возвращает 'match' | 'differs' | 'unknown'. Карточка часто содержит
@@ -273,13 +296,18 @@ export const wiktionary = {
      * бы один: человек написал «бежать, бегать», словарь знает «бежать».
      */
     matchTranslation: (ours, theirs) => {
-        const их = (theirs || []).map(wiktionary._normaliseTranslation).filter(Boolean);
+        const их = (theirs || [])
+            .map(wiktionary._normaliseTranslation)
+            .filter(Boolean)
+            .flatMap(wiktionary._aspectVariants);
+
         if (!их.length) return 'unknown';
 
         const наши = wiktionary._normaliseTranslation(ours)
             .split(/[,;/]| или /)
             .map(s => s.trim())
-            .filter(Boolean);
+            .filter(Boolean)
+            .flatMap(wiktionary._aspectVariants);
 
         if (!наши.length) return 'unknown';
 

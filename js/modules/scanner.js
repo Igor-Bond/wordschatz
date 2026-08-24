@@ -29,12 +29,17 @@ export const scanner = {
                 <div id="mode-single" class="space-y-4">
                     <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
                         <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.wordLabel')}</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="scan-word-input" class="flex-1 bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 transition-colors" placeholder="${t('scanner.wordPlaceholder')}">
-                            <button onclick="scanner.searchWord()" class="w-14 h-14 bg-amber-500 text-slate-900 rounded-xl shadow-lg hover:bg-amber-400 transition-transform active:scale-95 flex items-center justify-center">
-                                <i class="fa-solid fa-magnifying-glass text-xl"></i>
-                            </button>
-                        </div>
+                        <!--
+                            Кнопка под полем и с подписью, а не лупа сбоку:
+                            значок рядом с полем читался как «поиск по уже
+                            добавленным словам», а он добавляет новое. И
+                            поле от этого стало шире на всю строку.
+                        -->
+                        <input type="text" id="scan-word-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-4 outline-none focus:border-amber-500 transition-colors" placeholder="${t('scanner.wordPlaceholder')}">
+
+                        <button onclick="scanner.searchWord()" class="w-full py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg hover:bg-amber-400 transition-transform active:scale-95 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass"></i> ${t('scanner.search')}
+                        </button>
                     </div>
                 </div>
 

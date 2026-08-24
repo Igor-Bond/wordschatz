@@ -484,8 +484,8 @@ export const ru = {
 
     scanner: {
         title: 'Добавление слов',
-        tabSingle: 'Одно слово',
-        tabTopic: 'Тема целиком',
+        tabSingle: 'Слово',
+        tabTopic: 'Тема',
         tabText: 'Текст',
         tabPhoto: 'Фото',
         photoLabel: 'Снимок страницы, вывески или предмета',
@@ -505,6 +505,7 @@ export const ru = {
         textLabel: 'Текст для анализа',
         textPlaceholder: 'Вставьте немецкий текст сюда...',
         analyze: 'ПРОАНАЛИЗИРОВАТЬ',
+        search: 'НАЙТИ',
         loadingWord: 'Анализируем слово «{word}»...',
         loadingTopic: 'Нейросеть собирает {count} слов на тему «{topic}»...',
         loadingText: 'Анализируем текст, ищем полезные слова...',

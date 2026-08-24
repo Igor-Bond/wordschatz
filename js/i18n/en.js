@@ -484,8 +484,8 @@ export const en = {
 
     scanner: {
         title: 'Add words',
-        tabSingle: 'Single word',
-        tabTopic: 'Whole topic',
+        tabSingle: 'Word',
+        tabTopic: 'Topic',
         tabText: 'Text',
         tabPhoto: 'Photo',
         photoLabel: 'A page, a sign or an object',
@@ -505,6 +505,7 @@ export const en = {
         textLabel: 'Text to analyse',
         textPlaceholder: 'Paste German text here...',
         analyze: 'ANALYSE',
+        search: 'SEARCH',
         loadingWord: 'Analysing “{word}”...',
         loadingTopic: 'The AI is collecting {count} words on “{topic}”...',
         loadingText: 'Analysing the text, looking for useful words...',

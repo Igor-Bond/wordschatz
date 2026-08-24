@@ -484,8 +484,8 @@ export const uk = {
 
     scanner: {
         title: 'Додавання слів',
-        tabSingle: 'Одне слово',
-        tabTopic: 'Тема цілком',
+        tabSingle: 'Слово',
+        tabTopic: 'Тема',
         tabText: 'Текст',
         tabPhoto: 'Фото',
         photoLabel: 'Знімок сторінки, вивіски або предмета',
@@ -505,6 +505,7 @@ export const uk = {
         textLabel: 'Текст для аналізу',
         textPlaceholder: 'Вставте німецький текст сюди...',
         analyze: 'ПРОАНАЛІЗУВАТИ',
+        search: 'ЗНАЙТИ',
         loadingWord: 'Аналізуємо слово «{word}»...',
         loadingTopic: 'Нейромережа збирає {count} слів на тему «{topic}»...',
         loadingText: 'Аналізуємо текст, шукаємо корисні слова...',
