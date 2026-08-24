@@ -1,5 +1,6 @@
 import { actions } from '../core/actions.js';
 import { wiktionary } from '../services/wiktionary.js';
+import { frequency } from '../core/frequency.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
@@ -162,7 +163,12 @@ export const cycle = {
             // заучивания неправильного
             cycle.state.check = await cycle.verify(words);
 
-            cycle.state.words = words.map(w => ({ ...w, selected: true }));
+            // Третья: раскладка по частоте. Модель выдаёт слова в
+            // случайном порядке, и «стиральная машина» может оказаться
+            // первой, а «дверь» — двадцатой. Учить надо наоборот
+            await frequency.load().catch(e => console.error('[Частотность] Список не загрузился:', e));
+
+            cycle.state.words = frequency.sort(words).map(w => ({ ...w, selected: true }));
             cycle.renderPreview();
         } catch (error) {
             cycle.renderError(error.message);
@@ -255,6 +261,69 @@ export const cycle = {
     //  Шаг 3. Предпросмотр и утверждение (§5 ТЗ)
     // ======================================================
 
+    /**
+     * Метка частотности у слова в предпросмотре.
+     *
+     * Ядро и частое подписываем, редкое отмечаем приглушённо, а очень
+     * редкое — красным: именно его человек чаще всего и снимет. Молчать
+     * о редкости нельзя: набор придумывает модель, и «стиральная машина»
+     * рядом с «дверью» выглядит так же уверенно.
+     */
+    FREQUENCY_BADGE: {
+        core: 'text-green-400 bg-green-400/10 border-green-400/20',
+        common: 'text-slate-300 bg-slate-500/10 border-slate-500/20',
+        rare: 'text-amber-500/80 bg-amber-500/5 border-amber-500/20',
+        unknown: 'text-red-400/80 bg-red-400/5 border-red-400/20'
+    },
+
+    renderFrequencyBadge: (word) => {
+        if (!frequency.ready) return '';
+
+        const полоса = frequency.band(word);
+        const место = frequency.rank(word);
+
+        return `<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${cycle.FREQUENCY_BADGE[полоса]}"
+                      title="${место ? t('frequency.rank', { rank: место }) : t('frequency.notInList')}">
+                    ${t('frequency.' + полоса)}
+                </span>`;
+    },
+
+    /**
+     * Сводка по частотности над списком.
+     *
+     * Главное число здесь — сколько слов набора действительно
+     * встретятся. Оно решает, брать тему целиком или проредить.
+     */
+    renderFrequencySummary: () => {
+        if (!frequency.ready) return '';
+
+        const с = frequency.summarise(cycle.state.words);
+        const доля = Math.round(с.полезных / с.всего * 100);
+
+        return `
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-4">
+                <p class="text-xs text-slate-300">
+                    ${t('frequency.summary', { useful: с.полезных, total: с.всего, percent: доля })}
+                </p>
+                <p class="text-[10px] text-slate-500 mt-1">
+                    ${t('frequency.breakdown', { core: с.core, common: с.common, rare: с.rare + с.unknown })}
+                </p>
+                ${с.rare + с.unknown > 0 ? `
+                    <button onclick="cycle.dropRare()"
+                        class="w-full mt-2 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-[11px] font-bold rounded-lg hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                        ${t('frequency.dropRare', { count: с.rare + с.unknown })}
+                    </button>` : ''}
+            </div>`;
+    },
+
+    /** Снять галочки со всего, что редко встречается. */
+    dropRare: () => {
+        for (const w of cycle.state.words) {
+            if (['rare', 'unknown'].includes(frequency.band(w.word))) w.selected = false;
+        }
+        cycle.renderPreview();
+    },
+
     renderPreview: () => {
         const main = document.getElementById('main-content');
         const profile = config.getProfile();
@@ -282,6 +351,8 @@ export const cycle = {
 
                 ${cycle.renderCheckSummary()}
 
+                ${cycle.renderFrequencySummary()}
+
                 <div class="flex gap-2 mb-4">
                     <button onclick="cycle.selectAll(true)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">${t('common.selectAll')}</button>
                     <button onclick="cycle.selectAll(false)" class="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 active:scale-95 transition-all">${t('common.deselectAll')}</button>
@@ -301,9 +372,10 @@ export const cycle = {
                                 <i class="fa-solid fa-check text-xs"></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
                                     <span class="font-bold text-slate-100 break-words">${cycle.esc(w.word)}</span>
                                     <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${badgeColors[type]}">${t('wordTypes.' + type)}</span>
+                                    ${cycle.renderFrequencyBadge(w.word)}
                                 </div>
                                 <div class="text-sm text-amber-500/90 break-words">${cycle.esc(w.translation)}</div>
                             </div>

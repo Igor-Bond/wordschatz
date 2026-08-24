@@ -5,6 +5,7 @@ import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
 import { germanUtils } from '../core/german.js';
 import { declension } from '../core/declension.js';
+import { frequency } from '../core/frequency.js';
 import { speech } from '../core/speech.js';
 import { dialog } from '../core/dialog.js';
 import { masteryUtils } from '../core/mastery.js';
@@ -25,6 +26,11 @@ export const training = {
 
         training.state = await lessonStateManager.getCurrentState();
         const plan = await scheduler.getDailyPlan();
+
+        // Частотный список нужен карточке. Грузим здесь, а не при старте
+        // приложения: 124 КБ незачем разбирать тому, кто зашёл посмотреть
+        // статистику
+        frequency.load().catch(e => console.error('[Частотность] Не загрузилась:', e));
 
         // Если урок числится завершенным, но в плане появились слова (добавили новые) - сбрасываем статус
         if (training.state.status === 'completed' && (plan.review.length > 0 || plan.newWords.length > 0)) {
@@ -187,6 +193,15 @@ export const training = {
 
         if (word.verified === 1) {
             tags.push(`<span class="text-[10px] text-green-500/90" title="${training.esc(t('profile.verifiedBadge'))}"><i class="fa-solid fa-circle-check"></i></span>`);
+        }
+
+        // Насколько слово ходовое. Показываем только «ядро»: знать, что
+        // перед тобой одно из первой тысячи, приятно и полезно, а метка
+        // «редкое» на карточке, которую всё равно учишь, только злит
+        if (frequency.ready && frequency.band(word.word) === 'core') {
+            const место = frequency.rank(word.word);
+            tags.push(`<span class="text-[10px] font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded border border-green-400/20"
+                             title="${training.esc(t('frequency.rank', { rank: место }))}">${training.esc(t('frequency.core'))}</span>`);
         }
 
         return tags.length

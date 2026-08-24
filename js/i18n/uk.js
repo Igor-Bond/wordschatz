@@ -276,6 +276,20 @@ export const uk = {
         startHint: 'Пройдіть план на день, щоб почати серію. Пропущений день обнуляє її.'
     },
 
+    frequency: {
+        core: 'ядро',
+        common: 'часте',
+        rare: 'рідкісне',
+        unknown: 'дуже рідкісне',
+        rank: 'Місце в частотному списку: {rank}',
+        notInList: 'У перших п’ятнадцяти тисячах слів не трапляється',
+        summary: 'Справді трапляться {useful} слів із {total} — це {percent}%.',
+        breakdown: 'Ядро: {core} · часті: {common} · рідкісні: {rare}',
+        dropRare: 'ЗНЯТИ РІДКІСНІ ({count})',
+        label: 'Частотність',
+        sortByFrequency: 'за частотою'
+    },
+
     declension: {
         label: 'Відмінювання',
         weak: 'Після der / die / das',
@@ -518,7 +532,7 @@ export const uk = {
         nothingFound: 'Нічого не знайдено',
         toggleHard: 'Позначити як складне',
         status: { all: 'Усі', difficult: 'Складні', learning: 'У вивченні', mastered: 'Засвоєно', incomplete: 'Неповні', mismatch: 'Розбіжності' },
-        sort: { recent: 'Спочатку нові', alphabet: 'За абеткою', mastery: 'Спочатку слабкі' },
+        sort: { recent: 'Спочатку нові', alphabet: 'За абеткою', mastery: 'Спочатку слабкі', frequency: 'Спочатку часті' },
         tabStats: 'Статистика',
         tabDict: 'Мій словник',
         defaultName: 'Студент',

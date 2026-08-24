@@ -276,6 +276,20 @@ export const ru = {
         startHint: 'Пройдите план на день, чтобы начать серию. Пропущенный день обнуляет её.'
     },
 
+    frequency: {
+        core: 'ядро',
+        common: 'частое',
+        rare: 'редкое',
+        unknown: 'очень редкое',
+        rank: 'Место в частотном списке: {rank}',
+        notInList: 'В первых пятнадцати тысячах слов не встречается',
+        summary: 'Действительно встретятся {useful} слов из {total} — это {percent}%.',
+        breakdown: 'Ядро: {core} · частые: {common} · редкие: {rare}',
+        dropRare: 'СНЯТЬ РЕДКИЕ ({count})',
+        label: 'Частотность',
+        sortByFrequency: 'по частоте'
+    },
+
     declension: {
         label: 'Склонение',
         weak: 'После der / die / das',
@@ -518,7 +532,7 @@ export const ru = {
         nothingFound: 'Ничего не найдено',
         toggleHard: 'Отметить как сложное',
         status: { all: 'Все', difficult: 'Сложные', learning: 'В изучении', mastered: 'Освоено', incomplete: 'Неполные', mismatch: 'Расхождения' },
-        sort: { recent: 'Сначала новые', alphabet: 'По алфавиту', mastery: 'Сначала слабые' },
+        sort: { recent: 'Сначала новые', alphabet: 'По алфавиту', mastery: 'Сначала слабые', frequency: 'Сначала частые' },
         tabStats: 'Статистика',
         tabDict: 'Мой словарь',
         defaultName: 'Студент',

@@ -1,5 +1,6 @@
 import { profile } from './shared.js';
 import { actions } from '../../core/actions.js';
+import { frequency } from '../../core/frequency.js';
 import { masteryUtils } from '../../core/mastery.js';
 import { dialog } from '../../core/dialog.js';
 import { germanUtils } from '../../core/german.js';
@@ -25,7 +26,7 @@ export const dictionary = {
 
     STATUSES: ['all', 'difficult', 'learning', 'mastered', 'incomplete', 'mismatch'],
 
-    SORTS: ['recent', 'alphabet', 'mastery'],
+    SORTS: ['recent', 'alphabet', 'mastery', 'frequency'],
 
     /**
      * @param {boolean} reload перечитывать ли словарь из базы.
@@ -171,6 +172,10 @@ export const dictionary = {
             words = words.sort((a, b) => String(a.word).localeCompare(String(b.word), 'de'));
         } else if (sort === 'mastery') {
             words = words.sort((a, b) => (a.mastery || 0) - (b.mastery || 0));
+        } else if (sort === 'frequency') {
+            // Частые вперёд: с них полезнее начинать повторение, если
+            // времени мало. Неизвестные списку уходят в конец
+            words = frequency.sort(words);
         }
         // 'recent' — порядок уже такой, getAllWords отдаёт свежие первыми
 

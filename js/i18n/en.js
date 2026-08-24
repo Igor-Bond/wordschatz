@@ -276,6 +276,20 @@ export const en = {
         startHint: 'Finish the daily plan to start a streak. Missing a day resets it.'
     },
 
+    frequency: {
+        core: 'core',
+        common: 'common',
+        rare: 'rare',
+        unknown: 'very rare',
+        rank: 'Frequency rank: {rank}',
+        notInList: 'Not among the first fifteen thousand words',
+        summary: 'You will really meet {useful} of {total} words — that is {percent}%.',
+        breakdown: 'Core: {core} · common: {common} · rare: {rare}',
+        dropRare: 'DROP THE RARE ONES ({count})',
+        label: 'Frequency',
+        sortByFrequency: 'by frequency'
+    },
+
     declension: {
         label: 'Declension',
         weak: 'After der / die / das',
@@ -518,7 +532,7 @@ export const en = {
         nothingFound: 'Nothing found',
         toggleHard: 'Mark as hard',
         status: { all: 'All', difficult: 'Hard', learning: 'Learning', mastered: 'Mastered', incomplete: 'Incomplete', mismatch: 'Mismatches' },
-        sort: { recent: 'Newest first', alphabet: 'Alphabetical', mastery: 'Weakest first' },
+        sort: { recent: 'Newest first', alphabet: 'Alphabetical', mastery: 'Weakest first', frequency: 'Most common first' },
         tabStats: 'Statistics',
         tabDict: 'My dictionary',
         defaultName: 'Student',
