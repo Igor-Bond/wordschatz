@@ -26,6 +26,7 @@ import { quiz } from './core/quiz.js';
 import { lessonStateManager } from './core/lessonState.js';
 import { install } from './core/install.js';
 import { viewport } from './core/viewport.js';
+import { actions } from './core/actions.js';
 import { reminder } from './core/reminder.js';
 import { speech } from './core/speech.js';
 import { wiktionary } from './services/wiktionary.js';
@@ -55,7 +56,7 @@ import { app } from './app.js';
 Object.assign(window, {
     i18n, t, plural,
     config, db, dbService, aiService, auth, sync, dateUtils, srs, germanUtils, quiz, dialog, lessonStateManager, scheduler,
-    install, masteryUtils, wiktionary, speech, reminder,
+    install, masteryUtils, wiktionary, speech, reminder, viewport, actions,
     onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
 });
 
@@ -134,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // До первой отрисовки: иначе меню успевает встать по застрявшей высоте
     viewport.init();
+
+    // Один слушатель на весь документ вместо onclick в разметке
+    actions.init();
 
     app.init();
 });

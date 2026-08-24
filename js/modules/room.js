@@ -1,3 +1,4 @@
+import { actions } from '../core/actions.js';
 import { dialog } from '../core/dialog.js';
 import { speech } from '../core/speech.js';
 import { masteryUtils } from '../core/mastery.js';
@@ -132,13 +133,13 @@ export const room = {
         if (room.topic && !counts.has(room.topic)) room.topic = '';
 
         const chip = (value, label, count) => `
-            <button onclick="room.pickTopic('${room.esc(value)}')"
+            <button data-action="room.pickTopic" data-topic="${actions.attr(value)}"
                 class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-all active:scale-95 ${
                     room.topic === value
                         ? 'bg-amber-500 border-amber-500 text-slate-900'
                         : 'bg-slate-900 border-slate-600 text-slate-300 hover:border-amber-500 hover:text-amber-500'
                 }">
-                ${room.esc(label)} <span class="opacity-60">${count}</span>
+                ${actions.attr(label)} <span class="opacity-60">${count}</span>
             </button>`;
 
         const chips = [...counts.entries()]
@@ -157,10 +158,8 @@ export const room = {
     },
 
     /** Экранирование для подстановки в атрибут onclick. */
-    esc: (str) => String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'),
-
-    pickTopic: async (topic) => {
-        room.topic = topic;
+    pickTopic: async (el) => {
+        room.topic = el.dataset.topic ?? '';
         await room.render();
     },
 
@@ -291,7 +290,7 @@ export const room = {
 
             const wordsHtml = storyData.story_de.split(' ').map(token => {
                 const cleanWord = token.replace(/[^a-zA-ZäöüßÄÖÜ]/g, '').toLowerCase();
-                return `<span onclick="room.translateWord(event, '${cleanWord}')" class="cursor-pointer hover:bg-amber-500/20 hover:text-amber-400 rounded px-1 transition-colors">${token}</span>`;
+                return `<span data-action="room.translateWord" data-word="${actions.attr(cleanWord)}" class="cursor-pointer hover:bg-amber-500/20 hover:text-amber-400 rounded px-1 transition-colors">${token}</span>`;
             }).join(' ');
 
             container.innerHTML = `
@@ -330,8 +329,9 @@ export const room = {
         }
     },
 
-    translateWord: async (event, cleanWord) => {
-        if (!cleanWord || cleanWord.length < 2) return;
+    translateWord: async (el) => {
+        const cleanWord = el.dataset.word ?? '';
+        if (cleanWord.length < 2) return;
         
         const box = document.getElementById('tap-translation-box');
         const textSpan = document.getElementById('tap-translation-text');

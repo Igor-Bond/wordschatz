@@ -1,3 +1,4 @@
+import { actions } from '../core/actions.js';
 import { quiz } from '../core/quiz.js';
 import { declension } from '../core/declension.js';
 import { speech } from '../core/speech.js';
@@ -324,7 +325,7 @@ export const exercises = {
 
         let btns = options.map(opt => {
             const answerText = direction === 'ru-de' ? opt.word : opt.translation;
-            return `<button onclick="exercises.checkChoice(this, '${opt.id}', '${word.id}', '${direction}')" class="w-full py-4 bg-slate-900 border-2 border-slate-700 text-slate-300 font-bold rounded-xl text-left px-5 hover:border-amber-500 active:scale-95 transition-all ${btnClass}">${answerText}</button>`;
+            return `<button data-action="exercises.checkChoice" data-value="${opt.id}" data-correct="${word.id}" data-mode="${direction}" class="w-full py-4 bg-slate-900 border-2 border-slate-700 text-slate-300 font-bold rounded-xl text-left px-5 hover:border-amber-500 active:scale-95 transition-all ${btnClass}">${answerText}</button>`;
         }).join('');
 
         return `
@@ -360,7 +361,7 @@ export const exercises = {
                     class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-4 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors"
                     placeholder="${exercises.escAttr(t("exercises.wordPlaceholder"))}">
 
-                <button onclick="exercises.checkInput('${full.replace(/'/g, "\\'")}', 'translation_ru_de_input')"
+                <button data-action="exercises.checkInput" data-correct="${actions.attr(full)}" data-mode="translation_ru_de_input"
                     class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">
                     ${t('exercises.check')}
                 </button>
@@ -385,9 +386,9 @@ export const exercises = {
                 <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.pickArticle')}</h3>
                 <h2 class="text-4xl font-black text-slate-100 mb-8 break-words">${pureWord}</h2>
                 <div class="grid grid-cols-3 gap-3" id="ex-buttons">
-                    <button onclick="exercises.checkChoice(this, 'der', '${article}', 'article')" class="py-4 bg-blue-900/30 border-2 border-blue-900/50 text-blue-400 font-bold rounded-xl text-xl hover:bg-blue-900/50 active:scale-95 transition-all">DER</button>
-                    <button onclick="exercises.checkChoice(this, 'die', '${article}', 'article')" class="py-4 bg-red-900/30 border-2 border-red-900/50 text-red-400 font-bold rounded-xl text-xl hover:bg-red-900/50 active:scale-95 transition-all">DIE</button>
-                    <button onclick="exercises.checkChoice(this, 'das', '${article}', 'article')" class="py-4 bg-green-900/30 border-2 border-green-900/50 text-green-400 font-bold rounded-xl text-xl hover:bg-green-900/50 active:scale-95 transition-all">DAS</button>
+                    <button data-action="exercises.checkChoice" data-value="der" data-correct="${actions.attr(article)}" data-mode="article" class="py-4 bg-blue-900/30 border-2 border-blue-900/50 text-blue-400 font-bold rounded-xl text-xl hover:bg-blue-900/50 active:scale-95 transition-all">DER</button>
+                    <button data-action="exercises.checkChoice" data-value="die" data-correct="${actions.attr(article)}" data-mode="article" class="py-4 bg-red-900/30 border-2 border-red-900/50 text-red-400 font-bold rounded-xl text-xl hover:bg-red-900/50 active:scale-95 transition-all">DIE</button>
+                    <button data-action="exercises.checkChoice" data-value="das" data-correct="${actions.attr(article)}" data-mode="article" class="py-4 bg-green-900/30 border-2 border-green-900/50 text-green-400 font-bold rounded-xl text-xl hover:bg-green-900/50 active:scale-95 transition-all">DAS</button>
                 </div>
             </div>
         `;
@@ -417,7 +418,7 @@ export const exercises = {
                     <label class="block text-xs font-bold text-amber-500 mb-2">${label}</label>
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold transition-colors" autocomplete="off">
                 </div>
-                <button onclick="exercises.checkInput('${targetForm.replace(/'/g, "\\'")}', 'verb_form')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
+                <button data-action="exercises.checkInput" data-correct="${actions.attr(targetForm)}" data-mode="verb_form" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
             </div>
         `;
@@ -477,7 +478,7 @@ export const exercises = {
                 <div class="mb-6">
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" placeholder="${t('exercises.wordPlaceholder')}">
                 </div>
-                <button onclick="exercises.checkInput('${targetMatch.replace(/'/g, "\\'")}', 'fill_blanks')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
+                <button data-action="exercises.checkInput" data-correct="${actions.attr(targetMatch)}" data-mode="fill_blanks" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
             </div>
         `;
@@ -542,7 +543,7 @@ export const exercises = {
 
                 <div class="grid grid-cols-2 gap-2" id="ex-buttons">
                     ${options.map(opt => `
-                        <button onclick="exercises.checkChoice(this, '${exercises.escAttr(opt)}', '${exercises.escAttr(correct)}', 'adjective_ending')"
+                        <button data-action="exercises.checkChoice" data-value="${actions.attr(opt)}" data-correct="${actions.attr(correct)}" data-mode="adjective_ending"
                             class="py-4 bg-slate-900 border-2 border-slate-700 hover:border-amber-500 text-slate-100 font-bold rounded-xl text-lg active:scale-95 transition-all">${exercises.escAttr(opt)}</button>
                     `).join('')}
                 </div>
@@ -583,7 +584,7 @@ export const exercises = {
 
                 <div class="grid grid-cols-2 gap-3" id="ex-buttons">
                     ${options.map(opt => `
-                        <button onclick="exercises.checkChoice(this, '${opt}', '${correct}', 'rektion')" class="py-4 bg-slate-900 border-2 border-slate-700 hover:border-amber-500 text-amber-500 font-bold rounded-xl text-lg uppercase tracking-wider active:scale-95 transition-all">${opt}</button>
+                        <button data-action="exercises.checkChoice" data-value="${actions.attr(opt)}" data-correct="${actions.attr(correct)}" data-mode="rektion" class="py-4 bg-slate-900 border-2 border-slate-700 hover:border-amber-500 text-amber-500 font-bold rounded-xl text-lg uppercase tracking-wider active:scale-95 transition-all">${opt}</button>
                     `).join('')}
                 </div>
                 ${hint}
@@ -596,7 +597,7 @@ export const exercises = {
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
                 <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.listening')}</h3>
                 
-                <button onclick="training.playAudio('${word.word.replace(/'/g, "\\'")}')" class="w-20 h-20 mx-auto bg-amber-500 text-slate-900 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(245,158,11,0.4)] mb-8 active:scale-95 transition-transform" id="training-audio-btn">
+                <button data-action="training.playAudio" data-word="${actions.attr(word.word)}" class="w-20 h-20 mx-auto bg-amber-500 text-slate-900 rounded-full flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(245,158,11,0.4)] mb-8 active:scale-95 transition-transform" id="training-audio-btn">
                     <i class="fa-solid fa-headphones"></i>
                 </button>
 
@@ -604,7 +605,7 @@ export const exercises = {
                     <label class="block text-xs font-bold text-amber-500 mb-2">${t('exercises.writeWhatYouHear')}</label>
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" autocomplete="off">
                 </div>
-                <button onclick="exercises.checkInput('${word.word.replace(/'/g, "\\'")}', 'listening')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
+                <button data-action="exercises.checkInput" data-correct="${actions.attr(word.word)}" data-mode="listening" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
                 
             </div>
@@ -748,15 +749,26 @@ export const exercises = {
         setTimeout(exercises.next, 3000);
     },
 
-    checkChoice: (btn, selected, correct, exType = 'choice') => {
+    /**
+     * Ответ выбором из вариантов.
+     *
+     * Значения приходят из data-атрибутов нажатой кнопки: data-value —
+     * что выбрали, data-correct — что верно, data-mode — тип задания.
+     * Раньше они стояли прямо в onclick, а чтобы подсветить верный
+     * вариант, атрибут разбирался обратно регулярным выражением
+     * /checkChoice\(this,\s*'([^']+)'/ — оно останавливалось на первом
+     * апострофе и на слове вроде «geht's» находило обрезок.
+     */
+    checkChoice: (btn) => {
+        const selected = btn.dataset.value ?? '';
+        const correct = btn.dataset.correct ?? '';
+        const exType = btn.dataset.mode || 'choice';
+
         const btns = document.getElementById('ex-buttons').children;
         for (let b of btns) {
             b.disabled = true;
-            
-            const onclickStr = b.getAttribute('onclick') || '';
-            const match = onclickStr.match(/checkChoice\(this,\s*'([^']+)'/);
-            const btnValue = match ? match[1] : null;
 
+            const btnValue = b.dataset.value ?? null;
             const originalText = b.innerText.trim();
             b.className = b.className.replace(/(bg|border|text)-\S+/g, ' ').replace('hover:border-amber-500', '').trim();
 
@@ -848,11 +860,17 @@ export const exercises = {
         }
     },
 
-    checkInput: (correct, exType = 'input') => {
+    /**
+     * Ответ вводом. Правильный ответ приходит в data-correct кнопки:
+     * в onclick он ломался на апострофе — «Wie geht's» и подобных.
+     */
+    checkInput: (btn) => {
+        const correct = btn.dataset.correct ?? '';
+        const exType = btn.dataset.mode || 'input';
+
         const input = document.getElementById('ex-input');
         const feedback = document.getElementById('ex-feedback');
-        const btn = document.getElementById('ex-submit');
-        
+
         const selected = input.value.trim();
 
         // У некоторых форм допустимо несколько написаний («hat gemacht»

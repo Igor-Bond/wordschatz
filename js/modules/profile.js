@@ -1,3 +1,4 @@
+import { actions } from '../core/actions.js';
 import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
 import { install } from '../core/install.js';
@@ -1070,7 +1071,6 @@ export const profile = {
         }
 
         list.innerHTML = words.map(w => {
-            const safeWordStr = (w.word || '').replace(/'/g, "\\'");
             const gaps = germanUtils.missingFields(w);
             const accent = masteryUtils.isLearned(w) ? 'bg-green-500' : (masteryUtils.isWeak(w) ? 'bg-red-500' : 'bg-slate-600');
 
@@ -1106,7 +1106,7 @@ export const profile = {
                         <button onclick="profile.openEditModal(${w.id})" class="w-9 h-9 bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center border border-transparent hover:border-slate-500 transition-colors active:scale-95">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button onclick="profile.deleteWord(${w.id}, '${safeWordStr}')" class="w-9 h-9 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center border border-transparent hover:border-red-900 transition-colors active:scale-95">
+                        <button data-action="profile.deleteWord" data-id="${w.id}" data-word="${actions.attr(w.word)}" class="w-9 h-9 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center border border-transparent hover:border-red-900 transition-colors active:scale-95">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
@@ -1281,7 +1281,10 @@ export const profile = {
         profile.renderDictionary(); 
     },
 
-    deleteWord: async (id, wordStr) => {
+    deleteWord: async (el) => {
+        const id = Number(el.dataset.id);
+        const wordStr = el.dataset.word ?? '';
+
         const ok = await dialog.confirm(t('profile.deleteConfirm', { word: wordStr }), {
             danger: true,
             okLabel: t('common.delete')

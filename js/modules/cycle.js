@@ -1,3 +1,4 @@
+import { actions } from '../core/actions.js';
 import { wiktionary } from '../services/wiktionary.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
@@ -69,7 +70,7 @@ export const cycle = {
                         ${cycle.SUGGESTED_TOPIC_KEYS.map(key => {
                             const label = t('cycle.topics.' + key);
                             return `
-                            <button onclick="cycle.pickTopic('${cycle.esc(label)}')"
+                            <button data-action="cycle.pickTopic" data-topic="${actions.attr(label)}"
                                 class="px-3 py-1.5 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-medium rounded-lg hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
                                 ${cycle.esc(label)}
                             </button>`;
@@ -114,7 +115,8 @@ export const cycle = {
         `;
     },
 
-    pickTopic: (topic) => {
+    pickTopic: (el) => {
+        const topic = el.dataset.topic ?? '';
         cycle.state.topic = topic;
         const input = document.getElementById('cycle-topic-input');
         if (input) input.value = topic;

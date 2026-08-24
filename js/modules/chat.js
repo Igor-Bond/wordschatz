@@ -1,3 +1,4 @@
+import { actions } from '../core/actions.js';
 import { speech } from '../core/speech.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
@@ -89,7 +90,7 @@ export const chat = {
         
         // Кнопка озвучки только для ИИ
         const audioBtn = isAI 
-            ? `<button onclick="chat.playAudio(this, '${text.replace(/'/g, "\\'")}')" class="mt-2 text-slate-500 hover:text-amber-500 transition-colors text-xs flex items-center gap-1"><i class="fa-solid fa-volume-high"></i> ${t('chat.speak')}</button>`
+            ? `<button data-action="chat.playAudio" data-text="${actions.attr(text)}" class="mt-2 text-slate-500 hover:text-amber-500 transition-colors text-xs flex items-center gap-1"><i class="fa-solid fa-volume-high"></i> ${t('chat.speak')}</button>`
             : '';
 
         msgDiv.innerHTML = `
@@ -201,9 +202,9 @@ export const chat = {
         }
     },
 
-    playAudio: async (btn, text) => {
+    playAudio: async (btn) => {
         // Очищаем текст от русского языка, оставляя только немецкий
-        const germanText = text.replace(/[А-Яа-яЁёІіЇїЄєҐґ]/g, '').trim();
+        const germanText = String(btn.dataset.text ?? '').replace(/[А-Яа-яЁёІіЇїЄєҐґ]/g, '').trim();
         if (!germanText) return;
 
         const icon = btn.querySelector('i');

@@ -1,3 +1,4 @@
+import { actions } from '../core/actions.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { auth } from '../services/auth.js';
@@ -337,7 +338,7 @@ export const training = {
                                 <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4" id="card-type">${word.type}</span>
                                 <div class="flex items-center justify-center gap-4 mb-2 w-full">
                                     <h2 class="text-3xl font-black text-slate-100 break-words" id="card-word">${word.word}</h2>
-                                    <button onclick="training.playAudio('${word.word.replace(/'/g, "\'")}')" class="w-12 h-12 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-amber-500 transition-colors shrink-0 shadow-lg" id="training-audio-btn">
+                                    <button data-action="training.playAudio" data-word="${actions.attr(word.word)}" class="w-12 h-12 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-amber-500 transition-colors shrink-0 shadow-lg" id="training-audio-btn">
                                         <i class="fa-solid fa-volume-high text-lg"></i>
                                     </button>
                                 </div>
@@ -405,7 +406,12 @@ export const training = {
         `;
     },
 
-    playAudio: async (text) => {
+    /**
+     * Озвучка. Принимает либо строку, либо кнопку с data-word: из разметки
+     * приходит элемент, из кода аудирования — сразу текст.
+     */
+    playAudio: async (source) => {
+        const text = source instanceof Element ? source.dataset.word : source;
         const btn = document.getElementById('training-audio-btn');
         const idle = () => { if (btn) btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg"></i>`; };
 
