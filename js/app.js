@@ -222,8 +222,47 @@ export const app = {
             const nav = document.querySelector('nav');
             const подМеню = nav ? Math.round(window.innerHeight - nav.getBoundingClientRect().bottom) : '—';
 
+            // Безопасная зона снизу: на Android с управлением жестами она
+            // ненулевая, когда браузер отдаёт страницу во весь экран
+            const зона = document.createElement('div');
+            зона.style.cssText = 'position:fixed;bottom:0;left:0;width:0;padding-bottom:env(safe-area-inset-bottom);visibility:hidden';
+            document.body.appendChild(зона);
+            const снизу = Math.round(parseFloat(getComputedStyle(зона).paddingBottom) || 0);
+            зона.remove();
+
             метрики.textContent = `dvh ${dvh} · окно ${window.innerHeight} · тело ${тело}`
-                + ` · экран ${window.screen?.height ?? '—'} · под меню ${подМеню} · подстановка ${подставлено}`;
+                + ` · экран ${window.screen?.height ?? '—'} · под меню ${подМеню}`
+                + ` · зона ${снизу} · подстановка ${подставлено}`;
+
+            /*
+             * Приговор словами.
+             *
+             * Жалобы «внизу белая полоса», «меню уехало» и «под меню
+             * пусто» выглядят одинаково, а причины разные: наша страница
+             * не достаёт до края, страница длиннее экрана — или это
+             * системная панель устройства, до которой веб не дотягивается
+             * вовсе. Числа выше отвечают на это точно, но их надо уметь
+             * читать; здесь то же самое одной фразой.
+             */
+            const приговор = document.getElementById('about-verdict');
+            if (приговор) {
+                const экран = window.screen?.height ?? 0;
+                let текст, цвет;
+
+                if (подМеню > 2) {
+                    текст = t('settings.verdictGap', { px: подМеню });
+                    цвет = 'text-amber-500';
+                } else if (экран && window.innerHeight < экран - 24) {
+                    текст = t('settings.verdictSystem', { px: Math.round(экран - window.innerHeight) });
+                    цвет = 'text-slate-500';
+                } else {
+                    текст = t('settings.verdictOk');
+                    цвет = 'text-green-600';
+                }
+
+                приговор.className = `block text-[10px] leading-relaxed mt-1 ${цвет}`;
+                приговор.textContent = текст;
+            }
         }
 
         const voice = document.getElementById('about-voice');
