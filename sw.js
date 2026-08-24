@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v54';
+const APP_VERSION = 'v55';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -70,6 +70,12 @@ const PRECACHE_URLS = [
     'js/modules/exercises.js',
     'js/modules/training.js',
     'js/modules/profile.js',
+    'js/modules/profile/shared.js',
+    'js/modules/profile/stats.js',
+    'js/modules/profile/quality.js',
+    'js/modules/profile/account.js',
+    'js/modules/profile/dictionary.js',
+    'js/modules/profile/backup.js',
     'js/modules/room.js',
     'js/modules/chat.js',
     'js/modules/control.js',
