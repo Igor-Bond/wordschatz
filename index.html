@@ -239,6 +239,15 @@
                             <div class="pt-1">
                                 <span class="block text-[9px] text-slate-600 leading-relaxed break-all" id="about-metrics">—</span>
                             </div>
+                            <!--
+                                Приложение само говорит, когда окно не
+                                доходит до низа экрана. Разбираться с этим
+                                по числам в чате пришлось пять заходов;
+                                словами оно объясняет себя за один.
+                            -->
+                            <div class="hidden pt-1" id="about-cutoff-row">
+                                <p class="text-[10px] text-amber-500/90 leading-relaxed" id="about-cutoff"></p>
+                            </div>
                             <div class="flex justify-between gap-2">
                                 <span data-i18n="settings.aboutVoice">Немецкий голос</span>
                                 <span class="text-slate-300 font-bold truncate max-w-[55%]" id="about-voice">—</span>

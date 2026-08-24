@@ -32,6 +32,22 @@
  */
 const ДОПУСК = 24;
 
+/**
+ * iPhone и iPad: у них движок один на все браузеры, и разница окна с
+ * экраном означает у них не то же, что у остальных.
+ */
+const этоIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '')
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+/**
+ * Наибольший разумный сдвиг меню вниз.
+ *
+ * Строка состояния iPhone — 59 точек, у моделей постарше меньше. Всё,
+ * что больше сотни, разницей строки состояния уже не объясняется, и
+ * двигать туда меню вслепую опаснее, чем не двигать вовсе.
+ */
+const ПРЕДЕЛ_СДВИГА = 100;
+
 let проба = null;
 
 function пробнаяВысота() {
@@ -69,38 +85,92 @@ export const viewport = {
         document.documentElement.style.setProperty('--app-height', `${окно}px`);
     },
 
-    init: () => {
+    /**
+     * Меню — на нижний край дисплея, а не разметочной области.
+     *
+     * На iPhone с полупрозрачной строкой состояния iOS отдаёт окно
+     * высотой «экран минус строка состояния» — 793 при экране 852 — и
+     * прижимает его к верху. Меню на `bottom: 0` честно встаёт на 793 и
+     * оказывается в 59 точках от края дисплея. Все измерения при этом
+     * показывают, что оно на краю, — и оно правда на краю окна.
+     *
+     * Рисовать в эти 59 точек страница умеет. Выяснилось случайно: когда
+     * тёмную подложку под меню однажды убрали, на айфоне открылся
+     * провал — значит подложка его закрывала, значит пиксели там наши.
+     * Разметочная область просто короче окна.
+     *
+     * Поэтому меню опускается на разницу. Настоящее лечение — метка
+     * строки состояния `black` в index.html, но её iOS запоминает при
+     * установке значка, и уже поставленному приложению она не поможет.
+     * Здесь же всё чинится само: как только окно дойдёт до низа,
+     * разница станет нулём и сдвиг снимется.
+     *
+     * Только iOS. На Android такая же разница означает системную полосу
+     * жестов — там это чужие пиксели, и меню, сдвинутое под неё, просто
+     * пропадёт из виду.
+     */
+    pinNav: () => {
+        const корень = document.documentElement;
+        const снять = () => {
+            if (корень.style.getPropertyValue('--nav-drop')) {
+                корень.style.removeProperty('--nav-drop');
+            }
+        };
+
+        // Только во встроенном приложении. В обычном Safari та же разница
+        // означает панели браузера, и меню, опущенное под них, пропадёт
+        if (!этоIOS() || navigator.standalone !== true) return снять();
+
+        const высотаЭкрана = (window.screen && window.screen.height) || 0;
+        const верх = Number.isFinite(window.screenY) ? window.screenY : 0;
+        const разница = Math.round(высотаЭкрана - верх - window.innerHeight);
+
+        if (!(разница > ДОПУСК && разница <= ПРЕДЕЛ_СДВИГА)) return снять();
+
+        const нужно = `${разница}px`;
+        if (корень.style.getPropertyValue('--nav-drop') !== нужно) {
+            корень.style.setProperty('--nav-drop', нужно);
+        }
+    },
+
+    /** Обе поправки разом — высота страницы и посадка меню. */
+    refresh: () => {
         viewport.apply();
+        viewport.pinNav();
+    },
+
+    init: () => {
+        viewport.refresh();
 
         // На iPhone размеры на момент DOMContentLoaded ещё не окончательные:
         // безопасные зоны применяются позже, а второго события может и не
         // быть. Поэтому перемеряем несколько раз после запуска
-        requestAnimationFrame(viewport.apply);
-        window.addEventListener('load', viewport.apply);
-        setTimeout(viewport.apply, 300);
-        setTimeout(viewport.apply, 1000);
+        requestAnimationFrame(viewport.refresh);
+        window.addEventListener('load', viewport.refresh);
+        setTimeout(viewport.refresh, 300);
+        setTimeout(viewport.refresh, 1000);
 
         // resize приходит при повороте, смене панели браузера и клавиатуре;
         // orientationchange на части устройств опережает resize и даёт
         // старое значение — поэтому пересчитываем ещё и следующим кадром
-        window.addEventListener('resize', viewport.apply);
+        window.addEventListener('resize', viewport.refresh);
         window.addEventListener('orientationchange', () => {
-            viewport.apply();
-            requestAnimationFrame(viewport.apply);
-            setTimeout(viewport.apply, 250);
+            viewport.refresh();
+            requestAnimationFrame(viewport.refresh);
+            setTimeout(viewport.refresh, 250);
         });
 
         // Возврат из фонового кэша браузера: разметка та же, размеры новые
-        window.addEventListener('pageshow', viewport.apply);
+        window.addEventListener('pageshow', viewport.refresh);
 
         // Разворачивание свёрнутого приложения — тот самый случай, который
         // раньше приходилось делать руками, чтобы меню встало на место
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') viewport.apply();
+            if (document.visibilityState === 'visible') viewport.refresh();
         });
 
         // Экранная клавиатура и панель браузера двигают видимую область,
         // не вызывая resize в части браузеров
-        window.visualViewport?.addEventListener('resize', viewport.apply);
+        window.visualViewport?.addEventListener('resize', viewport.refresh);
     }
 };

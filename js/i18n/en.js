@@ -68,6 +68,7 @@ export const en = {
         screenApp: 'app',
         screenBrowser: 'browser',
         screenSafe: 'insets {top}/{bottom}',
+        screenCutOff: 'The window is {gap} points shorter than the screen — the menu is lowered by that much in code. The permanent cure is re-adding the icon from Safari: iOS freezes the status-bar setting at install time, and updating will not change it.',
         aboutVoice: 'German voice',
         aboutSources: 'Form source',
         aboutNoCache: 'not cached',
