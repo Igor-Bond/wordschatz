@@ -1,5 +1,5 @@
 import { germanUtils } from '../core/german.js';
-import { t } from '../i18n/i18n.js';
+import { i18n, t } from '../i18n/i18n.js';
 
 /**
  * Сверка карточек с немецким Wiktionary.
@@ -218,6 +218,85 @@ export const wiktionary = {
      *
      * @returns {Object|null} формы либо { ambiguous: true }
      */
+    /**
+     * Переводы на язык интерфейса из раздела «Übersetzungen».
+     *
+     * Единственная категория ошибок, которая портила обучение напрямую,
+     * — неверный перевод: род и формы сверялись, а значение нет, и
+     * «der Tisch — стул» проходило насквозь. Оказалось, что немецкий
+     * Wiktionary отдаёт русские и украинские переводы в той же статье,
+     * которую мы и так запрашиваем: на пятнадцати проверенных словах
+     * русский нашёлся у всех пятнадцати.
+     *
+     * Строка выглядит так:
+     *   *{{ru}}: {{Üt|ru|стол}} {{m}}
+     *   *{{ru}}: ''unvoll.'' {{Üt|ru|говорить}}; ''voll.'' {{Üt|ru|сказать}}
+     *
+     * Значения (`[1]`, `[2]`) не различаем: сопоставить их с карточкой
+     * нечем, поэтому берём объединение — так сверка скорее промолчит,
+     * чем обвинит верную карточку.
+     */
+    parseTranslations: (wikitext, lang = 'ru') => {
+        const text = String(wikitext ?? '');
+        const строки = text.match(new RegExp(`^\\*\\{\\{${lang}\\}\\}:[^\\n]*`, 'gmi')) || [];
+
+        const найдено = [];
+        for (const строка of строки) {
+            // {{Üt|ru|стол}} — с кириллицей, {{Ü|en|table}} — без
+            const шаблоны = строка.match(/\{\{Üt?x?x?\d?\|[^|}]+\|([^|}]+)/g) || [];
+            for (const шаблон of шаблоны) {
+                const значение = шаблон.split('|')[2];
+                if (значение) найдено.push(значение.trim());
+            }
+        }
+
+        return [...new Set(найдено.filter(Boolean))];
+    },
+
+    /** Приведение перевода к сравнимому виду. */
+    _normaliseTranslation: (value) => String(value ?? '')
+        .toLowerCase()
+        .replace(/ё/g, 'е')
+        // Пояснения в скобках — не часть перевода: «стол (мебель)»
+        .replace(/\([^)]*\)/g, ' ')
+        // Пометки частей речи и падежей, которые пишет модель
+        .replace(/\b(sich|что-то|кого-то|чего-то|кому-то|щось|когось)\b/g, ' ')
+        .replace(/[^\p{L}\s-]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+
+    /**
+     * Сходится ли перевод карточки с переводами из статьи.
+     *
+     * Возвращает 'match' | 'differs' | 'unknown'. Карточка часто содержит
+     * несколько вариантов через запятую — достаточно, чтобы совпал хотя
+     * бы один: человек написал «бежать, бегать», словарь знает «бежать».
+     */
+    matchTranslation: (ours, theirs) => {
+        const их = (theirs || []).map(wiktionary._normaliseTranslation).filter(Boolean);
+        if (!их.length) return 'unknown';
+
+        const наши = wiktionary._normaliseTranslation(ours)
+            .split(/[,;/]| или /)
+            .map(s => s.trim())
+            .filter(Boolean);
+
+        if (!наши.length) return 'unknown';
+
+        for (const наш of наши) {
+            for (const их_один of их) {
+                if (наш === их_один) return 'match';
+
+                // «стиральная машина» против «машина стиральная» и
+                // против «стиральная машина автомат»: считаем совпавшим,
+                // если одно целиком входит в другое
+                if (наш.includes(их_один) || их_один.includes(наш)) return 'match';
+            }
+        }
+
+        return 'differs';
+    },
+
     parseEntry: (wikitext, type, word = null) => {
         const templateName = TEMPLATES[type];
         if (!templateName) return null;
@@ -235,7 +314,8 @@ export const wiktionary = {
                 ...variants[0],
                 ipa: wiktionary._parseIpa(wikitext),
                 synonyms: wiktionary._parseSection(wikitext, 'Synonyme'),
-                antonyms: wiktionary._parseSection(wikitext, 'Gegenwörter')
+                antonyms: wiktionary._parseSection(wikitext, 'Gegenwörter'),
+                translations: wiktionary.parseTranslations(wikitext, i18n.language)
             };
         }
 
@@ -341,6 +421,26 @@ export const wiktionary = {
             check('superlative', word.superlative, entry.superlative);
         }
 
+        /*
+         * Перевод — подозрение, а не расхождение.
+         *
+         * Формы сверяются однозначно: «hat genommen» либо совпало, либо
+         * нет. Со значением так нельзя. Статья перечисляет переводы всех
+         * смыслов вперемешку, карточка учит одному; синонимичных пар
+         * («красивый» и «прекрасный») словарь может и не знать. Поэтому
+         * запись помечается suspicion и не несёт fix: автоматическое
+         * исправление здесь испортило бы больше, чем починило.
+         */
+        const verdict = wiktionary.matchTranslation(word.translation, entry.translations);
+        if (verdict === 'differs') {
+            diffs.push({
+                field: 'translation',
+                ours: String(word.translation || '').trim(),
+                theirs: entry.translations.slice(0, 4).join(', '),
+                suspicion: true
+            });
+        }
+
         return diffs;
     },
 
@@ -433,13 +533,23 @@ export const wiktionary = {
                         if (Object.keys(fill).length) { Object.assign(card, fill); filled++; }
 
                         const diffs = wiktionary.compare(card, entry);
-                        if (diffs.length) {
-                            for (const diff of diffs) Object.assign(card, diff.fix || {});
+
+                        // Формы правим молча — они сверяются однозначно.
+                        // Перевод только помечаем: словарь перечисляет
+                        // значения вперемешку, и «исправить» его здесь
+                        // значило бы менять смысл карточки наугад
+                        const правки = diffs.filter(d => d.fix);
+                        const подозрения = diffs.filter(d => d.suspicion);
+
+                        if (правки.length) {
+                            for (const diff of правки) Object.assign(card, diff.fix);
                             fixed++;
                         }
 
-                        card.verified = wiktionary.STATUS.OK;
-                        card.mismatches = [];
+                        card.mismatches = подозрения;
+                        card.verified = подозрения.length
+                            ? wiktionary.STATUS.MISMATCH
+                            : wiktionary.STATUS.OK;
                     }
 
                     card.verifiedAt = Date.now();

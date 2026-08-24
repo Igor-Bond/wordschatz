@@ -256,3 +256,85 @@ const BAND = `{{Deutsch Substantiv Übersicht
         проверить.ложь(wiktionary.summary({ fixed: 0, filled: 0, unchecked: 0 }).alarming);
     });
 });
+
+группа('Сверка перевода', () => {
+
+    const статья = `
+{{Übersetzungen}}
+*{{ru}}: {{Üt|ru|стол}} {{m}}
+*{{uk}}: {{Üt|uk|стіл}} {{m}}
+*{{en}}: {{Ü|en|table}}
+`;
+
+    тест('переводы вытаскиваются по языку', () => {
+        проверить.равно(wiktionary.parseTranslations(статья, 'ru').join(','), 'стол');
+        проверить.равно(wiktionary.parseTranslations(статья, 'uk').join(','), 'стіл');
+        проверить.равно(wiktionary.parseTranslations(статья, 'en').join(','), 'table');
+    });
+
+    тест('несколько переводов в одной строке', () => {
+        const текст = "*{{ru}}: ''unvoll.'' {{Üt|ru|говорить}}; ''voll.'' {{Üt|ru|сказать}}";
+        const итог = wiktionary.parseTranslations(текст, 'ru');
+        проверить.содержит(итог, 'говорить');
+        проверить.содержит(итог, 'сказать');
+    });
+
+    тест('языка нет в статье — пустой список', () => {
+        проверить.равно(wiktionary.parseTranslations(статья, 'pl').length, 0);
+        проверить.равно(wiktionary.parseTranslations('', 'ru').length, 0);
+    });
+
+    тест('совпадение засчитывается', () => {
+        проверить.равно(wiktionary.matchTranslation('стол', ['стол']), 'match');
+        проверить.равно(wiktionary.matchTranslation('Стол', ['стол']), 'match', 'регистр не важен');
+        проверить.равно(wiktionary.matchTranslation('  стол  ', ['стол']), 'match');
+    });
+
+    тест('ё и е — одна буква', () => {
+        проверить.равно(wiktionary.matchTranslation('надёжный', ['надежный']), 'match');
+    });
+
+    тест('достаточно одного варианта из перечисленных', () => {
+        // Модель часто пишет несколько значений через запятую
+        проверить.равно(wiktionary.matchTranslation('бежать, бегать', ['бежать']), 'match');
+        проверить.равно(wiktionary.matchTranslation('говорить; сказать', ['сказать']), 'match');
+    });
+
+    тест('пояснение в скобках не мешает', () => {
+        проверить.равно(wiktionary.matchTranslation('стол (мебель)', ['стол']), 'match');
+    });
+
+    тест('вложение считается совпадением', () => {
+        проверить.равно(wiktionary.matchTranslation('стиральная машина', ['стиральная машина автомат']), 'match');
+    });
+
+    тест('чужое значение отмечается как расхождение', () => {
+        // Ровно тот случай, ради которого всё затевалось
+        проверить.равно(wiktionary.matchTranslation('стул', ['стол']), 'differs');
+        проверить.равно(wiktionary.matchTranslation('окно', ['стол', 'столик']), 'differs');
+    });
+
+    тест('нечего сравнивать — не обвиняем', () => {
+        проверить.равно(wiktionary.matchTranslation('стол', []), 'unknown');
+        проверить.равно(wiktionary.matchTranslation('', ['стол']), 'unknown');
+        проверить.равно(wiktionary.matchTranslation(null, ['стол']), 'unknown');
+    });
+
+    тест('подозрение в переводе не несёт автоисправления', () => {
+        const word = { word: 'der Tisch', type: 'noun', gender: 'der', translation: 'стул' };
+        const entry = { type: 'noun', gender: 'der', translations: ['стол'] };
+
+        const diffs = wiktionary.compare(word, entry);
+        const перевод = diffs.find(d => d.field === 'translation');
+
+        проверить.истина(перевод, 'расхождение найдено');
+        проверить.истина(перевод.suspicion, 'помечено как подозрение');
+        проверить.ложь(!!перевод.fix, 'исправления нет — менять смысл наугад нельзя');
+    });
+
+    тест('верный перевод не попадает в расхождения', () => {
+        const word = { word: 'der Tisch', type: 'noun', gender: 'der', translation: 'стол' };
+        const entry = { type: 'noun', gender: 'der', translations: ['стол'] };
+        проверить.ложь(wiktionary.compare(word, entry).some(d => d.field === 'translation'));
+    });
+});

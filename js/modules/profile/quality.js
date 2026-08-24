@@ -167,19 +167,39 @@ export const quality = {
         if (!word?.mismatches?.length) return;
 
         const lines = word.mismatches
-            .map(d => `${t('fields.' + d.field)}\n     ${t('profile.diffOurs')}: ${d.ours}\n     ${t('profile.diffTheirs')}: ${d.theirs}`)
+            .map(d => `${t('fields.' + d.field)}${d.suspicion ? ' — ' + t('profile.diffSuspicion') : ''}`
+                + `\n     ${t('profile.diffOurs')}: ${d.ours}`
+                + `\n     ${t('profile.diffTheirs')}: ${d.theirs}`)
             .join('\n\n');
 
-        const choice = await dialog.choose(
-            `${word.word}\n\n${lines}`,
-            [
+        /*
+         * Расхождение в форме исправляется одной кнопкой: «hat genommen»
+         * либо верно, либо нет. Подозрение в переводе так закрыть нельзя —
+         * словарь перечисляет значения всех смыслов вперемешку, и
+         * подставить первое попавшееся значило бы менять смысл карточки
+         * наугад. Поэтому там, где спорен только перевод, предлагается
+         * открыть редактор, а не «применить».
+         */
+        const исправимые = word.mismatches.filter(d => d.fix);
+
+        const выбор = исправимые.length
+            ? [
                 { value: 'fix', label: t('profile.diffApply'), hint: t('profile.diffApplyHint'), primary: true },
                 { value: 'keep', label: t('profile.diffKeep'), hint: t('profile.diffKeepHint') }
-            ],
-            { title: t('profile.diffTitle') }
-        );
+              ]
+            : [
+                { value: 'edit', label: t('profile.diffEdit'), hint: t('profile.diffEditHint'), primary: true },
+                { value: 'keep', label: t('profile.diffKeep'), hint: t('profile.diffKeepHint') }
+              ];
+
+        const choice = await dialog.choose(`${word.word}\n\n${lines}`, выбор, { title: t('profile.diffTitle') });
 
         if (choice === null) return;
+
+        if (choice === 'edit') {
+            await profile.openEditModal(id);
+            return;
+        }
 
         const changes = { verified: wiktionary.STATUS.OK, mismatches: [], verifiedAt: Date.now() };
         if (choice === 'fix') {

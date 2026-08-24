@@ -336,7 +336,8 @@ export const en = {
         konjunktiv2: 'Konjunktiv II',
         ipa: 'Transcription',
         comparative: 'Comparative',
-        superlative: 'Superlative'
+        superlative: 'Superlative',
+        translation: 'Translation'
     },
 
     card: {
@@ -590,6 +591,9 @@ export const en = {
         diffApplyHint: 'Take the forms from Wiktionary',
         diffKeep: 'Keep as is',
         diffKeepHint: 'Mark as checked without changes',
+        diffSuspicion: 'a suspicion, not an error',
+        diffEdit: 'Open the card',
+        diffEditHint: 'Fix the translation by hand — the dictionary lists every sense at once',
         incompleteBadge: '{count} fields missing',
         masteredHint: 'Recalled after more than three weeks',
         difficult: 'Hard',

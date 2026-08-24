@@ -336,7 +336,8 @@ export const uk = {
         konjunktiv2: 'Konjunktiv II',
         ipa: 'Транскрипція',
         comparative: 'Komparativ',
-        superlative: 'Superlativ'
+        superlative: 'Superlativ',
+        translation: 'Переклад'
     },
 
     card: {
@@ -590,6 +591,9 @@ export const uk = {
         diffApplyHint: 'Узяти форми з Wiktionary',
         diffKeep: 'Залишити як є',
         diffKeepHint: 'Позначити перевіреним без змін',
+        diffSuspicion: 'підозра, не помилка',
+        diffEdit: 'Відкрити картку',
+        diffEditHint: 'Переклад правиться вручну: словник перелічує значення всіх смислів',
         incompleteBadge: 'немає {count} полів',
         masteredHint: 'Слово тримається в пам’яті довше трьох тижнів',
         difficult: 'Складні',

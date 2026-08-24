@@ -121,9 +121,17 @@ export const stats = {
                 <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-slate-100">${t('profile.currentLeague')}</h3>
-                        <span class="text-xs font-bold px-2.5 py-1 rounded-md ${currentLeague.bg} ${currentLeague.color} border border-current">
+                        <!--
+                            Полоса показывает только соседнюю ступень. Сколько
+                            их всего и что дальше — открывается нажатием на саму
+                            плашку лиги: отдельная кнопка под полосой была
+                            лишней строкой на экране
+                        -->
+                        <button onclick="profile.showLeagues()" title="${t('profile.allLeagues')}"
+                            class="text-xs font-bold px-2.5 py-1 rounded-md ${currentLeague.bg} ${currentLeague.color} border border-current active:scale-95 transition-transform">
                             <i class="fa-solid fa-trophy mr-1"></i> ${currentLeague.name}
-                        </span>
+                            <i class="fa-solid fa-chevron-right ml-1 opacity-60 text-[9px]"></i>
+                        </button>
                     </div>
                     
                     <div class="w-full bg-slate-900 rounded-full h-3 mb-2 border border-slate-700 overflow-hidden">
@@ -136,17 +144,6 @@ export const stats = {
                         <span class="text-amber-500 tracking-wide">${xpText}</span>
                         <span>${nextLeague.name !== currentLeague.name ? nextLeague.name : t('profile.maxLeague')}</span>
                     </div>
-
-                    <!--
-                        Полоса показывает только соседнюю лигу. Сколько всего
-                        ступеней и что дальше — было не узнать, а это первое,
-                        что спрашивают про такую шкалу
-                    -->
-                    <button onclick="profile.showLeagues()"
-                        class="w-full mt-4 py-2 text-[11px] font-bold text-slate-400 hover:text-amber-500 border-t border-slate-700 flex items-center justify-center gap-2 transition-colors">
-                        ${t('profile.allLeagues')}
-                        <i class="fa-solid fa-list-ol"></i>
-                    </button>
                 </div>
 
                 <!-- Аналитика словаря -->

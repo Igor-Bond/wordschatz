@@ -336,7 +336,8 @@ export const ru = {
         konjunktiv2: 'Konjunktiv II',
         ipa: 'Транскрипция',
         comparative: 'Komparativ',
-        superlative: 'Superlativ'
+        superlative: 'Superlativ',
+        translation: 'Перевод'
     },
 
     card: {
@@ -590,6 +591,9 @@ export const ru = {
         diffApplyHint: 'Взять формы из Wiktionary',
         diffKeep: 'Оставить как есть',
         diffKeepHint: 'Пометить проверенным без изменений',
+        diffSuspicion: 'подозрение, не ошибка',
+        diffEdit: 'Открыть карточку',
+        diffEditHint: 'Перевод правится вручную: словарь перечисляет значения всех смыслов',
         incompleteBadge: 'нет {count} полей',
         masteredHint: 'Слово держится в памяти дольше трёх недель',
         difficult: 'Сложные',
