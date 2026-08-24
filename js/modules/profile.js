@@ -995,6 +995,16 @@ export const profile = {
         .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;'),
 
+    /**
+     * Задержка перед перерисовкой списка.
+     *
+     * «Tisch» — это пять нажатий, и каждое перестраивало весь список.
+     * Отбор и отрисовка ждут, пока человек допечатает; поле и крестик
+     * очистки обновляются сразу, иначе ввод ощущается залипающим.
+     */
+    SEARCH_DELAY: 180,
+    _searchTimer: null,
+
     onSearchInput: (value) => {
         profile.dictFilters.query = value;
 
@@ -1004,7 +1014,12 @@ export const profile = {
         const clear = document.getElementById('dict-search-clear');
         if (clear) clear.classList.toggle('hidden', !value);
 
-        profile.renderDictList();
+        clearTimeout(profile._searchTimer);
+
+        // Очистка крестиком — не набор текста, ждать нечего
+        if (!value) return profile.renderDictList();
+
+        profile._searchTimer = setTimeout(profile.renderDictList, profile.SEARCH_DELAY);
     },
 
     setDictFilter: (key, value) => {
@@ -1045,12 +1060,35 @@ export const profile = {
         return words;
     },
 
+    /**
+     * Словарь рисуется частями по мере прокрутки.
+     *
+     * Раньше список отрисовывался целиком. На двух тысячах слов это
+     * 38 000 узлов, 5,4 МБ разметки и треть секунды на перестроение —
+     * а поиск перестраивал список на каждое нажатие клавиши. Первая
+     * буква запроса отбирает почти весь словарь, так что дешевле от
+     * этого не становилось.
+     *
+     * Теперь в DOM попадает столько, сколько человек долистал.
+     */
+    DICT_CHUNK: 50,
+
+    _dictVisible: [],
+    _dictShown: 0,
+    _dictObserver: null,
+
     renderDictList: () => {
         const list = document.getElementById('dict-list');
         const counter = document.getElementById('dict-count');
         if (!list) return;
 
+        // Наблюдатель прошлого списка держал бы ссылку на снятые узлы
+        profile._dictObserver?.disconnect();
+        profile._dictObserver = null;
+
         const words = profile.getFilteredWords();
+        profile._dictVisible = words;
+        profile._dictShown = 0;
 
         if (counter) {
             counter.innerText = t('profile.shownCount', { shown: words.length, total: profile._dictCache.length });
@@ -1070,49 +1108,89 @@ export const profile = {
             return;
         }
 
-        list.innerHTML = words.map(w => {
-            const gaps = germanUtils.missingFields(w);
-            const accent = masteryUtils.isLearned(w) ? 'bg-green-500' : (masteryUtils.isWeak(w) ? 'bg-red-500' : 'bg-slate-600');
+        list.innerHTML = '';
+        profile.appendDictChunk();
+    },
 
-            return `
-                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center group relative overflow-hidden">
-                    <div class="absolute left-0 top-0 bottom-0 w-1 ${accent}"></div>
+    /** Следующая порция слов плюс метка «долистали до конца». */
+    appendDictChunk: () => {
+        const list = document.getElementById('dict-list');
+        if (!list) return;
 
-                    <div class="pl-2 flex-1 mr-3 cursor-pointer min-w-0" onclick="profile.openEditModal(${w.id})">
-                        <h4 class="text-lg font-bold text-slate-100 break-words">${profile.renderWordWithGender(w)}</h4>
-                        <p class="text-sm text-amber-500 break-words">${w.translation}</p>
-                        <div class="flex items-center gap-2 mt-1 flex-wrap">
-                            <span class="text-[10px] text-slate-500 uppercase">${t('wordTypes.' + (profile.WORD_TYPES.includes(w.type) ? w.type : 'phrase'))}</span>
-                            <span class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</span>
-                            ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
-                            ${gaps.length ? `<span class="text-[10px] bg-amber-900/30 text-amber-500 px-1.5 rounded uppercase font-bold border border-amber-500/20" title="${profile.escapeAttr(gaps.join(', '))}">${t('profile.incompleteBadge', { count: gaps.length })}</span>` : ''}
-                            ${w.mismatches?.length ? `<span onclick="event.stopPropagation(); profile.showMismatches(${w.id})" class="text-[10px] bg-red-900/40 text-red-400 px-1.5 rounded uppercase font-bold border border-red-500/30 cursor-pointer">${t('profile.mismatchBadge', { count: w.mismatches.length })}</span>` : ''}
-                            ${w.verified === 1 ? `<span class="text-[10px] text-green-500/80" title="${profile.escapeAttr(t('profile.verifiedBadge'))}"><i class="fa-solid fa-circle-check"></i></span>` : ''}
-                        </div>
-                    </div>
+        document.getElementById('dict-sentinel')?.remove();
 
-                    <div class="flex gap-1.5 shrink-0">
-                        ${gaps.length ? `
-                            <button onclick="profile.completeOne(${w.id})" id="complete-${w.id}" title="${profile.escapeAttr(t('profile.completeOne'))}"
-                                class="w-9 h-9 bg-amber-500/15 text-amber-500 rounded-lg flex items-center justify-center border border-amber-500/30 hover:bg-amber-500/25 transition-colors active:scale-95">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            </button>` : ''}
-                        <button onclick="profile.toggleDifficult(${w.id})" title="${profile.escapeAttr(t('profile.toggleHard'))}"
-                            class="w-9 h-9 rounded-lg flex items-center justify-center border border-transparent transition-colors active:scale-95 ${
-                                w.isDifficult ? 'bg-red-900/30 text-red-500 hover:border-red-900' : 'bg-slate-700 text-slate-400 hover:text-red-400'
-                            }">
-                            <i class="fa-solid fa-fire"></i>
-                        </button>
-                        <button onclick="profile.openEditModal(${w.id})" class="w-9 h-9 bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center border border-transparent hover:border-slate-500 transition-colors active:scale-95">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button data-action="profile.deleteWord" data-id="${w.id}" data-word="${actions.attr(w.word)}" class="w-9 h-9 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center border border-transparent hover:border-red-900 transition-colors active:scale-95">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+        const words = profile._dictVisible;
+        const from = profile._dictShown;
+        const to = Math.min(from + profile.DICT_CHUNK, words.length);
+        if (from >= to) return;
+
+        list.insertAdjacentHTML('beforeend', words.slice(from, to).map(profile.renderDictRow).join(''));
+        profile._dictShown = to;
+
+        if (to >= words.length) {
+            profile._dictObserver?.disconnect();
+            profile._dictObserver = null;
+            return;
+        }
+
+        // Метка внизу: как только она показалась — дорисовываем дальше.
+        // Запас в 400 px, чтобы прокрутка не упиралась в пустоту
+        list.insertAdjacentHTML('beforeend',
+            `<div id="dict-sentinel" class="py-4 text-center text-xs text-slate-600">
+                ${t('profile.loadingMore')}
+            </div>`);
+
+        const sentinel = document.getElementById('dict-sentinel');
+        if (!profile._dictObserver) {
+            profile._dictObserver = new IntersectionObserver(entries => {
+                if (entries.some(e => e.isIntersecting)) profile.appendDictChunk();
+            }, { root: document.getElementById('main-content'), rootMargin: '400px' });
+        }
+        profile._dictObserver.observe(sentinel);
+    },
+
+    renderDictRow: (w) => {
+        const gaps = germanUtils.missingFields(w);
+        const accent = masteryUtils.isLearned(w) ? 'bg-green-500' : (masteryUtils.isWeak(w) ? 'bg-red-500' : 'bg-slate-600');
+
+        return `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center group relative overflow-hidden">
+                <div class="absolute left-0 top-0 bottom-0 w-1 ${accent}"></div>
+
+                <div class="pl-2 flex-1 mr-3 cursor-pointer min-w-0" onclick="profile.openEditModal(${w.id})">
+                    <h4 class="text-lg font-bold text-slate-100 break-words">${profile.renderWordWithGender(w)}</h4>
+                    <p class="text-sm text-amber-500 break-words">${w.translation}</p>
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                        <span class="text-[10px] text-slate-500 uppercase">${t('wordTypes.' + (profile.WORD_TYPES.includes(w.type) ? w.type : 'phrase'))}</span>
+                        <span class="text-[10px] text-slate-500 uppercase">${t('profile.mastery', { percent: w.mastery || 0 })}</span>
+                        ${w.isDifficult ? `<span class="text-[10px] bg-red-900/30 text-red-500 px-1.5 rounded uppercase font-bold border border-red-500/20">${t('profile.hardBadge')}</span>` : ''}
+                        ${gaps.length ? `<span class="text-[10px] bg-amber-900/30 text-amber-500 px-1.5 rounded uppercase font-bold border border-amber-500/20" title="${profile.escapeAttr(gaps.join(', '))}">${t('profile.incompleteBadge', { count: gaps.length })}</span>` : ''}
+                        ${w.mismatches?.length ? `<span onclick="event.stopPropagation(); profile.showMismatches(${w.id})" class="text-[10px] bg-red-900/40 text-red-400 px-1.5 rounded uppercase font-bold border border-red-500/30 cursor-pointer">${t('profile.mismatchBadge', { count: w.mismatches.length })}</span>` : ''}
+                        ${w.verified === 1 ? `<span class="text-[10px] text-green-500/80" title="${profile.escapeAttr(t('profile.verifiedBadge'))}"><i class="fa-solid fa-circle-check"></i></span>` : ''}
                     </div>
                 </div>
-            `;
-        }).join('');
+
+                <div class="flex gap-1.5 shrink-0">
+                    ${gaps.length ? `
+                        <button onclick="profile.completeOne(${w.id})" id="complete-${w.id}" title="${profile.escapeAttr(t('profile.completeOne'))}"
+                            class="w-9 h-9 bg-amber-500/15 text-amber-500 rounded-lg flex items-center justify-center border border-amber-500/30 hover:bg-amber-500/25 transition-colors active:scale-95">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </button>` : ''}
+                    <button onclick="profile.toggleDifficult(${w.id})" title="${profile.escapeAttr(t('profile.toggleHard'))}"
+                        class="w-9 h-9 rounded-lg flex items-center justify-center border border-transparent transition-colors active:scale-95 ${
+                            w.isDifficult ? 'bg-red-900/30 text-red-500 hover:border-red-900' : 'bg-slate-700 text-slate-400 hover:text-red-400'
+                        }">
+                        <i class="fa-solid fa-fire"></i>
+                    </button>
+                    <button onclick="profile.openEditModal(${w.id})" class="w-9 h-9 bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center border border-transparent hover:border-slate-500 transition-colors active:scale-95">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button data-action="profile.deleteWord" data-id="${w.id}" data-word="${actions.attr(w.word)}" class="w-9 h-9 bg-red-900/20 text-red-500 rounded-lg flex items-center justify-center border border-transparent hover:border-red-900 transition-colors active:scale-95">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        `;
     },
 
     /**

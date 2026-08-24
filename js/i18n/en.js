@@ -518,6 +518,7 @@ export const en = {
         searchPlaceholder: 'Search by word, translation, topic...',
         filterAll: 'All',
         shownCount: 'Showing {shown} of {total}',
+        loadingMore: 'Loading more…',
         nothingFound: 'Nothing found',
         toggleHard: 'Mark as hard',
         status: { all: 'All', difficult: 'Hard', learning: 'Learning', mastered: 'Mastered', incomplete: 'Incomplete', mismatch: 'Mismatches' },

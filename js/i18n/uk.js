@@ -518,6 +518,7 @@ export const uk = {
         searchPlaceholder: 'Пошук за словом, перекладом, темою...',
         filterAll: 'Усі',
         shownCount: 'Показано {shown} з {total}',
+        loadingMore: 'Завантажуємо ще…',
         nothingFound: 'Нічого не знайдено',
         toggleHard: 'Позначити як складне',
         status: { all: 'Усі', difficult: 'Складні', learning: 'У вивченні', mastered: 'Засвоєно', incomplete: 'Неповні', mismatch: 'Розбіжності' },

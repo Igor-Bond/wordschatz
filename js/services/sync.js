@@ -73,8 +73,13 @@ export const sync = {
         const since = sync.getLastSync();
 
         try {
-            const pulled = await sync.pull(auth.user.uid, since);
-            const pushed = await sync.push(auth.user.uid, since);
+            // Что пришло из облака, обратно не отправляем: у такой записи
+            // updatedAt заведомо больше since, и push отдавал её назад тем
+            // же значением. На бесплатном тарифе Firestore это удваивало
+            // расход записей на каждой синхронизации
+            const applied = new Map();
+            const pulled = await sync.pull(auth.user.uid, since, applied);
+            const pushed = await sync.push(auth.user.uid, since, applied);
 
             sync.setLastSync(startedAt);
             sync._emit('done', t('sync.done'));
@@ -89,8 +94,11 @@ export const sync = {
         }
     },
 
-    /** Забираем из облака всё, что изменилось после прошлой синхронизации. */
-    pull: async (uid, since) => {
+    /**
+     * Забираем из облака всё, что изменилось после прошлой синхронизации.
+     * В `applied` складываем принятые ключи — их не надо отдавать обратно.
+     */
+    pull: async (uid, since, applied = new Map()) => {
         const counts = {};
         const ctx = await auth.getDb();
         const { getDoc, getDocs, query, where } = ctx.fs;
@@ -113,27 +121,57 @@ export const sync = {
                 query(sync._collection(ctx, uid, name), where('updatedAt', '>', since))
             );
 
-            let applied = 0;
+            let count = 0;
             for (const document of snapshot.docs) {
                 const remote = document.data();
                 const table = COLLECTIONS[name]();
                 const local = await table.get(remote.id);
 
-                // Побеждает более свежая запись
-                if (!local || (remote.updatedAt || 0) > (local.updatedAt || 0)) {
-                    await table.put(remote);
-                    applied++;
-                }
+                if (!sync.remoteWins(local, remote)) continue;
+
+                await table.put(remote);
+                count++;
+
+                if (!applied.has(name)) applied.set(name, new Set());
+                applied.get(name).add(sync.rowKey(remote));
             }
 
-            if (applied) counts[name] = applied;
+            if (count) counts[name] = count;
         }
 
         return counts;
     },
 
+    /**
+     * Решение о том, принимать ли запись из облака.
+     *
+     * Побеждает более свежая по updatedAt. Метку ставит устройство, и это
+     * известное ограничение: при разъехавшихся часах свежая правка может
+     * проиграть старой. Для одного человека с несколькими устройствами
+     * это принято сознательно — альтернатива требует сервера.
+     */
+    remoteWins: (local, remote) => !local || (remote?.updatedAt || 0) > (local.updatedAt || 0),
+
+    /** Ключ записи в облаке: id как строка. */
+    rowKey: (row) => String(row?.id),
+
+    /** Что менялось локально после отметки и не пришло только что из облака. */
+    changedSince: (rows, since, skip = null) => rows.filter(row => {
+        if ((row.updatedAt || 0) <= since) return false;
+        return !skip?.has(sync.rowKey(row));
+    }),
+
+    /** Firestore разрешает не больше 500 операций в пачке. */
+    BATCH_SIZE: 400,
+
+    batches: (rows, size = sync.BATCH_SIZE) => {
+        const result = [];
+        for (let i = 0; i < rows.length; i += size) result.push(rows.slice(i, i + size));
+        return result;
+    },
+
     /** Отдаём в облако всё, что менялось локально. */
-    push: async (uid, since) => {
+    push: async (uid, since, applied = new Map()) => {
         const counts = {};
         const ctx = await auth.getDb();
         const { doc, setDoc, writeBatch } = ctx.fs;
@@ -149,18 +187,18 @@ export const sync = {
         }, { merge: true });
 
         for (const [name, getTable] of Object.entries(COLLECTIONS)) {
-            const rows = await getTable()
-                .filter(r => (r.updatedAt || 0) > since)
-                .toArray();
+            // По индексу updatedAt, а не перебором всей таблицы: он
+            // заведён в схеме как раз ради этого запроса
+            const changed = await getTable().where('updatedAt').above(since).toArray();
+            const rows = sync.changedSince(changed, since, applied.get(name));
 
             if (rows.length === 0) continue;
 
-            // Firestore разрешает не больше 500 операций в пачке
-            for (let i = 0; i < rows.length; i += 400) {
+            for (const chunk of sync.batches(rows)) {
                 const batch = writeBatch(ctx.db);
 
-                rows.slice(i, i + 400).forEach(row => {
-                    batch.set(doc(sync._collection(ctx, uid, name), String(row.id)), row);
+                chunk.forEach(row => {
+                    batch.set(doc(sync._collection(ctx, uid, name), sync.rowKey(row)), row);
                 });
 
                 await batch.commit();

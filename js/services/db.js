@@ -1,5 +1,6 @@
 import { dateUtils } from '../core/dates.js';
 import Dexie from '../../vendor/dexie.min.js';
+import { migrations } from './migrations.js';
 
 /**
  * Единственная точка работы с хранилищем (§39 ТЗ).
@@ -34,11 +35,7 @@ db.version(2).stores({
     user: 'id, league, totalXP, currentStreak, lastActiveDate'
 }).upgrade(async (tx) => {
     console.log('[DB] Миграция на версию 2...');
-    await tx.words.toCollection().modify(word => {
-        if (!word.status) word.status = 'existing';
-        if (typeof word.mastery === 'undefined') word.mastery = 0;
-        if (typeof word.cycleId === 'undefined') word.cycleId = null;
-    });
+    await tx.words.toCollection().modify(migrations.toV2);
     console.log('[DB] Миграция 2 завершена: старым словам присвоен статус "existing".');
 });
 
@@ -53,10 +50,7 @@ db.version(3).stores({
     user: 'id, league, totalXP, currentStreak, lastActiveDate, updatedAt'
 }).upgrade(async (tx) => {
     console.log('[DB] Миграция на версию 3...');
-    const stamp = (rec) => {
-        if (!rec.updatedAt) rec.updatedAt = rec.createdAt || Date.now();
-        if (typeof rec.deletedAt === 'undefined') rec.deletedAt = null;
-    };
+    const stamp = (rec) => { migrations.toV3(rec); };
     await tx.words.toCollection().modify(stamp);
     await tx.cycles.toCollection().modify(stamp);
     await tx.dayPlans.toCollection().modify(stamp);
@@ -76,26 +70,7 @@ db.version(4).stores({
 }).upgrade(async (tx) => {
     console.log('[DB] Миграция на версию 4...');
 
-    await tx.words.toCollection().modify(word => {
-        // Род вытаскиваем из самого слова: «der Tisch» → gender: 'der'.
-        // Для старых карточек это бесплатно и сразу чинит задание на артикли.
-        if (word.gender === undefined) {
-            const parts = String(word.word ?? '').trim().split(/\s+/);
-            const first = (parts[0] || '').toLowerCase();
-            word.gender = (parts.length > 1 && ['der', 'die', 'das'].includes(first)) ? first : null;
-        }
-
-        // Спряжение хранилось строкой «ich mache, du machst, er macht» —
-        // из неё нельзя было спросить конкретное лицо. Разбираем, что получится.
-        if (word.conjugation === undefined) {
-            word.conjugation = parsePresentString(word.present);
-        }
-
-        if (word.akkusativ === undefined) word.akkusativ = null;
-
-        // Карточка сгенерирована ИИ и человеком не проверялась
-        if (word.verified === undefined) word.verified = 0;
-    });
+    await tx.words.toCollection().modify(migrations.toV4);
 
     console.log('[DB] Миграция 4 завершена: разобраны род и спряжение.');
 });
@@ -112,17 +87,7 @@ db.version(5).stores({
 }).upgrade(async (tx) => {
     console.log('[DB] Миграция на версию 5...');
 
-    await tx.words.toCollection().modify(word => {
-        if (!Array.isArray(word.recent)) word.recent = [];
-        if (typeof word.attempts !== 'number') word.attempts = 0;
-        if (typeof word.correct !== 'number') word.correct = 0;
-
-        // Накопленное значение считать нельзя: оно росло и от «Снова».
-        // Пересчитываем из интервала — истории ответов у старых слов нет,
-        // но состояние SRS честное и доступно прямо сейчас.
-        word.mastery = computeMastery(word);
-        word.updatedAt = Date.now();
-    });
+    await tx.words.toCollection().modify(word => { migrations.toV5(word); });
 
     console.log('[DB] Миграция 5 завершена: освоенность пересчитана из интервалов.');
 });
@@ -141,51 +106,6 @@ db.version(6).stores({
     // перезагрузке — вместе с разобранными ошибками и объяснениями
     chat: '++id, role, createdAt'
 });
-
-/**
- * Расчёт освоенности для миграции.
- *
- * Повторяет формулу из core/mastery.js. Импортировать оттуда нельзя:
- * миграция выполняется при открытии базы, до загрузки модулей приложения,
- * и лишняя зависимость здесь означала бы цикл.
- */
-function computeMastery(word) {
-    const interval = word.interval || 0;
-    const repetitions = word.repetitions || 0;
-    const phase = word.phase || (interval > 0 && repetitions > 0 ? 'review' : 'learning');
-
-    if (phase === 'learning' || interval <= 0) return Math.min(25, repetitions * 8);
-    if (interval < 7) return Math.round(25 + ((interval - 1) / 6) * 30);
-    if (interval < 21) return Math.round(55 + ((interval - 7) / 14) * 25);
-
-    return Math.min(100, Math.round(80 + ((interval - 21) / 69) * 20));
-}
-
-/**
- * Разбор строки спряжения вида «ich mache, du machst, er/sie/es macht».
- * Возвращает null, если разобрать нечего.
- */
-function parsePresentString(present) {
-    const text = String(present ?? '').trim();
-    if (!text) return null;
-
-    const PRONOUNS = {
-        ich: 'ich', du: 'du', er: 'er', sie: 'er', es: 'er',
-        wir: 'wir', ihr: 'ihr'
-    };
-
-    const result = {};
-    for (const chunk of text.split(/[,;]/)) {
-        const match = chunk.trim().match(/^([a-zäöüß/]+)\s+(.+)$/i);
-        if (!match) continue;
-
-        // «er/sie/es macht» — берём первое местоимение
-        const pronoun = PRONOUNS[match[1].toLowerCase().split('/')[0]];
-        if (pronoun && !result[pronoun]) result[pronoun] = match[2].trim();
-    }
-
-    return Object.keys(result).length ? result : null;
-}
 
 const DEFAULT_USER = {
     id: 1,

@@ -518,6 +518,7 @@ export const ru = {
         searchPlaceholder: 'Поиск по слову, переводу, теме...',
         filterAll: 'Все',
         shownCount: 'Показано {shown} из {total}',
+        loadingMore: 'Загружаем ещё…',
         nothingFound: 'Ничего не найдено',
         toggleHard: 'Отметить как сложное',
         status: { all: 'Все', difficult: 'Сложные', learning: 'В изучении', mastered: 'Освоено', incomplete: 'Неполные', mismatch: 'Расхождения' },
