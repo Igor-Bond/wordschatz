@@ -2,6 +2,7 @@ import { profile } from './shared.js';
 import { dialog } from '../../core/dialog.js';
 import { config } from '../../config.js';
 import { t } from '../../i18n/i18n.js';
+import { dateUtils } from '../../core/dates.js';
 import { dbService } from '../../services/db.js';
 
 /** Резервная копия: выгрузка и восстановление (§29 ТЗ). */

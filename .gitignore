@@ -58,3 +58,4 @@ _subpath/
 
 # --- Автономный сборщик Tailwind (скачивается локально, в репозиторий не идёт) ---
 tools/tailwindcss.exe
+vapid-private.key

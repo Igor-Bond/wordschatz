@@ -3,7 +3,8 @@ import { actions } from '../../core/actions.js';
 import { masteryUtils } from '../../core/mastery.js';
 import { dialog } from '../../core/dialog.js';
 import { germanUtils } from '../../core/german.js';
-import { t } from '../../i18n/i18n.js';
+import { t, plural } from '../../i18n/i18n.js';
+import { wiktionary } from '../../services/wiktionary.js';
 import { aiService } from '../../services/ai.js';
 import { dbService } from '../../services/db.js';
 

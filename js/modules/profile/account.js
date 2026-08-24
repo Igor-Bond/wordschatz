@@ -2,9 +2,10 @@ import { profile } from './shared.js';
 import { auth } from '../../services/auth.js';
 import { sync } from '../../services/sync.js';
 import { install } from '../../core/install.js';
+import { push } from '../../core/push.js';
 import { dialog } from '../../core/dialog.js';
 import { config } from '../../config.js';
-import { i18n, t } from '../../i18n/i18n.js';
+import { i18n, t, plural } from '../../i18n/i18n.js';
 import { dbService } from '../../services/db.js';
 
 /** Установка приложения и облако: вход, обмен, выход. */
@@ -184,6 +185,83 @@ export const account = {
     signOut: async () => {
         await auth.signOut();
         await profile.render();
+    },
+
+    /**
+     * Уведомление на закрытое приложение (§41 ТЗ).
+     *
+     * Блок рисуется пустым и наполняется после проверки: узнать, есть ли
+     * подписка, можно только асинхронно, а держать разметку в ожидании
+     * ради одной строки незачем.
+     */
+    renderPushCard: () => {
+        if (!push.isConfigured()) return '';
+
+        // Наполнит fillPushCard после отрисовки
+        return `<div id="prof-push-card"></div>`;
+    },
+
+    fillPushCard: async () => {
+        const box = document.getElementById('prof-push-card');
+        if (!box || !push.isConfigured()) return;
+
+        const состояние = await push.status();
+
+        if (!состояние.available) {
+            box.innerHTML = `
+                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                    <p class="text-xs font-bold text-slate-300 mb-1">${t('push.setting')}</p>
+                    <p class="text-[11px] text-slate-500">${состояние.reason}</p>
+                </div>`;
+            return;
+        }
+
+        box.innerHTML = `
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-slate-300">${t('push.setting')}</p>
+                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">${t('push.hint')}</p>
+                    </div>
+                    <button onclick="profile.togglePush()" id="prof-push-btn"
+                        class="shrink-0 px-3 py-2 text-xs font-bold rounded-xl active:scale-95 transition-all ${
+                            состояние.active
+                                ? 'bg-slate-900 border border-slate-600 text-slate-300 hover:border-red-900 hover:text-red-400'
+                                : 'bg-amber-500 hover:bg-amber-400 text-slate-900'
+                        }">
+                        ${состояние.active ? t('push.disable') : t('push.enable')}
+                    </button>
+                </div>
+                <p id="prof-push-error" class="hidden text-xs text-red-400 mt-2"></p>
+            </div>`;
+    },
+
+    togglePush: async () => {
+        const btn = document.getElementById('prof-push-btn');
+        const error = document.getElementById('prof-push-error');
+        if (btn) { btn.disabled = true; btn.textContent = t('push.working'); }
+        error?.classList.add('hidden');
+
+        try {
+            const состояние = await push.status();
+
+            if (состояние.active) await push.disable();
+            else {
+                const итог = await push.enable();
+                if (!итог.ok && error) {
+                    error.textContent = итог.reason;
+                    error.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error('[Push] Не удалось переключить:', e);
+            if (error) {
+                error.textContent = `${t('push.failed')}: ${e.message}`;
+                error.classList.remove('hidden');
+            }
+        }
+
+        await profile.fillPushCard();
     },
 
 };

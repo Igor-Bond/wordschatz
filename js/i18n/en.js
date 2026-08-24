@@ -275,11 +275,26 @@ export const en = {
 
     reminder: {
         setting: 'Remind me to practise',
-        hint: 'Works while the app is open or in the background. A closed app cannot be woken up — that needs a server.',
+        hint: 'Works while the app is open or in the background. To reach a closed app, turn on the notification below.',
         title: 'Time to practise',
         body: 'Today’s plan is still unfinished. Five minutes keeps your streak alive.',
         denied: 'The browser refused notifications. Grant permission in the site settings.',
         unsupported: 'This browser does not support notifications.'
+    },
+
+    push: {
+        setting: 'Notify me when the app is closed',
+        hint: 'Sent from outside once a day. On Android it reaches a closed app; on iPhone only if the app is on the home screen; on desktop while the browser runs.',
+        enable: 'Enable',
+        disable: 'Disable',
+        enabled: 'Enabled',
+        working: 'Connecting…',
+        unsupported: 'This browser has no push notifications.',
+        notConfigured: 'Push is not configured in this build yet.',
+        needSignIn: 'Sign in with Google first — the subscription lives in your cloud.',
+        denied: 'Notifications are not allowed. Grant permission in site settings.',
+        blocked: 'Notifications are blocked for this site in browser settings.',
+        failed: 'Could not subscribe'
     },
 
     declension: {
