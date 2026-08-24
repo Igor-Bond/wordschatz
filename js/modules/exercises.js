@@ -619,6 +619,7 @@ export const exercises = {
         exercises.builderState.correct = [...words];
         exercises.builderState.words = quiz.shuffle(words);
         exercises.builderState.selected = [];
+        exercises.builderState.answered = false;
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
@@ -697,33 +698,64 @@ export const exercises = {
         }
     },
 
+    /**
+     * Проверка собранного предложения.
+     *
+     * Отличалась от остальных девяти заданий двумя вещами, и обе были
+     * неправильны. Во-первых, при ошибке верный порядок не показывался и
+     * задание не уходило дальше: человек оставался наедине с «Falsch!»,
+     * пока не соберёт сам или не нажмёт «пропустить». Во-вторых — и это
+     * хуже — опыт и ответ засчитывались на каждой попытке, так что одно
+     * задание писало в историю слова три-четыре неверных ответа подряд.
+     * На этой истории считается освоенность, и слово, с которым человек
+     * в итоге справился, выглядело хуже, чем есть.
+     *
+     * Теперь ответ засчитывается один раз, а неверный показывает верный
+     * порядок и идёт дальше — как везде.
+     */
     checkBuilder: () => {
+        // Проверка вызывается из двух мест: сама, когда выложено последнее
+        // слово, и кнопкой. Без замка одно задание засчитывалось дважды
+        if (exercises.builderState.answered) return;
+        exercises.builderState.answered = true;
+
         const feedback = document.getElementById('ex-feedback');
         const skipBtn = document.getElementById('sb-skip-btn');
         if (skipBtn) skipBtn.disabled = true;
+
+        document.querySelectorAll('#sb-source button, #sb-answer button').forEach(b => b.disabled = true);
 
         const isCorrect = exercises.builderSentence() === exercises.builderState.correct.join(' ');
 
         exercises.awardXP(isCorrect);
         feedback.classList.remove('hidden');
+
         if (isCorrect) {
             feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-green-600 border border-green-400 text-white shadow-[0_0_15px_rgba(22,163,74,0.5)]";
             feedback.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Richtig!`;
             setTimeout(exercises.next, 1500);
-        } else {
-            // ЛОГИРОВАНИЕ ОШИБКИ
-            const currentWord = exercises.queue[exercises.currentIndex];
-            if (typeof dbService !== 'undefined' && dbService.logMistake) {
-                dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderSentence());
-            }
-
-            feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-red-600 border border-red-400 text-white";
-            feedback.innerHTML = `<i class="fa-solid fa-xmark mr-2"></i> Falsch! ${t('exercises.tapToRemove')}`;
-            if (skipBtn) skipBtn.disabled = false; 
+            return;
         }
+
+        const currentWord = exercises.queue[exercises.currentIndex];
+        if (typeof dbService !== 'undefined' && dbService.logMistake) {
+            dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderSentence());
+        }
+
+        feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-red-600 border border-red-400 text-white";
+        feedback.innerHTML = `
+            <span class="block"><i class="fa-solid fa-xmark mr-2"></i> Falsch!</span>
+            <span class="text-white/70 text-xs font-normal block mt-2 mb-1 uppercase tracking-widest">${t('exercises.correctAnswer')}</span>
+            <b class="text-base leading-snug block">${exercises.escAttr(exercises.builderState.correct.join(' '))}</b>
+        `;
+
+        setTimeout(exercises.next, 3000);
     },
 
     skipBuilder: () => {
+        if (exercises.builderState.answered) return;
+        exercises.builderState.answered = true;
+
         const feedback = document.getElementById('ex-feedback');
         const skipBtn = document.getElementById('sb-skip-btn');
         if (skipBtn) skipBtn.disabled = true;

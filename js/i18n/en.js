@@ -47,7 +47,9 @@ export const en = {
 
     settings: {
         title: 'Settings',
+        name: 'Name',
         language: 'Interface language',
+        langWarning: 'The interface switches, but translations you already saved stay in the old language while new words arrive in the new one. Your dictionary will end up mixed.',
         level: 'Level',
         dailyGoal: 'Words / day',
         apiKey: 'API key (Gemini)',

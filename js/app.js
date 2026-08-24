@@ -116,7 +116,12 @@ export const app = {
         const savedKey = config.get('api_key') || prof.apiKey || ''; 
         
         document.getElementById('settings-api-key').value = savedKey;
+        document.getElementById('settings-name').value = prof.name || '';
         document.getElementById('settings-lang').value = prof.uiLang || 'ru';
+
+        // Окно открывается со скрытым ключом, даже если в прошлый раз
+        // его показывали
+        app.setKeyVisibility(false);
 
         // Если сохранённого уровня нет в списке (пришёл из облака или из
         // старой версии), select остаётся пустым и сохранение записало бы
@@ -288,9 +293,27 @@ export const app = {
         const goal = parseInt(document.getElementById('settings-goal').value);
         const interests = document.getElementById('settings-interests').value.trim();
 
+        const name = document.getElementById('settings-name').value.trim();
+
         const previousGoal = config.getProfile().dailyGoal;
+        const previousLang = config.get('ui_lang') || 'ru';
+
+        /*
+         * Смена языка меняет только интерфейс. Уже сохранённые переводы
+         * остаются на прежнем языке, а новые слова придут на новом — через
+         * неделю словарь окажется смешанным, и задания начнут спрашивать
+         * то так, то этак. Предупреждаем до того, как это случится.
+         */
+        if (lang !== previousLang) {
+            const дальше = await dialog.confirm(t('settings.langWarning'), {
+                title: t('settings.language'),
+                okLabel: t('common.ok')
+            });
+            if (!дальше) return;
+        }
 
         if (key) config.set('api_key', key);
+        if (name) config.set('name', name);
         config.set('ui_lang', lang);
         config.set('level', level);
         config.set('daily_goal', goal);
@@ -314,7 +337,33 @@ export const app = {
         }
 
         app.closeSettings();
-        location.reload();
+
+        /*
+         * Перезагрузка нужна только при смене языка: живой перерисовки
+         * интерфейса нет. Ради нормы или уровня перезапускать всё
+         * приложение незачем — выглядело так, будто оно испугалось.
+         */
+        if (lang !== previousLang) {
+            location.reload();
+            return;
+        }
+
+        await dashboard.render();
+    },
+
+    /** Ключ показан или скрыт. */
+    setKeyVisibility: (visible) => {
+        const field = document.getElementById('settings-api-key');
+        const eye = document.getElementById('settings-key-eye');
+        if (!field || !eye) return;
+
+        field.type = visible ? 'text' : 'password';
+        eye.innerHTML = `<i class="fa-solid fa-eye${visible ? '-slash' : ''}"></i>`;
+    },
+
+    toggleKeyVisibility: () => {
+        const field = document.getElementById('settings-api-key');
+        app.setKeyVisibility(field?.type === 'password');
     },
 
     /**

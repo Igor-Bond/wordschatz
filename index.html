@@ -51,7 +51,14 @@
 
         <main id="main-content" class="flex-1 overflow-y-auto p-4 pb-28 hide-scrollbar"></main>
 
-        <nav class="bg-slate-800 border-t border-slate-700 absolute bottom-0 w-full px-2 pt-2 pb-[max(env(safe-area-inset-bottom),8px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        <!--
+            Меню прижато к нижней точке экрана через fixed, а не absolute.
+            Внутри app-view оно висело по нижнему краю страницы, и стоило
+            странице оказаться короче экрана — появлялся зазор: на iPhone
+            пустая полоса, на Android белая. От высоты страницы меню
+            теперь не зависит вовсе.
+        -->
+        <nav class="bg-slate-800 border-t border-slate-700 fixed inset-x-0 bottom-0 px-2 pt-2 pb-[max(env(safe-area-inset-bottom),8px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
             <button onclick="app.navigate('plan')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-amber-500 transition-colors" data-target="plan">
                 <i class="fa-solid fa-list-check text-xl mb-0.5"></i>
                 <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.plan">ПЛАН</span>
@@ -88,6 +95,16 @@
             
             <!-- Настроек стало больше, чем помещается на телефоне -->
             <div class="p-5 space-y-4 overflow-y-auto max-h-[65vh] hide-scrollbar">
+                <!--
+                    Имя спрашивалось на первом шаге первого запуска и больше
+                    нигде не редактировалось: опечатка оставалась навсегда,
+                    и приложение здоровалось неправильно каждый день.
+                -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.name">Имя</label>
+                    <input type="text" id="settings-name" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
+                </div>
+
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.language">Язык интерфейса</label>
                     <select id="settings-lang" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
@@ -134,7 +151,21 @@
                             <span data-i18n="settings.getKey">получить ключ</span> <i class="fa-solid fa-arrow-up-right-from-square ml-0.5"></i>
                         </a>
                     </div>
-                    <input type="text" id="settings-api-key" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
+                    <!--
+                        Ключ скрыт: это платный ключ пользователя, и на
+                        телефоне он был виден целиком любому, кто заглянул
+                        через плечо. Кнопка рядом показывает его, когда
+                        нужно сверить.
+                    -->
+                    <div class="relative">
+                        <input type="password" id="settings-api-key" autocomplete="off" spellcheck="false"
+                               class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg pl-3 pr-10 py-2 outline-none focus:border-amber-500 text-sm">
+                        <button type="button" onclick="app.toggleKeyVisibility()" id="settings-key-eye"
+                                class="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-500 hover:text-amber-500 transition-colors"
+                                aria-label="показать ключ">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                     <button onclick="app.runDiagnostics()" id="diagnose-btn" class="w-full mt-2 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-xs font-bold rounded-lg hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all" data-i18n="settings.checkConnection">ПРОВЕРИТЬ ПОДКЛЮЧЕНИЕ</button>
                     <pre id="diagnose-result" class="hidden mt-2 p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-400 whitespace-pre-wrap break-all max-h-40 overflow-y-auto"></pre>
                 </div>
