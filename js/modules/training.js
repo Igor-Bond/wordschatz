@@ -335,7 +335,7 @@ export const training = {
                                  к верху при прокрутке. Скругление углов держат сами блоки -->
                             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative">
                             <div id="card-front" class="p-8 flex flex-col items-center justify-center text-center relative z-10 min-h-[200px] transition-all duration-200">
-                                <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4" id="card-type">${word.type}</span>
+                                <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4" id="card-type">${t("wordTypes." + (["noun","verb","adjective","phrase"].includes(word.type) ? word.type : "phrase"))}</span>
                                 <div class="flex items-center justify-center gap-4 mb-2 w-full">
                                     <h2 class="text-3xl font-black text-slate-100 break-words" id="card-word">${word.word}</h2>
                                     <button data-action="training.playAudio" data-word="${actions.attr(word.word)}" class="w-12 h-12 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-amber-500 transition-colors shrink-0 shadow-lg" id="training-audio-btn">
