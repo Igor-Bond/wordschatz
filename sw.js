@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v68';
+const APP_VERSION = 'v69';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -84,7 +84,9 @@ const PRECACHE_URLS = [
 
     // Иконки
     'assets/icon-192.png',
-    'assets/icon-512.png'
+    'assets/icon-512.png',
+    'assets/icon-maskable-192.png',
+    'assets/icon-maskable-512.png'
 ];
 
 // --- Установка: складываем всё необходимое в кэш ---
