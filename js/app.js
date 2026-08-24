@@ -70,14 +70,18 @@ export const app = {
         exercises.allowedModes = null;
 
         // Управляем активным цветом иконок в нижнем меню
+        /*
+         * Все пункты меню одного цвета — янтарного, как «План». Раньше
+         * невыбранные были серыми, и меню выглядело наполовину погашенным.
+         *
+         * Текущий экран по-прежнему выделен, но не цветом, а яркостью:
+         * убрать различие совсем — значит перестать показывать, где ты
+         * находишься.
+         */
         document.querySelectorAll('.nav-btn').forEach(btn => {
-            if(btn.dataset.target === viewId) {
-                btn.classList.remove('text-slate-500');
-                btn.classList.add('text-amber-500');
-            } else {
-                btn.classList.remove('text-amber-500');
-                btn.classList.add('text-slate-500');
-            }
+            const активный = btn.dataset.target === viewId;
+            btn.classList.toggle('opacity-45', !активный);
+            btn.classList.toggle('hover:opacity-75', !активный);
         });
         
         const main = document.getElementById('main-content');
