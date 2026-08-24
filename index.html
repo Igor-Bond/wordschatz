@@ -13,7 +13,28 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!--
+        Строка состояния: black, а не black-translucent.
+
+        С translucent iOS отдаёт окно высотой «экран минус строка
+        состояния» — 793 при экране 852 — но прижимает его к самому
+        верху. Пятьдесят девять точек внизу остаются вне окна, и
+        страница туда не рисует ничего: ни меню, ни фона. Меню при этом
+        честно стоит на нижнем краю окна, и все измерения это
+        подтверждали, — а глаз видел его в восьмидесяти точках от края
+        экрана. Четыре захода я подпиливал отступ в шесть точек, пока
+        снимок не показал остальные семьдесят четыре.
+
+        С black окно ставится под строкой состояния и доходит до низа.
+        Часы и батарея остаются на месте, только фон под ними теперь
+        сплошной чёрный, а не наш градиент.
+
+        Учесть при установке: iOS запоминает эти метки в момент
+        добавления значка на экран «Домой». Уже установленному
+        приложению обновление их не поменяет — значок нужно удалить и
+        добавить заново из Safari.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="WortSchatz">
 
     <!--
@@ -66,7 +87,7 @@
             пустая полоса, на Android белая. От высоты страницы меню
             теперь не зависит вовсе.
         -->
-        <nav class="bg-slate-800 border-t border-slate-700 fixed inset-x-0 bottom-0 px-2 pt-2 pb-[max(calc(env(safe-area-inset-bottom)/6),4px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        <nav class="bg-slate-800 border-t border-slate-700 fixed inset-x-0 bottom-0 px-2 pt-2 pb-[max(calc(env(safe-area-inset-bottom)/3),10px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
             <button onclick="app.navigate('plan')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-amber-500 transition-opacity" data-target="plan">
                 <i class="fa-solid fa-list-check text-xl mb-0.5"></i>
                 <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.plan">ПЛАН</span>
