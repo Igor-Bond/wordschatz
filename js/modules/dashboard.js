@@ -72,14 +72,24 @@ export const dashboard = {
                 <div class="flex items-center justify-between">
                     <div class="min-w-0">
                         <h2 class="text-xl font-bold text-slate-100 truncate">${t('dashboard.hello', { name: profile.name })}</h2>
+                        <!--
+                            И название лиги, и кубок открывают лестницу:
+                            то же окно, что в профиле. Нажать на лигу и
+                            узнать, что дальше, — первое, чего от неё ждут,
+                            а до сих пор она была просто надписью.
+                        -->
                         <div class="flex gap-4 mt-2">
-                            <p class="text-sm text-slate-400">${t('dashboard.league')}: <span class="font-bold text-amber-500">${t('leagues.' + leagueKey)}</span></p>
+                            <button onclick="profile.showLeagues()" class="text-sm text-slate-400 active:scale-95 transition-transform">
+                                ${t('dashboard.league')}: <span class="font-bold text-amber-500">${t('leagues.' + leagueKey)}</span>
+                                <i class="fa-solid fa-chevron-right text-[8px] text-amber-500/60 ml-0.5"></i>
+                            </button>
                             <p class="text-sm text-slate-400">${t('dashboard.xp')}: <span class="font-bold text-blue-400">${xp}</span></p>
                         </div>
                     </div>
-                    <div class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center border-2 border-amber-500/50 shadow-inner shrink-0">
+                    <button onclick="profile.showLeagues()" title="${t('profile.allLeagues')}"
+                        class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center border-2 border-amber-500/50 shadow-inner shrink-0 active:scale-95 transition-transform">
                         <i class="fa-solid fa-trophy text-2xl text-amber-500"></i>
-                    </div>
+                    </button>
                 </div>
                 ${progressHtml}
             </div>
