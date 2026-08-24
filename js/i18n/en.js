@@ -301,7 +301,10 @@ export const en = {
         denied: 'Notifications are not allowed. Grant permission in site settings.',
         blocked: 'Notifications are blocked for this site in browser settings.',
         failed: 'Could not subscribe',
-        check: 'CHECK SUBSCRIPTION',
+        check: 'CHECK',
+        copy: 'COPY',
+        copied: 'The subscription is on the clipboard. Paste it into the PUSH_SUBSCRIPTIONS secret in the repository settings and reminders will start working.',
+        copyManual: 'The clipboard is not available. Select the line and copy it by hand:',
         checkOk: 'Subscription is in the cloud: {service}, updated {when}. The rest is up to the GitHub schedule — see the run log.',
         noSubscription: 'This device is not subscribed.',
         notInCloud: 'The subscription exists on the device but never reached the cloud. Try switching it off and on again.'

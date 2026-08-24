@@ -235,10 +235,16 @@ export const account = {
                 <p id="prof-push-error" class="hidden text-xs text-red-400 mt-2"></p>
 
                 ${состояние.active ? `
-                    <button onclick="profile.checkPush()" id="prof-push-check"
-                        class="w-full mt-3 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-[11px] font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
-                        ${t('push.check')}
-                    </button>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="profile.checkPush()" id="prof-push-check"
+                            class="flex-1 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-[11px] font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                            ${t('push.check')}
+                        </button>
+                        <button onclick="profile.copyPush()" id="prof-push-copy"
+                            class="flex-1 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-[11px] font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                            ${t('push.copy')}
+                        </button>
+                    </div>
                     <p id="prof-push-report" class="hidden text-[10px] mt-2 leading-relaxed"></p>` : ''}
             </div>`;
     },
@@ -251,6 +257,31 @@ export const account = {
      * отвечает на первый вопрос: дошла ли подписка до облака. Если да, а
      * уведомление не приходит — смотреть надо в журнал запуска на GitHub.
      */
+    /**
+     * Подписка в буфер обмена — для вставки в секрет репозитория.
+     *
+     * Буфер доступен не везде: в некоторых оболочках и без защищённого
+     * соединения он молча отказывает. Поэтому при отказе строка
+     * показывается в окне, откуда её можно выделить руками.
+     */
+    copyPush: async () => {
+        const строка = await push.exportSubscription();
+        if (!строка) return await dialog.alert(t('push.noSubscription'));
+
+        try {
+            await navigator.clipboard.writeText(строка);
+            await dialog.alert(t('push.copied'), { title: t('push.copy') });
+        } catch (e) {
+            await dialog.custom(
+                `<p class="mb-2">${t('push.copyManual')}</p>
+                 <textarea readonly rows="5"
+                    class="w-full bg-slate-900 border border-slate-600 text-slate-300 rounded-lg p-2 text-[10px] break-all"
+                 >${profile.escapeAttr(строка)}</textarea>`,
+                { title: t('push.copy') }
+            );
+        }
+    },
+
     checkPush: async () => {
         const btn = document.getElementById('prof-push-check');
         const отчёт = document.getElementById('prof-push-report');

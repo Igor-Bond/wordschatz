@@ -35,6 +35,9 @@ jobs:
         with:
           node-version: '20'
 
+      # firebase-admin нужен только тем, кто хранит подписки в Firestore.
+      # При простом пути (подписка в секрете) он не импортируется, но
+      # ставится всё равно: разбирать это условием дороже, чем скачать.
       - name: Установить зависимости отправителя
         run: npm install web-push firebase-admin --no-save
 
@@ -43,6 +46,12 @@ jobs:
           VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ vars.VAPID_SUBJECT }}
+
+          # Простой путь: подписка одной строкой, скопированная из профиля
+          PUSH_SUBSCRIPTIONS: ${{ secrets.PUSH_SUBSCRIPTIONS }}
+
+          # Запасной: несколько устройств подхватываются сами из Firestore
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
           PUSH_URL: https://igor-bond.github.io/wordschatz/
         run: node tools/send-push.mjs

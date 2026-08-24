@@ -9,22 +9,31 @@
  *
  * Node здесь есть — он на машине сборщика, а не на машине автора.
  *
- * Что нужно в секретах репозитория:
- *   VAPID_PRIVATE_KEY        — закрытая половина пары (публичная в js/core/push.js)
- *   VAPID_SUBJECT            — mailto:… или адрес сайта, требование протокола
- *   FIREBASE_SERVICE_ACCOUNT — JSON учётной записи службы, целиком
+ * Откуда берутся подписки — два пути, и первый заведомо проще:
+ *
+ *   PUSH_SUBSCRIPTIONS — подписки прямо в секрете, одной строкой JSON.
+ *       Кнопка «Скопировать подписку» в профиле кладёт нужное в буфер,
+ *       остаётся вставить. Ничего больше настраивать не надо.
+ *
+ *   FIREBASE_SERVICE_ACCOUNT — если подписок много и хочется, чтобы
+ *       новые устройства подхватывались сами. Тогда отправитель читает
+ *       их из Firestore, куда приложение и так пишет.
+ *
+ * Что нужно в секретах репозитория в любом случае:
+ *   VAPID_PRIVATE_KEY — закрытая половина пары (публичная в js/core/push.js)
+ *   VAPID_SUBJECT     — mailto:… или адрес сайта, требование протокола
  *
  * Ничего из этого в репозиторий не попадает.
  */
 
 import webpush from 'web-push';
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 
 const PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const SUBJECT = process.env.VAPID_SUBJECT || 'mailto:noreply@example.com';
-const SERVICE_ACCOUNT = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+const ИЗ_СЕКРЕТА = process.env.PUSH_SUBSCRIPTIONS;
+const УЧЁТКА = process.env.FIREBASE_SERVICE_ACCOUNT;
 
 const TITLE = process.env.PUSH_TITLE || 'WortSchatz';
 const BODY = process.env.PUSH_BODY || 'Пора позаниматься немецким';
@@ -40,21 +49,57 @@ function требуется(значение, имя) {
 
 требуется(PUBLIC_KEY, 'VAPID_PUBLIC_KEY');
 требуется(PRIVATE_KEY, 'VAPID_PRIVATE_KEY');
-требуется(SERVICE_ACCOUNT, 'FIREBASE_SERVICE_ACCOUNT');
+
+if (!ИЗ_СЕКРЕТА && !УЧЁТКА) {
+    console.error('Нет ни PUSH_SUBSCRIPTIONS, ни FIREBASE_SERVICE_ACCOUNT — отправлять некуда.');
+    console.error('Простой путь: нажмите «Скопировать подписку» в профиле и вставьте в секрет PUSH_SUBSCRIPTIONS.');
+    process.exit(1);
+}
 
 webpush.setVapidDetails(SUBJECT, PUBLIC_KEY, PRIVATE_KEY);
 
-initializeApp({ credential: cert(JSON.parse(SERVICE_ACCOUNT)) });
-const db = getFirestore();
-
 /**
- * Подписки лежат подколлекцией у каждого пользователя:
- * users/{uid}/pushSubscriptions/{id}. Групповой запрос собирает их все
- * за один раз, не перебирая пользователей.
+ * Подписки из секрета.
+ *
+ * Принимаем и одну подписку объектом, и несколько массивом: человек
+ * вставляет то, что дала кнопка, и не должен помнить про скобки.
  */
-const snapshot = await db.collectionGroup('pushSubscriptions').get();
+function изСекрета(текст) {
+    let данные;
+    try {
+        данные = JSON.parse(текст);
+    } catch (e) {
+        console.error('PUSH_SUBSCRIPTIONS не разбирается как JSON:', e.message);
+        process.exit(1);
+    }
 
-if (snapshot.empty) {
+    const список = Array.isArray(данные) ? данные : [данные];
+    return список.map((подписка, i) => ({ подписка, откуда: `секрет[${i}]`, убрать: null }));
+}
+
+/** Подписки из Firestore — путь для нескольких устройств. */
+async function изОблака(учётка) {
+    const { initializeApp, cert } = await import('firebase-admin/app');
+    const { getFirestore } = await import('firebase-admin/firestore');
+
+    initializeApp({ credential: cert(JSON.parse(учётка)) });
+    const db = getFirestore();
+
+    // Групповой запрос собирает подписки всех пользователей за раз,
+    // не перебирая их по одному
+    const snapshot = await db.collectionGroup('pushSubscriptions').get();
+
+    return snapshot.docs.map(документ => ({
+        подписка: документ.data(),
+        откуда: документ.ref.path,
+        убрать: () => документ.ref.delete()
+    }));
+}
+
+const записи = ИЗ_СЕКРЕТА ? изСекрета(ИЗ_СЕКРЕТА) : await изОблака(УЧЁТКА);
+console.log(`Источник: ${ИЗ_СЕКРЕТА ? 'секрет PUSH_SUBSCRIPTIONS' : 'Firestore'}. Подписок: ${записи.length}.`);
+
+if (!записи.length) {
     console.log('Подписок нет — отправлять некому.');
     process.exit(0);
 }
@@ -63,33 +108,37 @@ const payload = JSON.stringify({ title: TITLE, body: BODY, url: URL_TO_OPEN });
 
 let отправлено = 0;
 let убрано = 0;
+let протухших = 0;
 
-for (const документ of snapshot.docs) {
-    const данные = документ.data();
-    if (!данные?.endpoint || !данные?.keys) {
-        console.warn(`Пропущена неполная подписка ${документ.ref.path}`);
+for (const { подписка, откуда, убрать } of записи) {
+    if (!подписка?.endpoint || !подписка?.keys) {
+        console.warn(`Пропущена неполная подписка ${откуда}`);
         continue;
     }
 
     try {
         await webpush.sendNotification(
-            { endpoint: данные.endpoint, keys: данные.keys },
+            { endpoint: подписка.endpoint, keys: подписка.keys },
             payload,
             { TTL: 12 * 60 * 60 }   // сутки не ждём: напоминание протухает
         );
         отправлено++;
     } catch (ошибка) {
         // 404 и 410 означают, что подписки больше нет: приложение удалили,
-        // данные браузера почистили. Такую запись надо убрать, иначе она
-        // будет отравлять каждый запуск до конца времён
+        // данные браузера почистили. Из облака такую запись убираем, из
+        // секрета убрать нечем — говорим прямо, чтобы человек знал
         if (ошибка.statusCode === 404 || ошибка.statusCode === 410) {
-            await документ.ref.delete();
-            убрано++;
+            протухших++;
+            if (убрать) { await убрать(); убрано++; }
+            else console.warn(`Подписка ${откуда} больше не действует — скопируйте её заново из профиля.`);
             continue;
         }
 
-        console.error(`Не удалось отправить на ${документ.ref.path}: ${ошибка.statusCode} ${ошибка.body || ошибка.message}`);
+        console.error(`Не удалось отправить на ${откуда}: ${ошибка.statusCode} ${ошибка.body || ошибка.message}`);
     }
 }
 
-console.log(`Отправлено: ${отправлено}. Убрано протухших: ${убрано}. Всего подписок: ${snapshot.size}.`);
+console.log(`Отправлено: ${отправлено}. Протухших: ${протухших}, из них убрано: ${убрано}.`);
+
+// Ни одной доставки — это не успех, и в журнале это должно быть видно
+if (отправлено === 0) process.exit(1);

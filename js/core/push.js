@@ -140,6 +140,25 @@ export const push = {
     },
 
     /**
+     * Подписка в том виде, в каком её ждёт отправитель.
+     *
+     * Простой путь настройки: человек копирует эту строку и вставляет её
+     * в секрет репозитория. Так отпадает учётная запись службы Firebase —
+     * самый неприятный шаг, ради которого пришлось бы скачивать файл с
+     * ключом и вставлять его целиком.
+     */
+    exportSubscription: async () => {
+        if (!push.isSupported()) return null;
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!subscription) return null;
+
+        const json = subscription.toJSON();
+        return JSON.stringify({ endpoint: json.endpoint, keys: json.keys });
+    },
+
+    /**
      * Что лежит в облаке прямо сейчас.
      *
      * Настройка push состоит из четырёх значений в секретах репозитория,
