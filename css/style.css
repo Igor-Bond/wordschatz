@@ -56,8 +56,19 @@ body.lesson-mode #app-header {
 
 /* Безопасная зона для iPhone и Android-жестов */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    /*
+     * Половина безопасной зоны, а не вся.
+     *
+     * iPhone сообщает снизу 34 точки — столько система резервирует под
+     * полосу-индикатор. Отступая на все 34, меню зависало высоко над
+     * краем: под подписями оставалась пустая полоса в палец шириной, и
+     * выглядело это как недоделка, а не как забота о жесте.
+     *
+     * Сам индикатор — тонкая черта у самого низа. Половины зоны хватает,
+     * чтобы подписи её не задевали, и меню при этом стоит на краю.
+     */
     nav {
-        padding-bottom: max(env(safe-area-inset-bottom), 12px) !important;
+        padding-bottom: max(calc(env(safe-area-inset-bottom) / 2), 10px) !important;
     }
     header {
         padding-top: max(env(safe-area-inset-top), 16px) !important;
@@ -78,4 +89,23 @@ body.lesson-mode #app-header {
  */
 .app-height {
     height: var(--app-height, 100dvh);
+}
+
+/*
+ * Видно только экранному чтецу.
+ *
+ * Не display:none и не visibility:hidden — такие элементы чтец
+ * пропускает вместе со всеми. Схлопнутый до точки блок с обрезкой
+ * остаётся в дереве доступности, но не занимает места на экране.
+ */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

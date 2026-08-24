@@ -3,6 +3,7 @@ import { dbService } from '../services/db.js';
 import { dialog } from './dialog.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dateUtils } from './dates.js';
+import { frequency } from './frequency.js';
 
 /**
  * Планировщик учебного цикла: раскладка темы по дням, план на сегодня,
@@ -259,8 +260,19 @@ export const scheduler = {
             const free = all.filter(w =>
                 w.repetitions === 0 && !w.cycleId && !inPlan.has(w.id)
             );
-            newWords = newWords.concat(free.slice(0, dailyGoal - newWords.length));
+
+            // По частоте, а не по дате добавления.
+            //
+            // Считалось, что порядок сохраняется сам: набор утверждается
+            // разложенным от ходовых к редким. Оказалось, нет — словарь
+            // отдаёт слова новыми вперёд, и порядок переворачивался. Нашли
+            // это сквозные проверки; поодиночке обе части были правы.
+            const поЧастоте = frequency.ready ? frequency.sort(free) : free;
+            newWords = newWords.concat(поЧастоте.slice(0, dailyGoal - newWords.length));
         }
+
+        // Внутри дня темы — тоже от ходовых к редким
+        if (frequency.ready && newWords.length > 1) newWords = frequency.sort(newWords);
 
         return {
             review: review,

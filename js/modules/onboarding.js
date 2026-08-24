@@ -82,7 +82,13 @@ export const onboarding = {
         // Не вышло — отметку снимаем, иначе каждый запуск будет поднимать
         // SDK впустую. Причина почти всегда одна, и она не в пользователе
         auth._rememberSignIn(false);
-        onboarding.showSignInError(t('auth.redirectFailed'));
+
+        // На iPhone совет «попробуйте ещё раз» бесполезен: там возврат не
+        // доходит по устройству браузера, а не по случайности. Единственный
+        // рабочий путь — войти в обычном браузере
+        onboarding.showSignInError(
+            auth._redirectLikelyFails() ? t('auth.redirectFailedIOS') : t('auth.redirectFailed')
+        );
     },
 
     showSignInError: (message) => {

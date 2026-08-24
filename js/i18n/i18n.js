@@ -125,6 +125,13 @@ export const i18n = {
         root.querySelectorAll('[data-i18n-content]').forEach(el => {
             el.setAttribute('content', i18n.t(el.dataset.i18nContent));
         });
+
+        // Подписи для экранного чтеца. Нужны там, где на кнопке только
+        // значок: «плюс» и крестик закрытия читались как «кнопка» и
+        // ничего не говорили о том, что произойдёт
+        root.querySelectorAll('[data-i18n-aria]').forEach(el => {
+            el.setAttribute('aria-label', i18n.t(el.dataset.i18nAria));
+        });
     },
 
     /** Список ключей, которых не нашлось — удобно для проверки полноты перевода. */

@@ -27,7 +27,8 @@ export const en = {
         plan: 'PLAN',
         room: 'ROOM',
         chat: 'AI CHAT',
-        profile: 'PROFILE'
+        profile: 'PROFILE',
+        addWords: 'Add words'
     },
 
     app: {
@@ -242,7 +243,7 @@ export const en = {
         network: 'Cannot reach Google. Check your connection.',
         unauthorizedDomain: 'Domain “{domain}” is not allowed in Firebase. Add it under Authentication → Settings → Authorized domains.',
         redirectFailed: 'Sign-in did not complete: the browser blocked the return from Google. Try again, or skip it — the cloud connects later from your profile.',
-        popupNeeded: 'The browser would not open the sign-in window. Tap “Sign in” once more — the second try usually works. Or skip it: the cloud connects later from your profile.',
+        redirectFailedIOS: 'Sign-in did not complete: Safari blocked the return from Google. Open the app in a browser and sign in there — your data will follow. Or skip it: the cloud connects later from your profile.',
         providerDisabled: 'Google sign-in is disabled in the Firebase project. Enable it under Authentication → Sign-in method.',
         badConfig: 'The Firebase configuration is invalid. Check js/firebase.config.js.',
         tooManyRequests: 'Too many attempts. Please wait a moment.',
@@ -358,6 +359,8 @@ export const en = {
     },
 
     exercises: {
+        announceCorrect: 'Correct',
+        announceWrong: 'Wrong. The right answer is {answer}',
         freeTraining: 'FREE PRACTICE',
         practice: 'PRACTICE (STAGE 2)',
         taskOf: 'Task {current} of {total}',

@@ -27,7 +27,8 @@ export const ru = {
         plan: 'ПЛАН',
         room: 'КОМНАТА',
         chat: 'ИИ-ЧАТ',
-        profile: 'ПРОФИЛЬ'
+        profile: 'ПРОФИЛЬ',
+        addWords: 'Добавить слова'
     },
 
     app: {
@@ -242,7 +243,7 @@ export const ru = {
         network: 'Нет связи с Google. Проверьте интернет.',
         unauthorizedDomain: 'Домен «{domain}» не разрешён в Firebase. Добавьте его: Authentication → Settings → Authorized domains.',
         redirectFailed: 'Вход не завершился: браузер не пропустил возврат с Google. Попробуйте ещё раз или пропустите шаг — облако подключается позже в профиле.',
-        popupNeeded: 'Браузер не дал открыть окно входа. Нажмите «Войти» ещё раз — со второй попытки обычно открывается. Или пропустите шаг: облако подключается позже в профиле.',
+        redirectFailedIOS: 'Вход не завершился: Safari не пропустил возврат с Google. Откройте приложение в браузере и войдите там — данные подтянутся сюда. Или пропустите шаг: облако подключается позже в профиле.',
         providerDisabled: 'Вход через Google выключен в проекте Firebase. Включите его: Authentication → Sign-in method.',
         badConfig: 'Конфигурация Firebase неверна. Проверьте js/firebase.config.js.',
         tooManyRequests: 'Слишком много попыток. Подождите немного.',
@@ -358,6 +359,8 @@ export const ru = {
     },
 
     exercises: {
+        announceCorrect: 'Верно',
+        announceWrong: 'Неверно. Правильный ответ: {answer}',
         freeTraining: 'СВОБОДНАЯ ТРЕНИРОВКА',
         practice: 'ПРАКТИКА (ЭТАП 2)',
         taskOf: 'Задание {current} из {total}',

@@ -30,6 +30,14 @@
 </head>
 <body class="bg-slate-900 text-slate-300 font-sans antialiased selection:bg-amber-500 selection:text-slate-900 app-height overflow-hidden flex flex-col">
 
+    <!--
+        Область для экранного чтеца: сюда попадают короткие сообщения о
+        том, что произошло, — сменился экран, ответ верен, задание
+        последнее. Без неё чтец молчал: приложение перерисовывает
+        содержимое целиком, а такие перерисовки он не объявляет.
+    -->
+    <div id="a11y-live" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
     <div id="onboarding-view" class="hidden absolute inset-0 z-50 bg-slate-900 overflow-y-auto"></div>
 
     <div id="app-view" class="hidden flex-1 flex-col h-full relative">
@@ -41,7 +49,7 @@
                     наведении), но обработчика не имела. Теперь по нажатию
                     объясняет, что такое серия и жива ли она.
                 -->
-                <button onclick="scheduler.explainStreak()" id="header-streak-btn"
+                <button onclick="scheduler.explainStreak()" id="header-streak-btn" aria-label="" data-i18n-aria="streak.title"
                         class="flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 shadow-sm cursor-pointer hover:bg-slate-700 active:scale-95 transition">
                     <i class="fa-solid fa-fire text-orange-500" id="header-streak-icon"></i>
                     <span id="header-streak" class="font-bold text-slate-200">0</span>
@@ -58,7 +66,7 @@
             пустая полоса, на Android белая. От высоты страницы меню
             теперь не зависит вовсе.
         -->
-        <nav class="bg-slate-800 border-t border-slate-700 fixed inset-x-0 bottom-0 px-2 pt-2 pb-[max(env(safe-area-inset-bottom),8px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        <nav class="bg-slate-800 border-t border-slate-700 fixed inset-x-0 bottom-0 px-2 pt-2 pb-[max(calc(env(safe-area-inset-bottom)/2),10px)] flex justify-between items-center z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
             <button onclick="app.navigate('plan')" class="nav-btn flex-1 flex flex-col items-center gap-1 text-amber-500 transition-opacity" data-target="plan">
                 <i class="fa-solid fa-list-check text-xl mb-0.5"></i>
                 <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.plan">ПЛАН</span>
@@ -69,7 +77,7 @@
             </button>
             
             <div class="flex-none flex justify-center items-center relative -top-6 mx-1">
-                <button onclick="app.navigate('scanner')" class="w-14 h-14 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] border-[5px] border-slate-900 flex justify-center items-center transition-transform active:scale-95">
+                <button onclick="app.navigate('scanner')" aria-label="" data-i18n-aria="nav.addWords" class="w-14 h-14 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] border-[5px] border-slate-900 flex justify-center items-center transition-transform active:scale-95">
                     <i class="fa-solid fa-plus text-2xl font-black"></i>
                 </button>
             </div>
@@ -98,11 +106,11 @@
     </div>
 
     <!-- Модальное окно Настроек -->
-    <div id="settings-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+    <div id="settings-modal" role="dialog" aria-modal="true" aria-label="" data-i18n-aria="settings.title" class="hidden fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
         <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden flex flex-col scale-95 transition-transform duration-200" id="settings-modal-content">
             <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
                 <h3 class="text-lg font-bold text-slate-100" data-i18n="settings.title">Настройки</h3>
-                <button onclick="app.closeSettings()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <button onclick="app.closeSettings()" aria-label="" data-i18n-aria="common.close" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
             <!-- Настроек стало больше, чем помещается на телефоне -->
@@ -206,6 +214,9 @@
                             <div class="flex justify-between gap-2">
                                 <span data-i18n="settings.aboutScreen">Экран</span>
                                 <span class="text-slate-300 font-bold" id="about-screen">—</span>
+                            </div>
+                            <div class="pt-1">
+                                <span class="block text-[9px] text-slate-600 leading-relaxed break-all" id="about-metrics">—</span>
                             </div>
                             <div class="flex justify-between gap-2">
                                 <span data-i18n="settings.aboutVoice">Немецкий голос</span>

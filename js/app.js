@@ -6,6 +6,7 @@ import { dialog } from './core/dialog.js';
 import { config } from './config.js';
 import { VERSION } from './version.js';
 import { viewport } from './core/viewport.js';
+import { announce } from './core/announce.js';
 import { aiService } from './services/ai.js';
 import { i18n, t, plural } from './i18n/i18n.js';
 import { dbService } from './services/db.js';
@@ -86,6 +87,9 @@ export const app = {
         
         const main = document.getElementById('main-content');
         
+        // Экранный чтец не заметит подмену содержимого — говорим сами
+        announce.say(t('nav.' + (viewId === 'cycle' || viewId === 'training' ? 'plan' : viewId)) || viewId);
+
         // Маршрутизация по модулям приложения
         if (viewId === 'plan') { dashboard.render(); return; }
         if (viewId === 'cycle') { cycle.renderTopicPicker(); return; }
@@ -193,6 +197,33 @@ export const app = {
             const режим = install.isStandalone() ? t("settings.screenApp") : t("settings.screenBrowser");
             screen.textContent = `${window.innerWidth}×${window.innerHeight} · ${режим}`
                 + (сверху || снизу ? ` · ${t("settings.screenSafe", { top: сверху, bottom: снизу })}` : "");
+
+            /*
+             * Числа по высоте — вернулись по нужде.
+             *
+             * Меню на iPhone четвёртый раз оказывается выше нижнего края,
+             * и гадать больше не на чем: три разные причины дают глазу
+             * одинаковую картинку. Эта строка отвечает точно, какая.
+             */
+            const метрики = document.getElementById('about-metrics');
+            if (метрики) {
+                const проба2 = document.createElement('div');
+                проба2.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden';
+                document.body.appendChild(проба2);
+                const dvh = Math.round(проба2.getBoundingClientRect().height);
+                проба2.remove();
+
+                const nav = document.querySelector('nav');
+                const низМеню = nav ? Math.round(nav.getBoundingClientRect().bottom) : '—';
+                const первая = nav ? nav.querySelector('.nav-btn') : null;
+                const подКнопками = первая
+                    ? Math.round(window.innerHeight - первая.getBoundingClientRect().bottom)
+                    : '—';
+
+                метрики.textContent = `dvh ${dvh} · окно ${window.innerHeight}`
+                    + ` · экран ${(window.screen && window.screen.height) || '—'}`
+                    + ` · зона ${снизу} · меню ${низМеню} · под кнопками ${подКнопками}`;
+            }
         }
 
         const voice = document.getElementById('about-voice');

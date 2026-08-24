@@ -3,6 +3,7 @@ import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { dateUtils } from '../core/dates.js';
 import { leagueStyle } from '../core/leagues.js';
+import { frequency } from '../core/frequency.js';
 import { scheduler } from '../core/scheduler.js';
 import { cycle } from './cycle.js';
 import { control } from './control.js';
@@ -19,6 +20,11 @@ export const dashboard = {
 
         const user = await dbService.getUser();
         const profile = config.getProfile();
+
+        // План раскладывает новые слова от ходовых к редким, для этого
+        // ему нужен частотный список
+        await frequency.load().catch(e => console.error('[Частотность] Не загрузилась:', e));
+
         const plan = await scheduler.getDailyPlan();
 
         const cycleProgress = plan.cycle ? await scheduler.getCycleProgress(plan.cycle.id) : null;

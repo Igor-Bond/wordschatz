@@ -34,7 +34,7 @@ const shell = {
                         со значениями по умолчанию из разметки, и сохранение
                         затирало выбранные при первом запуске уровень и норму.
                     -->
-                    <button onclick="app.openSettings()" class="w-10 h-10 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shadow">
+                    <button onclick="app.openSettings()" aria-label="${t('settings.title')}" class="w-10 h-10 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shadow">
                         <i class="fa-solid fa-gear"></i>
                     </button>
                 </div>

@@ -1,4 +1,5 @@
 import { actions } from '../core/actions.js';
+import { announce } from '../core/announce.js';
 import { quiz } from '../core/quiz.js';
 import { declension } from '../core/declension.js';
 import { speech } from '../core/speech.js';
@@ -839,6 +840,18 @@ export const exercises = {
      */
     awardXP: async (isCorrect) => {
         const word = exercises.queue?.[exercises.currentIndex];
+
+        /*
+         * Результат ответа — вслух.
+         *
+         * Через эту точку проходят все десять типов заданий, поэтому
+         * объявление стоит здесь, а не в каждом отклике. Зелёная рамка
+         * ничего не сообщает тому, кто её не видит, а задание уходит
+         * дальше через полторы секунды.
+         */
+        announce.say(isCorrect
+            ? t('exercises.announceCorrect')
+            : t('exercises.announceWrong', { answer: word?.word ?? '' }));
 
         // За экзамен опыт начисляется по итогу, а не по каждому ответу
         if (exercises.exam) {

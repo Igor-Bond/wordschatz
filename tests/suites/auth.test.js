@@ -1,15 +1,17 @@
 import { группа, тест, проверить } from '../runner.js';
 import { auth } from '../../js/services/auth.js';
 
-группа('Вход: где сработает переход по адресу', () => {
+группа('Вход: оценка перехода по адресу', () => {
 
     /*
      * Вход переходом уводит на домен Firebase и возвращает обратно, а
-     * Safari разделяет хранилище по доменам — вернувшись, SDK не находит
-     * своего состояния, и вход молча не завершается. Лечится это только
-     * размещением обработчика входа на своём домене, чего GitHub Pages не
-     * умеет. Значит, там, где переход заведомо не дойдёт, уводить человека
-     * нельзя: об этом надо сказать прямо.
+     * Safari разделяет хранилище по доменам — вернувшись, SDK может не
+     * найти своего состояния, и вход молча не завершается.
+     *
+     * Раньше по этой оценке переход запрещался. Оказалось хуже отказа:
+     * во встроенном приложении на iPhone всплывающее окно не открывается
+     * никогда, и запрет на переход означал, что вход не сработает вовсе.
+     * Теперь оценка только подсказывает, кого предупредить заранее.
      */
 
     const iPhoneSafari = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1';
@@ -21,31 +23,31 @@ import { auth } from '../../js/services/auth.js';
     const androidFirefox = 'Mozilla/5.0 (Android 14; Mobile; rv:124.0) Gecko/124.0 Firefox/124.0';
 
     тест('на iPhone переход не сработает ни в каком браузере', () => {
-        проверить.ложь(auth._redirectCanWork(iPhoneSafari, false), 'Safari');
-        проверить.ложь(auth._redirectCanWork(iPhoneChrome, false), 'Chrome на iOS — тот же движок');
+        проверить.истина(auth._redirectLikelyFails(iPhoneSafari, false), 'Safari');
+        проверить.истина(auth._redirectLikelyFails(iPhoneChrome, false), 'Chrome на iOS — тот же движок');
     });
 
-    тест('Safari на компьютере тоже не годится', () => {
-        проверить.ложь(auth._redirectCanWork(macSafari, false));
+    тест('Safari на компьютере тоже под вопросом', () => {
+        проверить.истина(auth._redirectLikelyFails(macSafari, false));
     });
 
     тест('iPad распознаётся по сенсорному экрану', () => {
         // Свежие iPad представляются настольным Safari, и отличить их
         // можно только по числу точек касания
-        проверить.ложь(auth._redirectCanWork(macSafari, true));
+        проверить.истина(auth._redirectLikelyFails(macSafari, true));
     });
 
-    тест('где переход работает — там и разрешаем', () => {
-        проверить.истина(auth._redirectCanWork(androidChrome, false), 'Chrome на Android');
-        проверить.истина(auth._redirectCanWork(windowsChrome, false), 'Chrome на Windows');
-        проверить.истина(auth._redirectCanWork(windowsEdge, false), 'Edge');
-        проверить.истина(auth._redirectCanWork(androidFirefox, false), 'Firefox на Android');
+    тест('где переход работает — там и не предупреждаем', () => {
+        проверить.ложь(auth._redirectLikelyFails(androidChrome, false), 'Chrome на Android');
+        проверить.ложь(auth._redirectLikelyFails(windowsChrome, false), 'Chrome на Windows');
+        проверить.ложь(auth._redirectLikelyFails(windowsEdge, false), 'Edge');
+        проверить.ложь(auth._redirectLikelyFails(androidFirefox, false), 'Firefox на Android');
     });
 
     тест('«Safari» в строке Chrome не сбивает с толку', () => {
         // Все браузеры на движке Blink пишут Safari в опознавательной
         // строке — проверка на одно это слово запретила бы переход везде
-        проверить.истина(auth._redirectCanWork(androidChrome, false));
+        проверить.ложь(auth._redirectLikelyFails(androidChrome, false));
     });
 });
 

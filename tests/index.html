@@ -67,6 +67,15 @@
 <script type="module">
     import { запустить } from './runner.js';
 
+    /*
+     * Отдельная база для всех проверок.
+     *
+     * Ставится до любого импорта: services/db.js создаёт подключение при
+     * первой загрузке модуля, и второй раз имя уже не поменять. Так
+     * словарь живого человека не видит ни одна проверка, даже случайно.
+     */
+    globalThis.__WORTSCHATZ_DB__ = 'WortSchatzTestDB';
+
     // Порядок важен только для читаемости отчёта
     await import('./suites/german.test.js');
     await import('./suites/srs.test.js');
@@ -81,6 +90,7 @@
     await import('./suites/auth.test.js');
     await import('./suites/image.test.js');
     await import('./suites/i18n.test.js');
+    await import('./suites/scenario.test.js');
 
     const экран = (текст) => document.getElementById('подпись').textContent = текст;
     const { results, passed, failed, total } = await запустить(n => экран(`Проверено ${n}`));

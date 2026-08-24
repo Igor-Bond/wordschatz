@@ -27,7 +27,8 @@ export const uk = {
         plan: 'ПЛАН',
         room: 'КІМНАТА',
         chat: 'ШІ-ЧАТ',
-        profile: 'ПРОФІЛЬ'
+        profile: 'ПРОФІЛЬ',
+        addWords: 'Додати слова'
     },
 
     app: {
@@ -242,7 +243,7 @@ export const uk = {
         network: 'Немає зв’язку з Google. Перевірте інтернет.',
         unauthorizedDomain: 'Домен «{domain}» не дозволений у Firebase. Додайте його: Authentication → Settings → Authorized domains.',
         redirectFailed: 'Вхід не завершився: браузер не пропустив повернення з Google. Спробуйте ще раз або пропустіть крок — хмара підключається пізніше в профілі.',
-        popupNeeded: 'Браузер не дав відкрити вікно входу. Натисніть «Увійти» ще раз — з другої спроби зазвичай відкривається. Або пропустіть крок: хмара підключається пізніше в профілі.',
+        redirectFailedIOS: 'Вхід не завершився: Safari не пропустив повернення з Google. Відкрийте застосунок у браузері та увійдіть там — дані підтягнуться сюди. Або пропустіть крок: хмара підключається пізніше в профілі.',
         providerDisabled: 'Вхід через Google вимкнено в проєкті Firebase. Увімкніть його: Authentication → Sign-in method.',
         badConfig: 'Конфігурація Firebase неправильна. Перевірте js/firebase.config.js.',
         tooManyRequests: 'Забагато спроб. Зачекайте трохи.',
@@ -358,6 +359,8 @@ export const uk = {
     },
 
     exercises: {
+        announceCorrect: 'Правильно',
+        announceWrong: 'Неправильно. Правильна відповідь: {answer}',
         freeTraining: 'ВІЛЬНЕ ТРЕНУВАННЯ',
         practice: 'ПРАКТИКА (ЕТАП 2)',
         taskOf: 'Завдання {current} з {total}',
