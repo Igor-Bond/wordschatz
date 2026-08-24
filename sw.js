@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v72';
+const APP_VERSION = 'v73';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -53,9 +53,7 @@ const PRECACHE_URLS = [
     'js/core/install.js',
     'js/core/leagues.js',
     'js/core/viewport.js',
-    'js/core/fullscreen.js',
     'js/core/actions.js',
-    'js/core/push.js',
     'js/core/mastery.js',
     'js/core/speech.js',
     'js/core/image.js',
@@ -224,56 +222,3 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(request));
 });
 
-/**
- * Push: уведомление на закрытое приложение (§41 ТЗ).
- *
- * Сообщение присылает расписание GitHub Actions — см. tools/send-push.mjs
- * и .github/workflows/reminder.yml. Своего сервера у проекта нет, а без
- * внешнего толчка разбудить закрытое приложение веб не умеет.
- *
- * userVisibleOnly при подписке означает обещание браузеру: на каждое
- * сообщение показывается уведомление. Нарушишь — браузер отзовёт
- * подписку, поэтому showNotification вызывается всегда, даже когда
- * разобрать данные не удалось.
- */
-self.addEventListener('push', (event) => {
-    let payload = {};
-    try {
-        payload = event.data ? event.data.json() : {};
-    } catch (e) {
-        payload = { body: event.data ? event.data.text() : '' };
-    }
-
-    const title = payload.title || 'WortSchatz';
-    const options = {
-        body: payload.body || 'Пора позаниматься',
-        icon: 'assets/icon-192.png',
-        badge: 'assets/icon-192.png',
-        // Одна метка на все напоминания: второе заменяет первое,
-        // а не копится стопкой за неделю отпуска
-        tag: payload.tag || 'wortschatz-daily',
-        renotify: true,
-        data: { url: payload.url || './' }
-    };
-
-    event.waitUntil(self.registration.showNotification(title, options));
-});
-
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-
-    const target = new URL(event.notification.data?.url || './', self.location.origin).href;
-
-    // Если приложение уже открыто — переводим на него, а не плодим вкладки
-    event.waitUntil((async () => {
-        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-
-        for (const client of clients) {
-            if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-                return client.focus();
-            }
-        }
-
-        if (self.clients.openWindow) return self.clients.openWindow(target);
-    })());
-});

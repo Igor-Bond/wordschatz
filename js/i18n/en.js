@@ -48,9 +48,6 @@ export const en = {
     settings: {
         title: 'Settings',
         name: 'Name',
-        fullscreen: 'Full screen',
-        fullscreenHint: 'Hides the system bars at the bottom and the top. The clock and battery go with them. Swipe down from the top to leave.',
-        fullscreenDenied: 'The browser refused to go full screen.',
         language: 'Interface language',
         langWarning: 'The interface switches, but translations you already saved stay in the old language while new words arrive in the new one. Your dictionary will end up mixed.',
         level: 'Level',
@@ -281,33 +278,11 @@ export const en = {
 
     reminder: {
         setting: 'Remind me to practise',
-        hint: 'Works while the app is open or in the background. To reach a closed app, turn on the notification below.',
+        hint: 'Works while the app is open or in the background. A closed app cannot be woken: that needs a server, and this project has none.',
         title: 'Time to practise',
         body: 'Today’s plan is still unfinished. Five minutes keeps your streak alive.',
         denied: 'The browser refused notifications. Grant permission in the site settings.',
         unsupported: 'This browser does not support notifications.'
-    },
-
-    push: {
-        setting: 'Notify me when the app is closed',
-        hint: 'Sent from outside once a day. On Android it reaches a closed app; on iPhone only if the app is on the home screen; on desktop while the browser runs.',
-        enable: 'Enable',
-        disable: 'Disable',
-        enabled: 'Enabled',
-        working: 'Connecting…',
-        unsupported: 'This browser has no push notifications.',
-        notConfigured: 'Push is not configured in this build yet.',
-        needSignIn: 'Sign in with Google first — the subscription lives in your cloud.',
-        denied: 'Notifications are not allowed. Grant permission in site settings.',
-        blocked: 'Notifications are blocked for this site in browser settings.',
-        failed: 'Could not subscribe',
-        check: 'CHECK',
-        copy: 'COPY',
-        copied: 'The subscription is on the clipboard. Paste it into the PUSH_SUBSCRIPTIONS secret in the repository settings and reminders will start working.',
-        copyManual: 'The clipboard is not available. Select the line and copy it by hand:',
-        checkOk: 'Subscription is in the cloud: {service}, updated {when}. The rest is up to the GitHub schedule — see the run log.',
-        noSubscription: 'This device is not subscribed.',
-        notInCloud: 'The subscription exists on the device but never reached the cloud. Try switching it off and on again.'
     },
 
     declension: {

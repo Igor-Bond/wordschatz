@@ -142,8 +142,6 @@ export const stats = {
                 <!-- Аналитика словаря -->
                 ${profile.renderAccountCard()}
 
-                ${profile.renderPushCard()}
-
                 ${profile.renderInstallCard()}
 
                 ${profile.renderActivityChart(activity)}
@@ -176,9 +174,6 @@ export const stats = {
                 </div>
             `;
 
-            // Карточка push наполняется отдельно: узнать, есть ли
-            // подписка, можно только асинхронно
-            profile.fillPushCard();
         } catch (error) {
             console.error("Ошибка при рендере статистики профиля:", error);
             container.innerHTML = `

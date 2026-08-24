@@ -44,18 +44,11 @@ Desktop.ini
 desktop.ini
 $RECYCLE.BIN/
 
-# --- Netlify ---
-.netlify/
-
 # --- Временные файлы ---
 tmp/
 temp/
 *.tmp
 *.bak
 
-# --- Локальная проверка размещения в подпапке (GitHub Pages) ---
-_subpath/
-
 # --- Автономный сборщик Tailwind (скачивается локально, в репозиторий не идёт) ---
 tools/tailwindcss.exe
-vapid-private.key

@@ -83,15 +83,6 @@
                 <span class="text-[10px] font-bold tracking-wider" data-i18n="nav.profile">ПРОФИЛЬ</span>
             </button>
 
-            <!--
-                Тёмное продолжение меню вниз.
-                Если браузер отдаёт странице область под системной панелью
-                (Android с управлением жестами при viewport-fit=cover), она
-                закрашивается этим же цветом — светлой полосы не остаётся.
-                Если не отдаёт, полоса просто обрезается краем окна и не
-                видна нигде. Проверка бесплатная и сломать ничего не может.
-            -->
-            <span aria-hidden="true" class="absolute inset-x-0 top-full h-24 bg-slate-800 pointer-events-none"></span>
         </nav>
     </div>
 
@@ -192,23 +183,6 @@
                         <p class="text-[10px] text-slate-500 mt-1" data-i18n="reminder.hint">Работает, пока приложение открыто или свёрнуто. Закрытое приложение разбудить нечем — для этого нужен сервер.</p>
                     </div>
                     <p id="settings-reminder-error" class="hidden text-[10px] text-red-400 mt-1"></p>
-                </div>
-
-                <!--
-                    Полноэкранный режим по требованию.
-
-                    На Android снизу остаётся системная панель жестов, и в
-                    светлой системной теме она белая. Приложение её не
-                    рисует: браузер отдаёт странице не весь экран. Спрятать
-                    панели можно только целиком — вместе с часами наверху,
-                    поэтому выбор оставлен человеку, а не зашит в манифест.
-                -->
-                <div id="settings-fullscreen-row">
-                    <label class="flex items-center justify-between gap-2 cursor-pointer">
-                        <span class="text-xs font-bold text-slate-400" data-i18n="settings.fullscreen">Полноэкранный режим</span>
-                        <input type="checkbox" id="settings-fullscreen" class="accent-amber-500 w-4 h-4 shrink-0">
-                    </label>
-                    <p class="text-[10px] text-slate-500 mt-1" data-i18n="settings.fullscreenHint">Прячет системные полосы снизу и сверху. Вместе с нижней полосой исчезают часы и заряд.</p>
                 </div>
 
                 <!-- §35 ТЗ: раздел «Информация» -->
