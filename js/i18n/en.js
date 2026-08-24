@@ -48,6 +48,9 @@ export const en = {
     settings: {
         title: 'Settings',
         name: 'Name',
+        fullscreen: 'Full screen',
+        fullscreenHint: 'Hides the system bars at the bottom and the top. The clock and battery go with them. Swipe down from the top to leave.',
+        fullscreenDenied: 'The browser refused to go full screen.',
         language: 'Interface language',
         langWarning: 'The interface switches, but translations you already saved stay in the old language while new words arrive in the new one. Your dictionary will end up mixed.',
         level: 'Level',

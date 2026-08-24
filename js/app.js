@@ -7,6 +7,7 @@ import { dialog } from './core/dialog.js';
 import { config } from './config.js';
 import { VERSION } from './version.js';
 import { viewport } from './core/viewport.js';
+import { fullscreen } from './core/fullscreen.js';
 import { aiService } from './services/ai.js';
 import { i18n, t, plural } from './i18n/i18n.js';
 import { dbService } from './services/db.js';
@@ -40,6 +41,10 @@ export const app = {
 
             // Сессия и синхронизация — в фоне, чтобы не задерживать первый экран
             app.restoreCloudSession();
+
+            // Полный экран, если его просили: войти можно только по касанию,
+            // поэтому здесь лишь подписка на первое
+            fullscreen.restore();
         } else {
             onboarding.start().catch(e => console.error('[Первый запуск] Не удалось запустить:', e));
         }
@@ -138,6 +143,13 @@ export const app = {
             .join('');
         goalSelect.value = prof.dailyGoal || '10';
         document.getElementById('settings-interests').value = prof.interests || '';
+
+        const fsBox = document.getElementById('settings-fullscreen');
+        if (fsBox) {
+            fsBox.checked = fullscreen.isEnabled() && fullscreen.isActive();
+            fsBox.disabled = !fullscreen.isSupported();
+            fsBox.onchange = () => app.toggleFullscreen(fsBox.checked);
+        }
 
         const reminderBox = document.getElementById('settings-reminder');
         const reminderTime = document.getElementById('settings-reminder-time');
@@ -329,6 +341,29 @@ export const app = {
         }
 
         await dashboard.render();
+    },
+
+    /**
+     * Переключение полноэкранного режима.
+     *
+     * Браузер пускает туда только по действию человека — нажатие на
+     * галочку им и является. Если всё же отказал, галочку возвращаем
+     * обратно, чтобы она не врала.
+     */
+    toggleFullscreen: async (нужен) => {
+        const получилось = await fullscreen.toggle(нужен);
+        const box = document.getElementById('settings-fullscreen');
+
+        if (нужен && !получилось) {
+            // Сбрасываем и саму настройку: иначе при следующем запуске
+            // приложение полезло бы в режим, которого у человека нет
+            config.set('fullscreen_enabled', '0');
+            if (box) box.checked = false;
+            await dialog.alert(t('settings.fullscreenDenied'));
+        }
+
+        // Высота изменилась вместе с панелями
+        viewport.apply();
     },
 
     /** Ключ показан или скрыт. */

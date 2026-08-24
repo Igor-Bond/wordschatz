@@ -194,6 +194,23 @@
                     <p id="settings-reminder-error" class="hidden text-[10px] text-red-400 mt-1"></p>
                 </div>
 
+                <!--
+                    Полноэкранный режим по требованию.
+
+                    На Android снизу остаётся системная панель жестов, и в
+                    светлой системной теме она белая. Приложение её не
+                    рисует: браузер отдаёт странице не весь экран. Спрятать
+                    панели можно только целиком — вместе с часами наверху,
+                    поэтому выбор оставлен человеку, а не зашит в манифест.
+                -->
+                <div>
+                    <label class="flex items-center justify-between gap-2 cursor-pointer">
+                        <span class="text-xs font-bold text-slate-400" data-i18n="settings.fullscreen">Полноэкранный режим</span>
+                        <input type="checkbox" id="settings-fullscreen" class="accent-amber-500 w-4 h-4 shrink-0">
+                    </label>
+                    <p class="text-[10px] text-slate-500 mt-1" data-i18n="settings.fullscreenHint">Прячет системные полосы снизу и сверху. Вместе с нижней полосой исчезают часы и заряд.</p>
+                </div>
+
                 <!-- §35 ТЗ: раздел «Информация» -->
                 <div class="pt-1">
                     <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1" data-i18n="settings.about">Информация</h4>
