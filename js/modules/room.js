@@ -79,12 +79,13 @@ export const room = {
                     </button>
                     <!--
                         Одиннадцатая плитка занимает обе колонки: нечётное
-                        число оставляет дыру рядом с последней. Внутри —
-                        та же раскладка, что у соседей: значок сверху,
-                        подпись под ним. Со значком сбоку плитка выходила
-                        ниже остальных и выбивалась из ряда
+                        число оставляет дыру рядом с последней. Значок
+                        стоит слева от подписи — в широкой плитке над
+                        коротким текстом он смотрелся одиноко. Высоту
+                        держит auto-rows-fr на сетке, а не подобранное
+                        число: строка равняется по соседям сама
                     -->
-                    <button onclick="room.startExerciseMode(['adjective_ending'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-col items-center gap-2 col-span-2 active:scale-95">
+                    <button onclick="room.startExerciseMode(['adjective_ending'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-row items-center justify-center gap-3 col-span-2 active:scale-95">
                         <i class="fa-solid fa-table-cells text-teal-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeDeclension')}</span>
                     </button>
