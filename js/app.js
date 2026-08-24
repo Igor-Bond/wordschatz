@@ -201,74 +201,9 @@ export const app = {
             const сверху = parseInt(стиль.paddingTop) || 0;
             проба.remove();
 
-            const режим = install.isStandalone() ? t('settings.screenApp') : t('settings.screenBrowser');
+            const режим = install.isStandalone() ? t("settings.screenApp") : t("settings.screenBrowser");
             screen.textContent = `${window.innerWidth}×${window.innerHeight} · ${режим}`
-                + (сверху || снизу ? ` · ${t('settings.screenSafe', { top: сверху, bottom: снизу })}` : '');
-        }
-
-        /*
-         * Отдельная строка с измерениями высоты.
-         *
-         * Жалобы «меню уехало вниз», «под меню пустая полоса» и «внизу
-         * белая полоса» выглядят одинаково, а причины у них разные:
-         * застрявший dvh, несовпадение с окном или системная панель
-         * устройства. Без этих чисел они разбираются перепиской и
-         * догадками, а DevTools на телефоне нет.
-         */
-        const метрики = document.getElementById('about-metrics');
-        if (метрики) {
-            const проба2 = document.createElement('div');
-            проба2.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden';
-            document.body.appendChild(проба2);
-            const dvh = Math.round(проба2.getBoundingClientRect().height);
-            проба2.remove();
-
-            const подставлено = document.documentElement.style.getPropertyValue('--app-height') || '—';
-            const тело = Math.round(document.body.getBoundingClientRect().height);
-            const nav = document.querySelector('nav');
-            const подМеню = nav ? Math.round(window.innerHeight - nav.getBoundingClientRect().bottom) : '—';
-
-            // Безопасная зона снизу: на Android с управлением жестами она
-            // ненулевая, когда браузер отдаёт страницу во весь экран
-            const зона = document.createElement('div');
-            зона.style.cssText = 'position:fixed;bottom:0;left:0;width:0;padding-bottom:env(safe-area-inset-bottom);visibility:hidden';
-            document.body.appendChild(зона);
-            const снизу = Math.round(parseFloat(getComputedStyle(зона).paddingBottom) || 0);
-            зона.remove();
-
-            метрики.textContent = `dvh ${dvh} · окно ${window.innerHeight} · тело ${тело}`
-                + ` · экран ${window.screen?.height ?? '—'} · под меню ${подМеню}`
-                + ` · зона ${снизу} · подстановка ${подставлено}`;
-
-            /*
-             * Приговор словами.
-             *
-             * Жалобы «внизу белая полоса», «меню уехало» и «под меню
-             * пусто» выглядят одинаково, а причины разные: наша страница
-             * не достаёт до края, страница длиннее экрана — или это
-             * системная панель устройства, до которой веб не дотягивается
-             * вовсе. Числа выше отвечают на это точно, но их надо уметь
-             * читать; здесь то же самое одной фразой.
-             */
-            const приговор = document.getElementById('about-verdict');
-            if (приговор) {
-                const экран = window.screen?.height ?? 0;
-                let текст, цвет;
-
-                if (подМеню > 2) {
-                    текст = t('settings.verdictGap', { px: подМеню });
-                    цвет = 'text-amber-500';
-                } else if (экран && window.innerHeight < экран - 24) {
-                    текст = t('settings.verdictSystem', { px: Math.round(экран - window.innerHeight) });
-                    цвет = 'text-slate-500';
-                } else {
-                    текст = t('settings.verdictOk');
-                    цвет = 'text-green-600';
-                }
-
-                приговор.className = `block text-[10px] leading-relaxed mt-1 ${цвет}`;
-                приговор.textContent = текст;
-            }
+                + (сверху || снизу ? ` · ${t("settings.screenSafe", { top: сверху, bottom: снизу })}` : "");
         }
 
         const voice = document.getElementById('about-voice');

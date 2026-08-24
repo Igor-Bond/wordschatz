@@ -5,6 +5,7 @@ import { config } from '../../config.js';
 import { i18n, t, plural } from '../../i18n/i18n.js';
 import { dbService } from '../../services/db.js';
 import { dateUtils } from '../../core/dates.js';
+import { leagueStyle } from '../../core/leagues.js';
 
 /** Вкладка «Статистика»: лиги, XP, активность, слабые места. */
 
@@ -50,22 +51,14 @@ export const stats = {
             
             const topMistakeWords = await Promise.all(topMistakeIds.map(id => dbService.getWordById(id)));
 
-            // Лиги и пороги берём из dbService — здесь только оформление,
-            // раньше весь список дублировался с расхождением в порогах
-            const LEAGUE_STYLES = {
-                wooden:  { color: 'text-amber-700',  bg: 'bg-amber-900/30' },
-                stone:   { color: 'text-slate-400',  bg: 'bg-slate-500/30' },
-                bronze:  { color: 'text-orange-500', bg: 'bg-orange-500/30' },
-                silver:  { color: 'text-gray-300',   bg: 'bg-gray-400/30' },
-                gold:    { color: 'text-yellow-400', bg: 'bg-yellow-500/30' },
-                diamond: { color: 'text-cyan-400',   bg: 'bg-cyan-500/30' }
-            };
+            // Оформление — из core/leagues.js: карта значков и цветов
+            // успела разойтись на две копии, третьей заводить не стали
 
             const leagues = dbService.LEAGUES.map(l => ({
                 key: l.key,
                 name: t('leagues.' + l.key),
                 min: l.minXP,
-                ...LEAGUE_STYLES[l.key]
+                ...leagueStyle(l.key)
             }));
 
             let currentLeague = leagues[0];
@@ -129,7 +122,7 @@ export const stats = {
                         -->
                         <button onclick="profile.showLeagues()" title="${t('profile.allLeagues')}"
                             class="text-xs font-bold px-2.5 py-1 rounded-md ${currentLeague.bg} ${currentLeague.color} border border-current active:scale-95 transition-transform">
-                            <i class="fa-solid fa-trophy mr-1"></i> ${currentLeague.name}
+                            <i class="fa-solid ${currentLeague.icon} mr-1"></i> ${currentLeague.name}
                             <i class="fa-solid fa-chevron-right ml-1 opacity-60 text-[9px]"></i>
                         </button>
                     </div>
@@ -265,22 +258,13 @@ export const stats = {
      * Пороги живут в dbService и здесь только показываются: список,
      * продублированный в разметке, уже однажды разошёлся с настоящим.
      */
-    LEAGUE_ICONS: {
-        wooden: { icon: 'fa-tree', color: 'text-amber-700' },
-        stone: { icon: 'fa-mountain', color: 'text-slate-400' },
-        bronze: { icon: 'fa-medal', color: 'text-orange-500' },
-        silver: { icon: 'fa-award', color: 'text-gray-300' },
-        gold: { icon: 'fa-trophy', color: 'text-yellow-400' },
-        diamond: { icon: 'fa-gem', color: 'text-cyan-400' }
-    },
-
     showLeagues: async () => {
         const user = await dbService.getUser();
         const xp = user?.totalXP || 0;
         const current = dbService.getLeagueForXP(xp);
 
         const rows = dbService.LEAGUES.map(league => {
-            const style = profile.LEAGUE_ICONS[league.key] || { icon: 'fa-trophy', color: 'text-slate-400' };
+            const style = leagueStyle(league.key);
             const достигнута = xp >= league.minXP;
             const сейчас = league.key === current;
 

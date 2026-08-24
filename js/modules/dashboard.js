@@ -2,6 +2,7 @@ import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { dateUtils } from '../core/dates.js';
+import { leagueStyle } from '../core/leagues.js';
 import { scheduler } from '../core/scheduler.js';
 import { cycle } from './cycle.js';
 import { control } from './control.js';
@@ -47,6 +48,7 @@ export const dashboard = {
         const xp = user.totalXP || 0;
         const next = dbService.getNextLeague(xp);
         const leagueKey = user.league || dbService.getLeagueForXP(xp);
+        const вид = leagueStyle(leagueKey);
 
         let progressHtml = '';
         if (next) {
@@ -80,15 +82,20 @@ export const dashboard = {
                         -->
                         <div class="flex gap-4 mt-2">
                             <button onclick="profile.showLeagues()" class="text-sm text-slate-400 active:scale-95 transition-transform">
-                                ${t('dashboard.league')}: <span class="font-bold text-amber-500">${t('leagues.' + leagueKey)}</span>
-                                <i class="fa-solid fa-chevron-right text-[8px] text-amber-500/60 ml-0.5"></i>
+                                ${t('dashboard.league')}: <span class="font-bold ${вид.color}">${t('leagues.' + leagueKey)}</span>
+                                <i class="fa-solid fa-chevron-right text-[8px] text-slate-500 ml-0.5"></i>
                             </button>
                             <p class="text-sm text-slate-400">${t('dashboard.xp')}: <span class="font-bold text-blue-400">${xp}</span></p>
                         </div>
                     </div>
+                    <!--
+                        Значок соответствует лиге, а не всегда кубок:
+                        по нему видно ступень, не читая подписи, и в
+                        лестнице лиг стоят те же значки.
+                    -->
                     <button onclick="profile.showLeagues()" title="${t('profile.allLeagues')}"
-                        class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center border-2 border-amber-500/50 shadow-inner shrink-0 active:scale-95 transition-transform">
-                        <i class="fa-solid fa-trophy text-2xl text-amber-500"></i>
+                        class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center border-2 ${вид.ring} shadow-inner shrink-0 active:scale-95 transition-transform">
+                        <i class="fa-solid ${вид.icon} text-2xl ${вид.color}"></i>
                     </button>
                 </div>
                 ${progressHtml}

@@ -70,9 +70,6 @@ export const en = {
         aboutVoice: 'German voice',
         aboutSources: 'Form source',
         aboutNoCache: 'not cached',
-        verdictOk: 'The page reaches the bottom edge of the screen. If a light strip is still there, it is the device system bar — the app does not draw it.',
-        verdictGap: 'The menu falls {px} px short of the bottom — that is our bug, please report it.',
-        verdictSystem: 'The browser does not give the app the whole screen: {px} px at the bottom belong to a system bar. The strip there is drawn by the device.',
         checking: 'Testing...',
         createdBy: 'Created by Igor Bondarenko'
     },
