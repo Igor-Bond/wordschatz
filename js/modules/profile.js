@@ -216,6 +216,17 @@ export const profile = {
                         <span class="text-amber-500 tracking-wide">${xpText}</span>
                         <span>${nextLeague.name !== currentLeague.name ? nextLeague.name : t('profile.maxLeague')}</span>
                     </div>
+
+                    <!--
+                        Полоса показывает только соседнюю лигу. Сколько всего
+                        ступеней и что дальше — было не узнать, а это первое,
+                        что спрашивают про такую шкалу
+                    -->
+                    <button onclick="profile.showLeagues()"
+                        class="w-full mt-4 py-2 text-[11px] font-bold text-slate-400 hover:text-amber-500 border-t border-slate-700 flex items-center justify-center gap-2 transition-colors">
+                        ${t('profile.allLeagues')}
+                        <i class="fa-solid fa-list-ol"></i>
+                    </button>
                 </div>
 
                 <!-- Аналитика словаря -->
@@ -735,6 +746,55 @@ export const profile = {
         profile.renderDictionary();
     },
 
+    /**
+     * Все лиги и пороги (§23 ТЗ).
+     *
+     * Пороги живут в dbService и здесь только показываются: список,
+     * продублированный в разметке, уже однажды разошёлся с настоящим.
+     */
+    LEAGUE_ICONS: {
+        wooden: { icon: 'fa-tree', color: 'text-amber-700' },
+        stone: { icon: 'fa-mountain', color: 'text-slate-400' },
+        bronze: { icon: 'fa-medal', color: 'text-orange-500' },
+        silver: { icon: 'fa-award', color: 'text-gray-300' },
+        gold: { icon: 'fa-trophy', color: 'text-yellow-400' },
+        diamond: { icon: 'fa-gem', color: 'text-cyan-400' }
+    },
+
+    showLeagues: async () => {
+        const user = await dbService.getUser();
+        const xp = user?.totalXP || 0;
+        const current = dbService.getLeagueForXP(xp);
+
+        const rows = dbService.LEAGUES.map(league => {
+            const style = profile.LEAGUE_ICONS[league.key] || { icon: 'fa-trophy', color: 'text-slate-400' };
+            const достигнута = xp >= league.minXP;
+            const сейчас = league.key === current;
+
+            const метка = сейчас
+                ? `<span class="text-amber-500">${t('profile.leagueNow')}</span>`
+                : достигнута
+                    ? `<span class="text-green-500">${t('profile.leagueReached')}</span>`
+                    : `<span class="text-slate-500">${t('profile.leagueNeed', { xp: league.minXP - xp })}</span>`;
+
+            return `
+                <div class="flex items-center gap-3 py-2.5 ${сейчас ? 'bg-amber-500/10 -mx-2 px-2 rounded-lg' : ''} ${достигнута ? '' : 'opacity-60'}">
+                    <i class="fa-solid ${style.icon} ${достигнута ? style.color : 'text-slate-600'} w-5 text-center"></i>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold ${достигнута ? 'text-slate-100' : 'text-slate-400'}">${t('leagues.' + league.key)}</p>
+                        <p class="text-[10px] text-slate-500">${league.minXP} XP</p>
+                    </div>
+                    <span class="text-[10px] font-bold shrink-0">${метка}</span>
+                </div>`;
+        }).join('');
+
+        await dialog.custom(
+            `<div class="divide-y divide-slate-700/60">${rows}</div>
+             <p class="text-[10px] text-slate-500 mt-3 pt-3 border-t border-slate-700">${xp} XP</p>`,
+            { title: t('profile.leagueLadder') }
+        );
+    },
+
     renderAccountCard: () => {
         if (!auth.isConfigured()) return '';
 
@@ -745,6 +805,10 @@ export const profile = {
             : t('sync.never');
 
         if (!user) {
+            // Греем SDK заранее: нажатие не должно ждать загрузки, иначе
+            // всплывающее окно успевает стать заблокированным
+            auth.warmUp();
+
             return `
                 <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
                     <p class="text-xs text-slate-400 mb-3">${t('auth.notSignedIn')}</p>

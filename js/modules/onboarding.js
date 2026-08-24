@@ -19,13 +19,75 @@ export const onboarding = {
     LEVELS: ['A1', 'A2', 'B1', 'B2'],
     GOALS: [5, 10, 15, 20],
 
-    start: () => {
+    /**
+     * Черновик первого запуска в localStorage.
+     *
+     * Нужен из-за входа переходом по адресу: страница уходит на Google и
+     * возвращается заново запущенной. Без черновика пользователь, нажавший
+     * «Войти» на шестом шаге, возвращался на первый — с пустым именем и без
+     * ключа, а вход при этом уже состоялся. Выглядело это как «кнопка входа
+     * не работает», и именно так о ней и сообщили.
+     */
+    DRAFT_KEY: 'ws_onboarding_draft',
+
+    saveDraft: () => {
+        try {
+            localStorage.setItem(onboarding.DRAFT_KEY, JSON.stringify({
+                step: onboarding.step,
+                data: onboarding.data
+            }));
+        } catch (e) {
+            console.error('[Первый запуск] Не удалось сохранить черновик:', e);
+        }
+    },
+
+    loadDraft: () => {
+        try {
+            const raw = localStorage.getItem(onboarding.DRAFT_KEY);
+            if (!raw) return false;
+
+            const draft = JSON.parse(raw);
+            if (!draft?.data) return false;
+
+            onboarding.data = { ...onboarding.data, ...draft.data };
+            onboarding.step = draft.step || 1;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    clearDraft: () => localStorage.removeItem(onboarding.DRAFT_KEY),
+
+    start: async () => {
         const view = document.getElementById('onboarding-view');
         view.classList.remove('hidden');
         view.classList.add('flex', 'flex-col');
 
-        onboarding.data.uiLang = i18n.language;
+        // Возврат с входа переходом: поднимаем то, что успели ввести
+        const восстановлен = onboarding.loadDraft();
+        if (!восстановлен) onboarding.data.uiLang = i18n.language;
+
         onboarding.renderStep();
+
+        // Вход мог состояться, пока нас не было. Спрашиваем только если
+        // уходили: иначе это мегабайт SDK тем, кто облако не трогал
+        if (восстановлен && auth.hasSignedInBefore()) {
+            const user = await auth.restore().catch(() => null);
+            if (user) return await onboarding.finish();
+
+            // Не вышло — пометку снимаем, иначе каждый запуск будет
+            // поднимать SDK впустую
+            auth._rememberSignIn(false);
+            onboarding.showSignInError(t('auth.redirectFailed'));
+        }
+    },
+
+    showSignInError: (message) => {
+        const error = document.getElementById('ob-signin-error');
+        if (!error) return;
+        error.textContent = message;
+        error.classList.remove('hidden');
     },
 
     renderStep: () => {
@@ -42,6 +104,10 @@ export const onboarding = {
         view.innerHTML = (steps[onboarding.step] || onboarding.renderName)();
 
         if (onboarding.step === 4) onboarding.bindGoalHighlight();
+
+        // Шаг входа: греем SDK заранее, чтобы нажатие не ждало 255 КБ
+        // и всплывающее окно не успело стать заблокированным
+        if (onboarding.step === 6) auth.warmUp();
     },
 
     /**
@@ -85,6 +151,10 @@ export const onboarding = {
         btn.disabled = true;
         btn.classList.add('opacity-60');
         error.classList.add('hidden');
+
+        // Сохраняем до вызова: если вход уйдёт переходом по адресу, эта
+        // строка будет последней, что успеет выполниться на странице
+        onboarding.saveDraft();
 
         try {
             const user = await auth.signIn();
@@ -276,6 +346,8 @@ export const onboarding = {
             onboarding.renderStep();
             return await dialog.alert(t('onboarding.apiRequired'));
         }
+
+        onboarding.clearDraft();
 
         config.set('name', onboarding.data.name);
         config.set('ui_lang', onboarding.data.uiLang);

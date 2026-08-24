@@ -25,6 +25,7 @@ import { germanUtils } from './core/german.js';
 import { quiz } from './core/quiz.js';
 import { lessonStateManager } from './core/lessonState.js';
 import { install } from './core/install.js';
+import { viewport } from './core/viewport.js';
 import { reminder } from './core/reminder.js';
 import { speech } from './core/speech.js';
 import { wiktionary } from './services/wiktionary.js';
@@ -130,5 +131,9 @@ i18n.setLanguage(config.get('ui_lang') || 'ru');
 // Модульные скрипты выполняются до DOMContentLoaded, так что подписка успевает
 document.addEventListener('DOMContentLoaded', () => {
     i18n.applyToDom();   // статические строки index.html
+
+    // До первой отрисовки: иначе меню успевает встать по застрявшей высоте
+    viewport.init();
+
     app.init();
 });

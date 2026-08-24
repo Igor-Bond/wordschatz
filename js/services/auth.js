@@ -35,32 +35,63 @@ export const auth = {
         return !!currentUser;
     },
 
-    /** Загрузка SDK и подъём приложения — только когда действительно нужно. */
-    _init: async () => {
-        if (firebaseApp) return sdk;
+    /**
+     * Подъём той части SDK, которая нужна для входа: app и auth, 255 КБ.
+     *
+     * Firestore сюда не входит намеренно. Раньше вход тянул все три файла
+     * разом — 923 КБ, — и на первом входе с телефона это стоило секунд.
+     * Всплывающее окно за это время успевало стать заблокированным:
+     * разрешение на window.open живёт доли секунды после нажатия и ожидания
+     * не переживает. Второй раз всё работало, потому что файлы уже в кэше, —
+     * из-за этого ошибка и выглядела необъяснимой.
+     */
+    _initAuth: async () => {
+        if (authInstance) return sdk;
 
         if (!auth.isConfigured()) {
             throw new Error(t('auth.notConfigured'));
         }
 
-        const [appModule, authModule, storeModule] = await Promise.all([
+        const [appModule, authModule] = await Promise.all([
             import('../../vendor/firebase/firebase-app.js'),
-            import('../../vendor/firebase/firebase-auth.js'),
-            import('../../vendor/firebase/firebase-firestore.js')
+            import('../../vendor/firebase/firebase-auth.js')
         ]);
 
-        sdk = { ...appModule, ...authModule, ...storeModule };
+        sdk = { ...sdk, ...appModule, ...authModule };
 
-        firebaseApp = sdk.initializeApp(firebaseConfig);
+        firebaseApp = firebaseApp || sdk.initializeApp(firebaseConfig);
         authInstance = sdk.getAuth(firebaseApp);
+
+        return sdk;
+    },
+
+    /** Дополнительно Firestore — нужен только синхронизации. */
+    _initStore: async () => {
+        await auth._initAuth();
+        if (firestoreInstance) return sdk;
+
+        const storeModule = await import('../../vendor/firebase/firebase-firestore.js');
+        sdk = { ...sdk, ...storeModule };
         firestoreInstance = sdk.getFirestore(firebaseApp);
 
         return sdk;
     },
 
+    /**
+     * Тихая предзагрузка перед тем, как пользователь дотянется до кнопки.
+     *
+     * Вызывается при показе экрана со входом. Ошибку глотаем: это
+     * подготовка, а не действие, и падать ей незачем — кнопка всё равно
+     * загрузит нужное сама, просто медленнее.
+     */
+    warmUp: () => {
+        if (!auth.isConfigured() || authInstance) return;
+        auth._initAuth().catch(() => {});
+    },
+
     /** Firestore и функции работы с ним — для модуля синхронизации. */
     getDb: async () => {
-        await auth._init();
+        await auth._initStore();
         return { db: firestoreInstance, fs: sdk };
     },
 
@@ -106,7 +137,7 @@ export const auth = {
         initialised = true;
 
         try {
-            await auth._init();
+            await auth._initAuth();
             await sdk.setPersistence(authInstance, sdk.browserLocalPersistence);
 
             // Возврат после входа переходом по адресу
@@ -127,7 +158,7 @@ export const auth = {
 
     /** Вход через Google. */
     signIn: async () => {
-        await auth._init();
+        await auth._initAuth();
         await sdk.setPersistence(authInstance, sdk.browserLocalPersistence);
 
         const provider = new sdk.GoogleAuthProvider();

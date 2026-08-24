@@ -40,7 +40,7 @@ export const app = {
             // Сессия и синхронизация — в фоне, чтобы не задерживать первый экран
             app.restoreCloudSession();
         } else {
-            onboarding.start();
+            onboarding.start().catch(e => console.error('[Первый запуск] Не удалось запустить:', e));
         }
     },
 

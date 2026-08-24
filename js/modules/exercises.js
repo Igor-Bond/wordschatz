@@ -25,11 +25,21 @@ export const exercises = {
      * а давно выученное — на выбор из четырёх кнопок.
      */
     STAGES: {
-        // Узнать среди вариантов
-        recognition: ['translation_de_ru', 'match_pairs', 'article'],
+        /*
+         * Узнать среди готовых вариантов — ничего не писать по памяти.
+         *
+         * Раньше здесь было три режима, и у нового глагола или
+         * прилагательного оставалось два: артикль им не задаётся. Первое
+         * знакомство с темой превращалось в чередование «выбери перевод»
+         * и «найди пару», о чём и сообщили. Добавлены задания, где ответ
+         * тоже целиком на экране: обратный выбор перевода, сборка
+         * предложения из данных слов и окончание прилагательного —
+         * последнее считается правилом и знания слова не требует вовсе.
+         */
+        recognition: ['translation_de_ru', 'translation_ru_de', 'match_pairs', 'article', 'sentence_builder', 'adjective_ending'],
 
         // Выбор потруднее плюс первые задания с вводом
-        consolidation: ['translation_ru_de', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending'],
+        consolidation: ['translation_ru_de', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending', 'sentence_builder'],
 
         // Написать самому
         production: ['translation_ru_de_input', 'verb_form', 'fill_blanks', 'listening', 'sentence_builder', 'adjective_ending']
