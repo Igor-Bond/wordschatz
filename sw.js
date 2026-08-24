@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v66';
+const APP_VERSION = 'v67';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -136,8 +136,21 @@ self.addEventListener('message', (event) => {
 });
 
 // --- Помощники ---
+
+/*
+ * Манифест раздаётся сначала из сети наравне с кодом.
+ *
+ * Он попадал в общую ветку «сначала кэш», и Android читал старую копию.
+ * Заметно это стало на переходе в полноэкранный режим: display в
+ * манифесте поменялся, приложение переустановили — а системные панели
+ * остались, потому что оболочка приложения строилась по кэшированному
+ * манифесту. Файл меньше килобайта, брать его из сети ничего не стоит,
+ * а устаревший тихо ломает то, как приложение устанавливается.
+ */
 const isAppCode = (url) =>
-    url.pathname.includes('/js/') || url.pathname.endsWith('/css/style.css');
+    url.pathname.includes('/js/')
+    || url.pathname.endsWith('/css/style.css')
+    || url.pathname.endsWith('/manifest.json');
 
 const isStatic = (url) =>
     url.pathname.includes('/vendor/') ||
