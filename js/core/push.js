@@ -140,6 +140,49 @@ export const push = {
     },
 
     /**
+     * Что лежит в облаке прямо сейчас.
+     *
+     * Настройка push состоит из четырёх значений в секретах репозитория,
+     * и без обратной связи непонятно, на каком шаге всё встало. Эта
+     * проверка отвечает на первый вопрос: дошла ли подписка до Firestore.
+     * Если дошла, а уведомление не приходит — дело в секретах или в
+     * расписании, и смотреть надо в журнал запуска на GitHub.
+     */
+    diagnose: async () => {
+        if (!push.isSupported()) return { ok: false, шаг: 'браузер', деталь: t('push.unsupported') };
+        if (!push.isConfigured()) return { ok: false, шаг: 'сборка', деталь: t('push.notConfigured') };
+        if (!auth.isSignedIn) return { ok: false, шаг: 'вход', деталь: t('push.needSignIn') };
+
+        if (Notification.permission !== 'granted') {
+            return { ok: false, шаг: 'разрешение', деталь: t('push.denied') };
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!subscription) return { ok: false, шаг: 'подписка', деталь: t('push.noSubscription') };
+
+        // Читаем обратно из облака: это и есть проверка, что отправитель
+        // найдёт запись групповым запросом
+        try {
+            const ctx = await auth.getDb();
+            const ref = ctx.fs.doc(ctx.db, 'users', auth.user.uid, 'pushSubscriptions', push._docId(subscription.endpoint));
+            const snap = await ctx.fs.getDoc(ref);
+
+            if (!snap.exists()) return { ok: false, шаг: 'облако', деталь: t('push.notInCloud') };
+
+            const данные = snap.data();
+            return {
+                ok: true,
+                шаг: 'готово',
+                служба: new URL(данные.endpoint).host,
+                когда: данные.updatedAt ? new Date(данные.updatedAt).toLocaleString() : '—'
+            };
+        } catch (e) {
+            return { ok: false, шаг: 'облако', деталь: e.message };
+        }
+    },
+
+    /**
      * Состояние для настроек: включено ли, и если нет — почему нельзя.
      * Отдельная функция, чтобы интерфейс не гадал.
      */

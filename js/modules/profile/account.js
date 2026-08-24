@@ -233,7 +233,38 @@ export const account = {
                     </button>
                 </div>
                 <p id="prof-push-error" class="hidden text-xs text-red-400 mt-2"></p>
+
+                ${состояние.active ? `
+                    <button onclick="profile.checkPush()" id="prof-push-check"
+                        class="w-full mt-3 py-2 bg-slate-900 border border-slate-600 text-slate-300 text-[11px] font-bold rounded-xl hover:border-amber-500 hover:text-amber-500 active:scale-95 transition-all">
+                        ${t('push.check')}
+                    </button>
+                    <p id="prof-push-report" class="hidden text-[10px] mt-2 leading-relaxed"></p>` : ''}
             </div>`;
+    },
+
+    /**
+     * Проверка подписки.
+     *
+     * Настройка push состоит из четырёх значений в секретах репозитория,
+     * и без обратной связи непонятно, на каком шаге всё встало. Кнопка
+     * отвечает на первый вопрос: дошла ли подписка до облака. Если да, а
+     * уведомление не приходит — смотреть надо в журнал запуска на GitHub.
+     */
+    checkPush: async () => {
+        const btn = document.getElementById('prof-push-check');
+        const отчёт = document.getElementById('prof-push-report');
+        if (btn) { btn.disabled = true; btn.textContent = t('push.working'); }
+
+        const итог = await push.diagnose();
+
+        if (btn) { btn.disabled = false; btn.textContent = t('push.check'); }
+        if (!отчёт) return;
+
+        отчёт.className = `text-[10px] mt-2 leading-relaxed ${итог.ok ? 'text-green-500' : 'text-amber-500'}`;
+        отчёт.textContent = итог.ok
+            ? t('push.checkOk', { service: итог.служба, when: итог.когда })
+            : `${итог.шаг}: ${итог.деталь}`;
     },
 
     togglePush: async () => {

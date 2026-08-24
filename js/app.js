@@ -144,10 +144,15 @@ export const app = {
         goalSelect.value = prof.dailyGoal || '10';
         document.getElementById('settings-interests').value = prof.interests || '';
 
+        // Установленное приложение открывается во весь экран по манифесту —
+        // тогда выключатель нечем управлять, и его прячем целиком
+        const fsRow = document.getElementById('settings-fullscreen-row');
         const fsBox = document.getElementById('settings-fullscreen');
-        if (fsBox) {
+        if (fsRow && fsBox) {
+            const ненужен = fullscreen.isSystemFullscreen() || !fullscreen.isSupported();
+            fsRow.classList.toggle('hidden', ненужен);
+
             fsBox.checked = fullscreen.isEnabled() && fullscreen.isActive();
-            fsBox.disabled = !fullscreen.isSupported();
             fsBox.onchange = () => app.toggleFullscreen(fsBox.checked);
         }
 

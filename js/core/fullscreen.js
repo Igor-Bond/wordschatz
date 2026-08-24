@@ -31,6 +31,17 @@ export const fullscreen = {
     isSupported: () => typeof document !== 'undefined'
         && !!(элемент().requestFullscreen || элемент().webkitRequestFullscreen),
 
+    /**
+     * Приложение уже запущено во весь экран самой системой.
+     *
+     * Так бывает, когда в манифесте стоит display: fullscreen — тогда
+     * панелей нет с первого кадра и касание не нужно. Выключатель в
+     * настройках в этом случае бесполезен: выйти из режима, заданного
+     * манифестом, страница не может, и галочка только сбивала бы с толку.
+     */
+    isSystemFullscreen: () => typeof window !== 'undefined'
+        && window.matchMedia('(display-mode: fullscreen)').matches,
+
     isActive: () => !!(document.fullscreenElement || document.webkitFullscreenElement),
 
     isEnabled: () => config.get(KEY) === '1',
@@ -81,7 +92,7 @@ export const fullscreen = {
      */
     restore: () => {
         if (!fullscreen.isEnabled() || !fullscreen.isSupported()) return;
-        if (fullscreen.isActive() || ждёмКасания) return;
+        if (fullscreen.isActive() || fullscreen.isSystemFullscreen() || ждёмКасания) return;
 
         ждёмКасания = true;
 

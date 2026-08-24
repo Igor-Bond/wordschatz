@@ -300,7 +300,11 @@ export const en = {
         needSignIn: 'Sign in with Google first — the subscription lives in your cloud.',
         denied: 'Notifications are not allowed. Grant permission in site settings.',
         blocked: 'Notifications are blocked for this site in browser settings.',
-        failed: 'Could not subscribe'
+        failed: 'Could not subscribe',
+        check: 'CHECK SUBSCRIPTION',
+        checkOk: 'Subscription is in the cloud: {service}, updated {when}. The rest is up to the GitHub schedule — see the run log.',
+        noSubscription: 'This device is not subscribed.',
+        notInCloud: 'The subscription exists on the device but never reached the cloud. Try switching it off and on again.'
     },
 
     declension: {
