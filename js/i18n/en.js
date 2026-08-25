@@ -384,6 +384,8 @@ export const en = {
         tooHardSkip: 'TOO HARD, SKIP',
         tapToRemove: 'Tap a word to send it back to the pool.',
         builderHint: 'Tap any word to remove it from any position',
+        builderRetry: 'Wrong order — take the words back and build it again.',
+        builderFromTry: 'Built on attempt {n} · +{xp} XP',
         correctAnswer: 'Correct answer:',
         correctIs: 'Correct'
     },

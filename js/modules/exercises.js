@@ -16,6 +16,28 @@ export const exercises = {
     XP_CORRECT: 4,
     XP_WRONG: 1,
 
+    /**
+     * Пауза перед следующим заданием в сборке предложения.
+     *
+     * Было полторы секунды, и этого не хватало: собранное предложение
+     * успевало смениться раньше, чем его удавалось перечитать целиком.
+     * В остальных девяти заданиях читать нечего — там одно слово, — а
+     * здесь на экране целая фраза, ради которой задание и затевалось.
+     */
+    BUILDER_NEXT_DELAY: 3750,
+
+    /**
+     * Опыт за собранное предложение, по числу неудачных сборок.
+     *
+     * Полный — только за сборку с первого раза: 4, 2, 1, дальше 1.
+     * Пересобирать можно сколько угодно, и что-то за это причитается —
+     * но не столько же, сколько за верный ответ сразу.
+     */
+    builderXP: (attempts) => Math.max(
+        exercises.XP_WRONG,
+        Math.round(exercises.XP_CORRECT / (attempts + 1))
+    ),
+
     /** Допустимые варианты ответа для текущего задания с вводом. */
     acceptedAnswers: null,
 
@@ -98,7 +120,16 @@ export const exercises = {
     builderState: {
         words: [],
         selected: [],
-        correct: []
+        correct: [],
+
+        /** Сколько раз предложение собрали неверно. */
+        attempts: 0,
+
+        /** Первая неверная сборка — она и попадёт в разбор ошибок. */
+        firstWrong: null,
+
+        /** Задание завершено: сошлось или пропущено. */
+        answered: false
     },
     
     matchPairsState: {
@@ -621,6 +652,8 @@ export const exercises = {
         exercises.builderState.words = quiz.shuffle(words);
         exercises.builderState.selected = [];
         exercises.builderState.answered = false;
+        exercises.builderState.attempts = 0;
+        exercises.builderState.firstWrong = null;
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
@@ -702,55 +735,95 @@ export const exercises = {
     /**
      * Проверка собранного предложения.
      *
-     * Отличалась от остальных девяти заданий двумя вещами, и обе были
-     * неправильны. Во-первых, при ошибке верный порядок не показывался и
-     * задание не уходило дальше: человек оставался наедине с «Falsch!»,
-     * пока не соберёт сам или не нажмёт «пропустить». Во-вторых — и это
-     * хуже — опыт и ответ засчитывались на каждой попытке, так что одно
-     * задание писало в историю слова три-четыре неверных ответа подряд.
-     * На этой истории считается освоенность, и слово, с которым человек
-     * в итоге справился, выглядело хуже, чем есть.
+     * Здесь, в отличие от остальных девяти заданий, ошибка не заканчивает
+     * задание. И это не поблажка: в сборке предложения ошибиться можно
+     * порядком одного слова, а увидеть верный порядок и тут же собрать
+     * его самому — это и есть то, чему задание учит. Прежний вариант
+     * показывал правильный ответ и уходил дальше, то есть отвечал за
+     * человека.
      *
-     * Теперь ответ засчитывается один раз, а неверный показывает верный
-     * порядок и идёт дальше — как везде.
+     * Поэтому пересобирать можно сколько угодно, а дальше задание уходит
+     * только при верной сборке или по кнопке «Сложно, пропустить».
+     *
+     * Начисление устроено так, чтобы перебором ничего не выигрывалось:
+     *
+     *   опыт     — за верную сборку в любом случае, но убывающий: 4 за
+     *              первую попытку, 2 за вторую, дальше 1;
+     *   история  — верным ответом считается только сборка с первого
+     *              раза. Иначе освоенность росла бы от перебора: слов в
+     *              предложении немного, и порядок рано или поздно
+     *              угадывается без всякого знания;
+     *   пропуск  — как неверный ответ в любом другом задании, 1 очко.
+     *              Отдельного штрафа нет: он бы толкал перебирать вместо
+     *              того, чтобы честно признать, что не знаешь.
      */
     checkBuilder: () => {
-        // Проверка вызывается из двух мест: сама, когда выложено последнее
-        // слово, и кнопкой. Без замка одно задание засчитывалось дважды
+        // Замок — только на завершённое задание. Пересборки его не
+        // завершают, поэтому и не блокируются
         if (exercises.builderState.answered) return;
-        exercises.builderState.answered = true;
 
         const feedback = document.getElementById('ex-feedback');
-        const skipBtn = document.getElementById('sb-skip-btn');
-        if (skipBtn) skipBtn.disabled = true;
-
-        document.querySelectorAll('#sb-source button, #sb-answer button').forEach(b => b.disabled = true);
-
         const isCorrect = exercises.builderSentence() === exercises.builderState.correct.join(' ');
 
-        exercises.awardXP(isCorrect);
+        if (!isCorrect) return exercises._builderRetry(feedback);
+
+        exercises.builderState.answered = true;
+
+        const skipBtn = document.getElementById('sb-skip-btn');
+        if (skipBtn) skipBtn.disabled = true;
+        document.querySelectorAll('#sb-source button, #sb-target button').forEach(b => b.disabled = true);
+
+        const попыток = exercises.builderState.attempts;
+
+        // Собрал не с первого раза — в историю слова это идёт неверным
+        // ответом, но объявляется и выглядит верным: человек ведь собрал
+        exercises.awardXP(попыток === 0, {
+            xp: exercises.builderXP(попыток),
+            announceCorrect: true
+        });
+
+        // Первую неудачную сборку кладём в разбор ошибок: она показывает,
+        // где именно человек путается в порядке слов
+        if (попыток > 0 && exercises.builderState.firstWrong && dbService?.logMistake) {
+            const currentWord = exercises.queue[exercises.currentIndex];
+            dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderState.firstWrong);
+        }
+
         feedback.classList.remove('hidden');
+        feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-green-600 border border-green-400 text-white shadow-[0_0_15px_rgba(22,163,74,0.5)]";
+        feedback.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Richtig!`
+            + (попыток > 0
+                ? `<span class="block text-white/70 text-xs font-normal mt-1.5">${t('exercises.builderFromTry', { n: попыток + 1, xp: exercises.builderXP(попыток) })}</span>`
+                : '');
 
-        if (isCorrect) {
-            feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-green-600 border border-green-400 text-white shadow-[0_0_15px_rgba(22,163,74,0.5)]";
-            feedback.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Richtig!`;
-            setTimeout(exercises.next, 1500);
-            return;
+        setTimeout(exercises.next, exercises.BUILDER_NEXT_DELAY);
+    },
+
+    /**
+     * Неверная сборка: считаем попытку и отдаём предложение обратно.
+     *
+     * Ничего не блокируем и ничего не начисляем — задание продолжается.
+     * Верный порядок не показываем: подсказать его сейчас значит лишить
+     * пересборку смысла, а для тех, кому правда не даётся, есть кнопка
+     * «Сложно, пропустить».
+     */
+    _builderRetry: (feedback) => {
+        exercises.builderState.attempts += 1;
+
+        if (!exercises.builderState.firstWrong) {
+            exercises.builderState.firstWrong = exercises.builderSentence();
         }
 
-        const currentWord = exercises.queue[exercises.currentIndex];
-        if (typeof dbService !== 'undefined' && dbService.logMistake) {
-            dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderSentence());
-        }
+        if (!feedback) return;
 
+        feedback.classList.remove('hidden');
         feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-red-600 border border-red-400 text-white";
         feedback.innerHTML = `
             <span class="block"><i class="fa-solid fa-xmark mr-2"></i> Falsch!</span>
-            <span class="text-white/70 text-xs font-normal block mt-2 mb-1 uppercase tracking-widest">${t('exercises.correctAnswer')}</span>
-            <b class="text-base leading-snug block">${exercises.escAttr(exercises.builderState.correct.join(' '))}</b>
+            <span class="block text-white/80 text-xs font-normal mt-1.5">${t('exercises.builderRetry')}</span>
         `;
 
-        setTimeout(exercises.next, 3000);
+        announce.say(t('exercises.builderRetry'));
     },
 
     skipBuilder: () => {
@@ -760,26 +833,30 @@ export const exercises = {
         const feedback = document.getElementById('ex-feedback');
         const skipBtn = document.getElementById('sb-skip-btn');
         if (skipBtn) skipBtn.disabled = true;
-        
-        const wordBtns = document.querySelectorAll('#sb-source button');
-        wordBtns.forEach(b => b.disabled = true);
-        
+
+        document.querySelectorAll('#sb-source button, #sb-target button').forEach(b => b.disabled = true);
+
         const correctSentence = exercises.builderState.correct.join(' ');
-        
-        // ЛОГИРОВАНИЕ ОШИБКИ (ПРОПУСК = ОШИБКА)
+
+        // Пропуск — это неответ, и в истории слова он стоит наравне с
+        // неверным ответом: слово вернётся раньше. Раньше пропуск не
+        // записывался вовсе, и пропустить было выгоднее, чем ошибиться
+        exercises.awardXP(false);
+
         const currentWord = exercises.queue[exercises.currentIndex];
-        if (typeof dbService !== 'undefined' && dbService.logMistake) {
-            dbService.logMistake(currentWord.id, 'sentence_builder', 'SKIPPED');
+        if (dbService?.logMistake) {
+            dbService.logMistake(currentWord.id, 'sentence_builder',
+                exercises.builderState.firstWrong || 'SKIPPED');
         }
 
         feedback.classList.remove('hidden');
         feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-slate-900/80 border border-slate-600/50 text-slate-300";
         feedback.innerHTML = `
             <span class="text-slate-400 text-xs font-normal block mb-1 uppercase tracking-widest">${t('exercises.correctAnswer')}</span>
-            <b class="text-amber-500 text-base leading-snug block">${correctSentence}</b>
+            <b class="text-amber-500 text-base leading-snug block">${exercises.escAttr(correctSentence)}</b>
         `;
-        
-        setTimeout(exercises.next, 3000);
+
+        setTimeout(exercises.next, exercises.BUILDER_NEXT_DELAY);
     },
 
     /**
@@ -792,6 +869,34 @@ export const exercises = {
      * /checkChoice\(this,\s*'([^']+)'/ — оно останавливалось на первом
      * апострофе и на слове вроде «geht's» находило обрезок.
      */
+    /**
+     * Снимает с кнопки классы цвета, не трогая остальные.
+     *
+     * Было `replace(/(bg|border|text)-\S+/g, ' ')`, и это выносило
+     * заодно `text-left` и `text-xl`: после ответа текст терял и
+     * выравнивание, и размер. Под цвет попадают только классы вида
+     * «свойство-цвет-оттенок», где оттенок — число.
+     */
+    _stripColours: (el) => {
+        [...el.classList].forEach(cls => {
+            if (/^(bg|border|text)-[a-z]+-\d{2,3}$/.test(cls)) el.classList.remove(cls);
+        });
+        el.classList.remove('hover:border-amber-500');
+    },
+
+    /**
+     * Строка ответа на кнопке: текст на месте, значок справа.
+     *
+     * Значок стоял слева, а строка равнялась по центру — и в момент
+     * ответа весь текст прыгал с левого края на середину. Ответ и так
+     * заметен цветом; двигать ради него текст незачем.
+     */
+    _answerRow: (text, icon = null, textClass = '') => `
+        <span class="flex items-center justify-between gap-3 w-full">
+            <span class="${textClass}">${text}</span>
+            ${icon ? `<i class="fa-solid ${icon} text-xl shrink-0"></i>` : ''}
+        </span>`,
+
     checkChoice: (btn) => {
         const selected = btn.dataset.value ?? '';
         const correct = btn.dataset.correct ?? '';
@@ -803,11 +908,15 @@ export const exercises = {
 
             const btnValue = b.dataset.value ?? null;
             const originalText = b.innerText.trim();
-            b.className = b.className.replace(/(bg|border|text)-\S+/g, ' ').replace('hover:border-amber-500', '').trim();
+            exercises._stripColours(b);
 
             if (btnValue === correct) {
-                b.classList.add('bg-green-600', 'border-green-400', 'text-white', 'shadow-[0_0_15px_rgba(22,163,74,0.5)]', 'scale-105', 'z-10');
-                b.innerHTML = `<span class="flex items-center justify-center gap-2 w-full"><i class="fa-solid fa-check text-xl"></i> <span>${originalText}</span></span>`;
+                // Без scale-105: увеличение раздвигает кнопку от середины,
+                // и текст на левом краю уезжает ещё на несколько точек.
+                // Зелёный фон со свечением и так виден, а читать ответ
+                // удобнее с неподвижного места
+                b.classList.add('bg-green-600', 'border-green-400', 'text-white', 'shadow-[0_0_15px_rgba(22,163,74,0.5)]', 'z-10');
+                b.innerHTML = exercises._answerRow(originalText, 'fa-check');
             } else if (btnValue === selected && selected !== correct) {
                 // ЛОГИРОВАНИЕ ОШИБКИ
                 const currentWord = exercises.queue[exercises.currentIndex];
@@ -816,10 +925,10 @@ export const exercises = {
                 }
 
                 b.classList.add('bg-red-600', 'border-red-400', 'text-white');
-                b.innerHTML = `<span class="flex items-center justify-center gap-2 w-full"><i class="fa-solid fa-xmark text-xl"></i> <span class="line-through opacity-80">${originalText}</span></span>`;
+                b.innerHTML = exercises._answerRow(originalText, 'fa-xmark', 'line-through opacity-80');
             } else {
                 b.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-500', 'opacity-40', 'scale-95');
-                b.innerHTML = `<span class="flex items-center justify-center w-full">${originalText}</span>`;
+                b.innerHTML = exercises._answerRow(originalText);
             }
         }
 
@@ -838,7 +947,16 @@ export const exercises = {
      * Раньше XP давали только карточки и экзамен — половина урока
      * (все девять типов упражнений) не вознаграждалась вовсе.
      */
-    awardXP: async (isCorrect) => {
+    /**
+     * @param {boolean} isCorrect засчитать ответ верным в истории слова
+     * @param {object} [options]
+     * @param {number} [options.xp] начислить столько вместо обычного
+     * @param {boolean} [options.announceCorrect] что сказать чтецу, если
+     *        это расходится с записью в историю. Расходятся они в одном
+     *        месте: собранное не с первого раза предложение объявляется
+     *        верным, а в историю идёт неверным — см. checkBuilder
+     */
+    awardXP: async (isCorrect, { xp = null, announceCorrect = isCorrect } = {}) => {
         const word = exercises.queue?.[exercises.currentIndex];
 
         /*
@@ -849,9 +967,11 @@ export const exercises = {
          * ничего не сообщает тому, кто её не видит, а задание уходит
          * дальше через полторы секунды.
          */
-        announce.say(isCorrect
+        announce.say(announceCorrect
             ? t('exercises.announceCorrect')
             : t('exercises.announceWrong', { answer: word?.word ?? '' }));
+
+        const gained = xp ?? (isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG);
 
         // За экзамен опыт начисляется по итогу, а не по каждому ответу
         if (exercises.exam) {
@@ -861,7 +981,6 @@ export const exercises = {
                 console.error('Экзамен не смог учесть ответ:', e);
             }
         } else {
-            const gained = isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG;
             try {
                 await dbService.addXP(gained);
             } catch (e) {
@@ -900,8 +1019,7 @@ export const exercises = {
 
         // В свободной тренировке и на экзамене счётчиков урока нет
         if (!exercises.exam && !exercises.isRoomMode && typeof training !== 'undefined' && training.state?.data) {
-            training.state.data.xpEarned = (training.state.data.xpEarned || 0)
-                + (isCorrect ? exercises.XP_CORRECT : exercises.XP_WRONG);
+            training.state.data.xpEarned = (training.state.data.xpEarned || 0) + gained;
         }
     },
 

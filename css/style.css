@@ -72,9 +72,15 @@ body.lesson-mode #app-header {
      *
      * Когда причина ушла, вернулись к посчитанному значению: шестая
      * часть ставила подписи вплотную к индикатору без всякой нужды.
+     *
+     * Нижняя граница — 4 точки, а не 10. Она работает там, где зоны нет
+     * вовсе: на Android и в браузере. Индикатора там тоже нет — полоса
+     * жестов лежит ниже окна, вне наших пикселей, — и беречь от неё
+     * нечего. Десять точек были просто перестраховкой и стоили подписям
+     * шести точек высоты на ровном месте.
      */
     nav {
-        padding-bottom: max(calc(env(safe-area-inset-bottom) / 3), 10px) !important;
+        padding-bottom: max(calc(env(safe-area-inset-bottom) / 3), 4px) !important;
     }
     header {
         padding-top: max(env(safe-area-inset-top), 16px) !important;
