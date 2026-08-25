@@ -101,7 +101,14 @@ export const dialog = {
                         ? `<div class="text-sm text-slate-300">${html}</div>`
                         : `<p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">${dialog._esc(message)}</p>`}
                 </div>
-                <div class="p-4 pb-[max(env(safe-area-inset-bottom),16px)] bg-slate-900/50 border-t border-slate-700 ${stacked ? 'space-y-2' : 'flex gap-2'}">
+                <!--
+                    Кнопки в столбик умеют прокручиваться. Пока выбор был
+                    из двух-трёх, это было не нужно; выбор темы в Комнате
+                    приносит по кнопке на каждую тему словаря, и без
+                    потолка список уходил за нижний край экрана вместе с
+                    отменой.
+                -->
+                <div class="p-4 pb-[max(env(safe-area-inset-bottom),16px)] bg-slate-900/50 border-t border-slate-700 ${stacked ? 'space-y-2 max-h-[60vh] overflow-y-auto' : 'flex gap-2'}">
                     ${buttons.map((b, i) => `
                         <button data-index="${i}"
                             class="${stacked ? 'w-full' : 'flex-1'} py-3 rounded-xl font-bold text-sm active:scale-95 transition-all ${btnClass(b)}">

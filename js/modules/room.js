@@ -116,21 +116,25 @@ export const room = {
      * не приступали, значит обещать тренировку, которой не будет. Рядом
      * с названием стоит, сколько слов доступно.
      *
-     * Выпадающий список, а не облако кнопок. Кнопки занимали столько
-     * строк, сколько тем накопилось, и высота блока росла вместе со
-     * словарём: к десятку тем над тренажёрами оказывалась стена плашек,
-     * а сами тренажёры уезжали за нижний край. У списка высота одна при
-     * любом их числе.
+     * Одна строка, а не облако кнопок. Плашки занимали столько строк,
+     * сколько тем накопилось, и высота блока росла вместе со словарём:
+     * при одиннадцати темах на телефоне это 180 точек против 42, и
+     * тренажёры, ради которых сюда заходят, уезжали за нижний край.
+     *
+     * И не `select`. Он был первой попыткой и решал ту же задачу, но
+     * раскрытый список рисует система: на Android он светлый, на iPhone
+     * это вовсе колесо снизу экрана. Ни то ни другое к тёмной теме
+     * приложения отношения не имеет, и стилями это не лечится — раскрытую
+     * часть `select` браузер не отдаёт.
+     *
+     * Поэтому строка открывает обычный диалог приложения — тот же, что у
+     * лиг и подтверждений. Он наш от рамки до кнопок и одинаков везде.
      */
     renderTopicPicker: async () => {
         const studied = await dbService.getStudiedWords();
         if (studied.length === 0) return '';
 
-        const counts = new Map();
-        for (const w of studied) {
-            const topic = String(w.topic ?? '').trim();
-            if (topic) counts.set(topic, (counts.get(topic) || 0) + 1);
-        }
+        const counts = room._topicCounts(studied);
 
         // Одна тема на весь словарь — выбирать не из чего
         if (counts.size < 2) return '';
@@ -138,30 +142,56 @@ export const room = {
         // Выбранной темы могло не остаться после удаления слов
         if (room.topic && !counts.has(room.topic)) room.topic = '';
 
-        const option = (value, label, count) => `
-            <option value="${actions.attr(value)}" ${room.topic === value ? 'selected' : ''}>
-                ${actions.attr(label)} · ${count}
-            </option>`;
-
-        const options = [...counts.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .map(([topic, count]) => option(topic, topic, count))
-            .join('');
+        const выбрано = room.topic || t('room.allTopics');
+        const сколько = room.topic ? counts.get(room.topic) : studied.length;
 
         return `
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg mb-6">
-                <label for="room-topic" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">${t('room.topicLabel')}</label>
-                <select id="room-topic" onchange="room.pickTopic(this)"
-                    class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 outline-none focus:border-amber-500 text-sm font-medium transition-colors">
-                    ${option('', t('room.allTopics'), studied.length)}
-                    ${options}
-                </select>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">${t('room.topicLabel')}</div>
+                <button onclick="room.openTopicPicker()"
+                    class="w-full flex items-center justify-between gap-3 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-left hover:border-amber-500 active:scale-[0.99] transition-all">
+                    <span class="text-sm font-bold text-slate-100 truncate">${actions.attr(выбрано)}</span>
+                    <span class="shrink-0 flex items-center gap-2">
+                        <span class="text-xs font-bold text-amber-500">${сколько}</span>
+                        <i class="fa-solid fa-chevron-down text-slate-500 text-[10px]"></i>
+                    </span>
+                </button>
             </div>`;
     },
 
-    /** Выбор темы: из списка приходит сам select, из старой разметки — кнопка. */
-    pickTopic: async (el) => {
-        room.topic = (el.tagName === 'SELECT' ? el.value : el.dataset.topic) ?? '';
+    /** Сколько пройденных слов в каждой теме. */
+    _topicCounts: (studied) => {
+        const counts = new Map();
+        for (const w of studied) {
+            const topic = String(w.topic ?? '').trim();
+            if (topic) counts.set(topic, (counts.get(topic) || 0) + 1);
+        }
+        return counts;
+    },
+
+    openTopicPicker: async () => {
+        const studied = await dbService.getStudiedWords();
+        const counts = room._topicCounts(studied);
+
+        const темы = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+
+        // Значение выбранной темы — пустая строка, а её dialog.choose
+        // вернуть не может: пустая строка неотличима от отмены. Поэтому
+        // «все темы» ходят под своим ключом
+        const ВСЕ = ' все';
+
+        const выбор = await dialog.choose('', [
+            { value: ВСЕ, label: `${t('room.allTopics')} · ${studied.length}`, primary: !room.topic },
+            ...темы.map(([topic, count]) => ({
+                value: topic,
+                label: `${topic} · ${count}`,
+                primary: room.topic === topic
+            }))
+        ], { title: t('room.topicLabel') });
+
+        if (выбор === null) return;          // отмена — ничего не меняем
+
+        room.topic = выбор === ВСЕ ? '' : выбор;
         await room.render();
     },
 
