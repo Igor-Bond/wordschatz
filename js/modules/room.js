@@ -115,6 +115,12 @@ export const room = {
      * Список — только из пройденных слов: предлагать темы, к которым ещё
      * не приступали, значит обещать тренировку, которой не будет. Рядом
      * с названием стоит, сколько слов доступно.
+     *
+     * Выпадающий список, а не облако кнопок. Кнопки занимали столько
+     * строк, сколько тем накопилось, и высота блока росла вместе со
+     * словарём: к десятку тем над тренажёрами оказывалась стена плашек,
+     * а сами тренажёры уезжали за нижний край. У списка высота одна при
+     * любом их числе.
      */
     renderTopicPicker: async () => {
         const studied = await dbService.getStudiedWords();
@@ -132,34 +138,30 @@ export const room = {
         // Выбранной темы могло не остаться после удаления слов
         if (room.topic && !counts.has(room.topic)) room.topic = '';
 
-        const chip = (value, label, count) => `
-            <button data-action="room.pickTopic" data-topic="${actions.attr(value)}"
-                class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-all active:scale-95 ${
-                    room.topic === value
-                        ? 'bg-amber-500 border-amber-500 text-slate-900'
-                        : 'bg-slate-900 border-slate-600 text-slate-300 hover:border-amber-500 hover:text-amber-500'
-                }">
-                ${actions.attr(label)} <span class="opacity-60">${count}</span>
-            </button>`;
+        const option = (value, label, count) => `
+            <option value="${actions.attr(value)}" ${room.topic === value ? 'selected' : ''}>
+                ${actions.attr(label)} · ${count}
+            </option>`;
 
-        const chips = [...counts.entries()]
+        const options = [...counts.entries()]
             .sort((a, b) => b[1] - a[1])
-            .map(([topic, count]) => chip(topic, topic, count))
+            .map(([topic, count]) => option(topic, topic, count))
             .join('');
 
         return `
             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg mb-6">
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">${t('room.topicLabel')}</div>
-                <div class="flex flex-wrap gap-2">
-                    ${chip('', t('room.allTopics'), studied.length)}
-                    ${chips}
-                </div>
+                <label for="room-topic" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">${t('room.topicLabel')}</label>
+                <select id="room-topic" onchange="room.pickTopic(this)"
+                    class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2.5 outline-none focus:border-amber-500 text-sm font-medium transition-colors">
+                    ${option('', t('room.allTopics'), studied.length)}
+                    ${options}
+                </select>
             </div>`;
     },
 
-    /** Экранирование для подстановки в атрибут onclick. */
+    /** Выбор темы: из списка приходит сам select, из старой разметки — кнопка. */
     pickTopic: async (el) => {
-        room.topic = el.dataset.topic ?? '';
+        room.topic = (el.tagName === 'SELECT' ? el.value : el.dataset.topic) ?? '';
         await room.render();
     },
 
