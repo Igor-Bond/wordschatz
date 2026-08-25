@@ -143,6 +143,36 @@ export const srs = {
         };
     },
 
+    /**
+     * Переносит расчёт в само слово и считает повторение состоявшимся.
+     *
+     * Одно место на оба источника оценки: самооценку на карточке и ответ
+     * в упражнении. Раньше расписание умела двигать только карточка, а
+     * упражнение — самый содержательный ответ из двух — не влияло на срок
+     * возврата слова вовсе.
+     *
+     * Слово меняется на месте; сохраняет его вызывающий.
+     *
+     * @param {Object} word слово из базы
+     * @param {number} quality 1..4
+     * @returns {Object} то же слово
+     */
+    applyTo: (word, quality) => {
+        const next = srs.calculate(quality, word);
+
+        word.interval = next.interval;
+        word.ease = next.ease;
+        word.phase = next.phase;
+        word.stepIndex = next.stepIndex;
+        word.nextReview = next.nextReview;
+        word.repetitions = (word.repetitions || 0) + 1;
+
+        // Слово тронули — оно больше не «ждёт своего дня»
+        if (word.status === 'pending' || word.status === 'new') word.status = 'learning';
+
+        return word;
+    },
+
     /** Человекочитаемый срок следующего показа — для подписей на кнопках. */
     describeNext: (quality, word) => {
         const result = srs.calculate(quality, word);

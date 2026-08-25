@@ -218,19 +218,107 @@ export const scheduler = {
      * Без него словарь на 500 слов однажды выдаёт урок на 200 карточек,
      * пользователь его не проходит, долг растёт дальше. Самые просроченные
      * идут первыми, остальные подождут до завтра.
+     *
+     * Множитель — восемь, а был пять, и пять был занижен по арифметике.
+     * Интервалы растут как 1, 3, 8, 20, 50, 125, 313 дней, и карточек с
+     * интервалом I накапливается ровно I×норма, каждая просит повторения
+     * раз в I дней. Значит каждая ступень интервала даёт ровно «норму»
+     * повторений в день, а ступеней к году набирается семь, дальше
+     * восемь. При норме 10 это 70–80 повторений в день, а потолок стоял
+     * на 50: тридцать штук ежедневно уезжали в долг, и долг только рос.
+     *
+     * Восемь норм закрывают зрелую нагрузку целиком. Урок от этого не
+     * растянулся: слово теперь проходит его один раз, а не два.
      */
-    getReviewLimit: (dailyGoal) => Math.max(20, dailyGoal * 5),
+    getReviewLimit: (dailyGoal) => Math.max(30, dailyGoal * 8),
+
+    // ======================================================
+    //  Норма новых слов под силы человека
+    // ======================================================
+
+    /** Сколько дней подряд терпим перенос, прежде чем снизить норму. */
+    OVERLOAD_LIMIT: 3,
+
+    /** Ступени дневной нормы — те же, что в настройках. */
+    GOAL_STEPS: [5, 10, 15, 20],
+
+    /** Ближайшая ступень вниз. С нижней уже некуда. */
+    lowerGoal: (goal) => {
+        const ниже = scheduler.GOAL_STEPS.filter(g => g < goal);
+        return ниже.length ? ниже[ниже.length - 1] : goal;
+    },
+
+    /**
+     * Решение о норме по итогам дня.
+     *
+     * Норма новых слов и потолок повторений были двумя независимыми
+     * числами, и это главная беда расписания: сколько новых слов брать,
+     * человек выбирает один раз, а расплачивается за это через полгода,
+     * когда повторения от них созреют. К тому времени связь между
+     * причиной и следствием уже не видна.
+     *
+     * Поэтому норма подчиняется факту: не помещаются повторения три дня
+     * подряд — норма опускается на ступень. Вверх сама не идёт: поднимать
+     * себе нагрузку человек должен осознанно, а не по случайной удачной
+     * неделе.
+     *
+     * Функция чистая — состояние читает и пишет вызывающий.
+     */
+    overloadDecision: ({ postponed = 0, goal = 10, streak = 0 } = {}) => {
+        const набежало = postponed > 0 ? streak + 1 : 0;
+
+        if (набежало < scheduler.OVERLOAD_LIMIT) {
+            return { streak: набежало, goal, lowered: null };
+        }
+
+        const ниже = scheduler.lowerGoal(goal);
+
+        // Ниже нижней ступени не опускаем: там уже не норма виновата
+        if (ниже === goal) return { streak: набежало, goal, lowered: null };
+
+        return { streak: 0, goal: ниже, lowered: { from: goal, to: ниже } };
+    },
+
+    /** Ключи, под которыми живёт счётчик перегрузок. */
+    OVERLOAD_STREAK_KEY: 'overload_streak',
+    OVERLOAD_DATE_KEY: 'overload_date',
+
+    /**
+     * Проверка перегрузки — раз в сутки.
+     *
+     * План строится при каждой отрисовке экрана, а считать день можно
+     * только один раз, иначе счётчик набежит за один вечер.
+     */
+    _applyOverload: (postponed) => {
+        const today = dateUtils.today();
+        if (config.get(scheduler.OVERLOAD_DATE_KEY) === today) return null;
+
+        const решение = scheduler.overloadDecision({
+            postponed: postponed,
+            goal: config.getProfile().dailyGoal,
+            streak: parseInt(config.get(scheduler.OVERLOAD_STREAK_KEY) || '0')
+        });
+
+        config.set(scheduler.OVERLOAD_DATE_KEY, today);
+        config.set(scheduler.OVERLOAD_STREAK_KEY, String(решение.streak));
+
+        if (решение.lowered) config.set('daily_goal', String(решение.goal));
+
+        return решение.lowered;
+    },
 
     getDailyPlan: async () => {
-        const profile = config.getProfile();
-        const dailyGoal = profile.dailyGoal;
-
         const allDue = await dbService.getWordsToReview();
-        const reviewLimit = scheduler.getReviewLimit(dailyGoal);
+        const reviewLimit = scheduler.getReviewLimit(config.getProfile().dailyGoal);
         const review = allDue
             .sort((a, b) => a.nextReview - b.nextReview)
             .slice(0, reviewLimit);
         const postponedReviews = allDue.length - review.length;
+
+        // Норму проверяем до того, как набирать новые слова: если она
+        // сегодня опустилась, пусть опустится уже сегодня, а не завтра
+        const goalLowered = scheduler._applyOverload(postponedReviews);
+        const dailyGoal = config.getProfile().dailyGoal;
 
         const activeCycle = await dbService.getActiveCycle();
         let dayPlan = null;
@@ -280,6 +368,7 @@ export const scheduler = {
             dayPlan: dayPlan,
             cycle: activeCycle,
             postponedReviews: postponedReviews,
+            goalLowered: goalLowered,
             total: review.length + newWords.length
         };
     },

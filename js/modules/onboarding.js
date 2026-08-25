@@ -59,43 +59,27 @@ export const onboarding = {
 
     clearDraft: () => localStorage.removeItem(onboarding.DRAFT_KEY),
 
+    /*
+     * Первый запуск больше не уходит из приложения.
+     *
+     * Здесь был разбор возврата с входа переходом по адресу: черновик,
+     * пометка о переходе, сообщение о неудаче. Всё это существовало
+     * только потому, что вход стоял шестым шагом мастера и уводил на
+     * чужой домен посреди настройки. Вход переехал в профиль, уходить
+     * стало некуда — и разбирать нечего.
+     *
+     * Черновик оставлен: он спасает введённое, если приложение закрыли
+     * или обновили на середине.
+     */
     start: async () => {
         const view = document.getElementById('onboarding-view');
         view.classList.remove('hidden');
         view.classList.add('flex', 'flex-col');
 
-        // Возврат с входа переходом: поднимаем то, что успели ввести
         const восстановлен = onboarding.loadDraft();
         if (!восстановлен) onboarding.data.uiLang = i18n.language;
 
         onboarding.renderStep();
-
-        // Спрашиваем облако, только если мы действительно уходили на вход
-        // переходом по адресу. Раньше условием было «есть черновик и стоит
-        // отметка о прошлом входе» — и сообщение о неудаче видел всякий, у
-        // кого просто остался незаконченный первый запуск.
-        if (!auth.takeRedirectFlag()) return;
-
-        const user = await auth.restore().catch(() => null);
-        if (user) return await onboarding.finish();
-
-        // Не вышло — отметку снимаем, иначе каждый запуск будет поднимать
-        // SDK впустую. Причина почти всегда одна, и она не в пользователе
-        auth._rememberSignIn(false);
-
-        // На iPhone совет «попробуйте ещё раз» бесполезен: там возврат не
-        // доходит по устройству браузера, а не по случайности. Единственный
-        // рабочий путь — войти в обычном браузере
-        onboarding.showSignInError(
-            auth._redirectLikelyFails() ? t('auth.redirectFailedIOS') : t('auth.redirectFailed')
-        );
-    },
-
-    showSignInError: (message) => {
-        const error = document.getElementById('ob-signin-error');
-        if (!error) return;
-        error.textContent = message;
-        error.classList.remove('hidden');
     },
 
     renderStep: () => {
@@ -106,75 +90,52 @@ export const onboarding = {
             3: onboarding.renderLevel,
             4: onboarding.renderPace,
             5: onboarding.renderApiKey,
-            6: onboarding.renderSignIn
+            6: onboarding.renderCloudInfo
         };
 
         view.innerHTML = (steps[onboarding.step] || onboarding.renderName)();
 
         if (onboarding.step === 4) onboarding.bindGoalHighlight();
-
-        // Шаг входа: греем SDK заранее, чтобы нажатие не ждало 255 КБ
-        // и всплывающее окно не успело стать заблокированным
-        if (onboarding.step === 6) auth.warmUp();
     },
 
     /**
-     * Шаг 6. Вход в аккаунт (§37).
+     * Шаг 6. Рассказ про облако — без входа.
      *
-     * Стоит последним и его можно пропустить: приложение полностью работает
-     * локально, а вход нужен только для синхронизации между устройствами.
-     * Заставлять входить ради первого урока незачем.
+     * Вход отсюда убран. На iPhone во встроенном приложении всплывающее
+     * окно не открывается вовсе, остаётся переход по адресу, а он уводит
+     * на домен Firebase и возвращает обратно — посреди первого запуска,
+     * с недозаполненным черновиком. Работало это через раз, и первое, что
+     * человек видел о приложении, была невнятная неудача.
+     *
+     * Синхронизация от этого никуда не делась: она в профиле, и войти
+     * можно в любой момент — тогда уже на спокойную голову и в
+     * приложении, которое успело показать, что оно умеет. Здесь только
+     * рассказываем, что такая возможность есть и где её искать.
      */
-    renderSignIn: () => `
+    renderCloudInfo: () => `
         <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
-            <div class="text-center mb-8">
+            <div class="text-center mb-7">
                 <i class="fa-solid fa-cloud-arrow-up text-5xl text-amber-500 mb-4"></i>
                 <h2 class="text-2xl font-bold text-slate-100">${t('auth.title')}</h2>
                 <p class="text-sm text-slate-400 mt-3 leading-relaxed">${t('auth.hint')}</p>
             </div>
 
-            <button onclick="onboarding.signIn()" id="ob-signin-btn"
-                class="w-full py-4 bg-white hover:bg-slate-100 text-slate-800 text-base font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3">
-                <svg viewBox="0 0 48 48" class="w-5 h-5" aria-hidden="true">
-                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.7 6.9l7.3 5.7c4.3-3.9 6.8-9.7 6.8-17.1z"/>
-                    <path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/>
-                    <path fill="#34A853" d="M24 48c6.3 0 11.7-2.1 15.6-5.7l-7.3-5.7c-2 1.4-4.7 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/>
-                </svg>
-                ${t('auth.signIn')}
-            </button>
-
-            <p id="ob-signin-error" class="hidden text-xs text-red-400 text-center mt-3"></p>
+            <div class="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 space-y-3 mb-7">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-shield-halved text-amber-500 mt-0.5 w-4 text-center"></i>
+                    <p class="text-[13px] text-slate-300 leading-relaxed">${t('auth.whereToFind')}</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-hard-drive text-slate-500 mt-0.5 w-4 text-center"></i>
+                    <p class="text-[13px] text-slate-400 leading-relaxed">${t('auth.worksOffline')}</p>
+                </div>
+            </div>
 
             <button onclick="onboarding.finish()"
-                class="w-full mt-4 py-3 text-slate-500 hover:text-slate-300 text-sm font-bold transition-colors">
-                ${t('auth.skip')}
+                class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 text-lg font-black rounded-xl shadow-lg transition-transform active:scale-95">
+                ${t('onboarding.finish')}
             </button>
         </div>`,
-
-    signIn: async () => {
-        const btn = document.getElementById('ob-signin-btn');
-        const error = document.getElementById('ob-signin-error');
-
-        btn.disabled = true;
-        btn.classList.add('opacity-60');
-        error.classList.add('hidden');
-
-        // Сохраняем до вызова: если вход уйдёт переходом по адресу, эта
-        // строка будет последней, что успеет выполниться на странице
-        onboarding.saveDraft();
-
-        try {
-            const user = await auth.signIn();
-            // При входе переходом по адресу страница перезагрузится сама
-            if (user) await onboarding.finish();
-        } catch (e) {
-            error.textContent = e.message;
-            error.classList.remove('hidden');
-            btn.disabled = false;
-            btn.classList.remove('opacity-60');
-        }
-    },
 
     // --- Шаг 1. Имя ---
     renderName: () => `

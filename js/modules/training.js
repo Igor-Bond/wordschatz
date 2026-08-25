@@ -46,10 +46,38 @@ export const training = {
         }
 
         if (training.state.status === 'not_started') {
-            // ФИКС: Замораживаем очереди слов на весь урок и сохраняем их в Lesson State
-            training.state.data.reviewQueue = plan.review;
+            /*
+             * Одно извлечение на слово за урок.
+             *
+             * Раньше каждое слово проходило урок дважды: сперва карточкой
+             * с самооценкой, через несколько минут — упражнением. Второе
+             * извлечение почти ничего не добавляло: прочность следа даёт
+             * разнесённость во времени, а здесь между попытками были
+             * минуты. Стоило это половины урока — при десяти новых словах
+             * в день зрелая нагрузка выходила за двадцать минут вместо
+             * обещанных пятнадцати.
+             *
+             * Теперь тип извлечения выбирается по этапу слова:
+             *
+             *   узнавание           — карточка с самооценкой. Спрашивать
+             *                         вводом слово, которое человек видел
+             *                         дважды, рано;
+             *   закрепление и выше  — упражнение, и его результат сам
+             *                         двигает расписание (см. awardXP);
+             *   новое слово         — карточка и сразу упражнение. Тут
+             *                         это не повтор: карточка показывает,
+             *                         упражнение спрашивает в первый раз.
+             */
+            const поКарточке = plan.review.filter(w => exercises.getStage(w) === 'recognition');
+            const поЗаданию = plan.review.filter(w => exercises.getStage(w) !== 'recognition');
+
+            training.state.data.reviewQueue = поКарточке;
             training.state.data.newWordsQueue = plan.newWords;
-            training.state.data.practiceQueue = [...plan.review, ...plan.newWords];
+            training.state.data.practiceQueue = [...поЗаданию, ...plan.newWords];
+
+            // Чьё расписание двигает ответ в упражнении: новые слова уже
+            // получили оценку карточкой, второй раз считать нельзя
+            training.state.data.scheduleByExercise = поЗаданию.map(w => w.id);
             // Запоминаем день учебного цикла, чтобы отметить его выполненным в конце
             training.state.data.dayPlanId = plan.dayPlan ? plan.dayPlan.id : null;
 
@@ -214,6 +242,10 @@ export const training = {
         
         // --- ИНТЕГРАЦИЯ УПРАЖНЕНИЙ (ЭТАП 2.2) ---
         if (training.state.status === 'practice') {
+            // Слова, для которых упражнение — единственное извлечение за
+            // урок: их расписание двигает именно оно
+            exercises.schedulingIds = new Set(training.state.data.scheduleByExercise || []);
+
             exercises.start(training.queue, training.currentIndex, async () => {
                 await training.finishLesson();
                 training.state.status = 'completed';
@@ -507,20 +539,11 @@ export const training = {
     rate: async (quality) => {
         let word = training.currentWord;
         
-        const srsData = srs.calculate(quality, word);
-        word.interval = srsData.interval;
-        word.ease = srsData.ease;
-        word.phase = srsData.phase;
-        word.stepIndex = srsData.stepIndex;
-        word.nextReview = srsData.nextReview;
-        word.repetitions += 1;
+        srs.applyTo(word, quality);
 
         // «Снова» и «Трудно» — это не вспомнил или вспомнил с трудом,
         // освоенность от них расти не должна
         masteryUtils.registerAnswer(word, quality >= 3);
-
-        // Слово тронули — оно больше не «ждёт своего дня»
-        if (word.status === 'pending' || word.status === 'new') word.status = 'learning';
 
         await dbService.putWord(word);
 

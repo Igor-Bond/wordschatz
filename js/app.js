@@ -47,9 +47,31 @@ export const app = {
     restoreCloudSession: async () => {
         if (!auth.isConfigured()) return;
 
+        // Уходили ли мы на вход переходом по адресу. Пометку забираем до
+        // восстановления: она одноразовая, и второй попытки не будет
+        const ушлиНаВход = auth.takeRedirectFlag();
+
         try {
             const user = await auth.restore();
-            if (!user) return;
+
+            if (!user) {
+                /*
+                 * Вернулись со входа ни с чем.
+                 *
+                 * Разбор этого случая переехал сюда из первого запуска
+                 * вместе с самим входом. Молчать нельзя: человек нажал
+                 * кнопку, его увело на страницу Google и вернуло обратно
+                 * в приложение без единого слова о том, чем дело
+                 * кончилось.
+                 */
+                if (ушлиНаВход) {
+                    auth._rememberSignIn(false);
+                    await dialog.alert(auth._redirectLikelyFails()
+                        ? t('auth.redirectFailedIOS')
+                        : t('auth.redirectFailed'));
+                }
+                return;
+            }
 
             await sync.run({ silent: true });
         } catch (e) {

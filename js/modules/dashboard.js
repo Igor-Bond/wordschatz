@@ -208,6 +208,20 @@ export const dashboard = {
                         </p>
                     ` : ''}
 
+                    <!--
+                        Норма снизилась сама — надо сказать, почему.
+                        Молча уменьшенное число выглядит поломкой, а не
+                        заботой, и человек полезет чинить его обратно.
+                    -->
+                    ${plan.goalLowered ? `
+                        <div class="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 -mt-1">
+                            <i class="fa-solid fa-gauge-high text-amber-500 mt-0.5"></i>
+                            <p class="text-[11px] text-amber-200/90 leading-relaxed">
+                                ${t('dashboard.goalLowered', { from: plan.goalLowered.from, to: plan.goalLowered.to })}
+                            </p>
+                        </div>
+                    ` : ''}
+
                     <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
                         <div class="flex items-center gap-3">
                             <i class="fa-solid fa-seedling text-green-400 text-lg"></i>

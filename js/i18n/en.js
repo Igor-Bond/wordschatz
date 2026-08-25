@@ -83,9 +83,9 @@ export const en = {
     },
 
     goals: {
-        5: '~ 5 min a day (Easy start)',
-        10: '~ 15 min a day (Standard)',
-        15: '~ 25 min a day (Intensive)',
+        5: '~ 10 min a day (Easy start)',
+        10: '~ 18 min a day (Standard)',
+        15: '~ 27 min a day (Intensive)',
         20: '~ 35 min a day (Hardcore)'
     },
 
@@ -146,6 +146,7 @@ export const en = {
         review: 'Review',
         newWords: 'New words',
         postponed: '{count} more queued — postponed so the lesson stays finite',
+        goalLowered: 'New words per day lowered from {from} to {to}: reviews did not fit into the lesson three days running. Fewer words, but the ones you have keep holding. You can raise it back in settings.',
         startLesson: 'START LESSON ({count})',
         planDone: 'PLAN COMPLETE 🎉'
     },
@@ -236,8 +237,9 @@ export const en = {
         signedInAs: 'Signed in as {email}',
         notSignedIn: 'Not signed in — data stays on this device only',
         title: 'Sync across devices',
-        hint: 'Sign in to keep your dictionary and progress available on other devices. Without signing in the app works as before, everything stays here.',
-        skip: 'Continue without signing in',
+        hint: 'Your dictionary and progress can live in the cloud — then they open on another phone or a computer too. You set that up later, inside the app.',
+        whereToFind: 'You can turn it on any time: “Profile” in the bottom menu — the “Sign in with Google” button. This step was removed here on purpose: signing in leaves for a Google page and comes back, and mid-setup that return does not work on every phone.',
+        worksOffline: 'Without signing in the app works in full: dictionary, lessons and progress live on the device. The cloud is only needed to open them on another phone or computer.',
         notConfigured: 'Firebase is not configured: js/firebase.config.js is missing',
         popupClosed: 'Sign-in window was closed',
         network: 'Cannot reach Google. Check your connection.',

@@ -4,6 +4,7 @@ import { quiz } from '../core/quiz.js';
 import { declension } from '../core/declension.js';
 import { speech } from '../core/speech.js';
 import { masteryUtils } from '../core/mastery.js';
+import { srs } from '../core/srs.js';
 import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
@@ -942,12 +943,36 @@ export const exercises = {
     },
 
     /**
+     * Слова, чьё расписание двигает ответ в упражнении.
+     *
+     * Заполняет урок перед шагом упражнений: туда попадают те слова, для
+     * которых упражнение — единственное извлечение за урок. Новые слова
+     * сюда не входят, их уже оценили карточкой.
+     */
+    schedulingIds: null,
+
+    /**
+     * Двигать ли расписание слова по ответу в упражнении.
+     *
+     * Прежде расписание умела двигать только самооценка на карточке —
+     * «Снова / Трудно / Хорошо / Легко». Это перевёрнуто: самооценка
+     * ненадёжна, человек систематически переоценивает своё знание, когда
+     * ответ только что был перед глазами. Ответ в упражнении объективен
+     * и предсказывает лучше — а не влиял ни на что.
+     *
+     * Свободная тренировка и экзамен расписание не трогают: там слово
+     * спрашивают вне очереди, и сдвигать от этого сроки нельзя.
+     */
+    _movesSchedule: (word) => !exercises.exam
+        && !exercises.isRoomMode
+        && !!exercises.schedulingIds?.has(word?.id),
+
+    /**
      * Начисление опыта за задание.
      *
      * Раньше XP давали только карточки и экзамен — половина урока
      * (все девять типов упражнений) не вознаграждалась вовсе.
-     */
-    /**
+     *
      * @param {boolean} isCorrect засчитать ответ верным в истории слова
      * @param {object} [options]
      * @param {number} [options.xp] начислить столько вместо обычного
@@ -999,19 +1024,28 @@ export const exercises = {
                 const stored = (await dbService.getWordById(word.id)) || word;
                 masteryUtils.registerAnswer(stored, isCorrect);
 
-                await dbService.updateWord(word.id, {
+                const поля = {
                     recent: stored.recent,
                     attempts: stored.attempts,
                     correct: stored.correct,
                     mastery: stored.mastery
-                });
+                };
 
-                Object.assign(word, {
-                    recent: stored.recent,
-                    attempts: stored.attempts,
-                    correct: stored.correct,
-                    mastery: stored.mastery
-                });
+                if (exercises._movesSchedule(word)) {
+                    srs.applyTo(stored, isCorrect ? 3 : 1);
+                    Object.assign(поля, {
+                        interval: stored.interval,
+                        ease: stored.ease,
+                        phase: stored.phase,
+                        stepIndex: stored.stepIndex,
+                        nextReview: stored.nextReview,
+                        repetitions: stored.repetitions,
+                        status: stored.status
+                    });
+                }
+
+                await dbService.updateWord(word.id, поля);
+                Object.assign(word, поля);
             } catch (e) {
                 console.error('Не удалось сохранить результат ответа:', e);
             }
