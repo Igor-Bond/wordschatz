@@ -61,7 +61,7 @@ export const exercises = {
          * предложения из данных слов и окончание прилагательного —
          * последнее считается правилом и знания слова не требует вовсе.
          */
-        recognition: ['translation_de_ru', 'translation_ru_de', 'match_pairs', 'article', 'sentence_builder', 'adjective_ending'],
+        recognition: ['translation_de_ru', 'translation_ru_de', 'match_pairs', 'article', 'sentence_builder', 'word_builder', 'adjective_ending'],
 
         /*
          * Выбор потруднее плюс первые задания с вводом.
@@ -78,7 +78,7 @@ export const exercises = {
          * кроме соседей по словарю. По сложности это шаг вбок, а не вверх, —
          * и он честно оплачен тем, что иначе выбирать не из чего.
          */
-        consolidation: ['translation_ru_de', 'match_pairs', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending', 'sentence_builder'],
+        consolidation: ['translation_ru_de', 'match_pairs', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending', 'sentence_builder', 'word_builder'],
 
         // Написать самому
         production: ['translation_ru_de_input', 'verb_form', 'fill_blanks', 'listening', 'sentence_builder', 'adjective_ending']
@@ -112,20 +112,37 @@ export const exercises = {
         let pool = preferred.length ? preferred : validModes;
 
         /*
-         * Не тот же тип, что в прошлый раз.
+         * Не то же, что в прошлый раз, — и не то же на вид.
          *
-         * Выбор случаен, и при пуле из двух-трёх типов он охотно
-         * повторяется: из двух вариантов один и тот же выпадает каждый
-         * второй раз, а подряд — каждый четвёртый. Урок кажется
-         * однообразнее, чем он есть на самом деле.
+         * Сперва здесь исключался ровно прошлый тип. Этого мало: у
+         * нового слова без рода и примера доступны три типа, и два из
+         * них — выбор перевода в одну и в другую сторону — для глаза
+         * неотличимы, те же четыре кнопки. Правило исправно чередовало
+         * их между собой, и человек видел «пары и выбор из четырёх»,
+         * то есть два задания вместо десяти.
          *
-         * Если, исключив прошлый тип, не остаётся ничего — значит выбора
-         * и правда нет, и повтор честен.
+         * Поэтому исключается всё семейство прошлого типа.
+         *
+         * Если после этого не остаётся ничего — значит выбора и правда
+         * нет, и повтор честен.
          */
-        const другие = pool.filter(m => m !== word?.lastMode);
+        const прошлое = exercises.MODE_FAMILY[word?.lastMode] || word?.lastMode;
+        const другие = pool.filter(m => (exercises.MODE_FAMILY[m] || m) !== прошлое);
         if (другие.length) pool = другие;
 
         return quiz.shuffle(pool)[0];
+    },
+
+    /**
+     * Типы, неразличимые на вид, — под одним именем.
+     *
+     * Оба перевода выбором это одни и те же четыре кнопки, отличается
+     * только язык вопроса. Для памяти это разные задания — узнать и
+     * припомнить, — а для глаза одно и то же.
+     */
+    MODE_FAMILY: {
+        translation_de_ru: 'выбор перевода',
+        translation_ru_de: 'выбор перевода'
     },
 
     queue: [],
@@ -152,7 +169,10 @@ export const exercises = {
         selected: [],
         correct: [],
 
-        /** Сколько раз предложение собрали неверно. */
+        /** Чем склеивать куски обратно: пробел для слов, пусто для букв. */
+        separator: ' ',
+
+        /** Сколько раз собрали неверно. */
         attempts: 0,
 
         /** Первая неверная сборка — она и попадёт в разбор ошибок. */
@@ -229,6 +249,15 @@ export const exercises = {
 
         if ((!hasRequested || requested.includes('fill_blanks')) && word.example_de) validModes.push('fill_blanks');
         if ((!hasRequested || requested.includes('sentence_builder')) && word.example_de) validModes.push('sentence_builder');
+
+        // Сборка слова из букв держится на одном лишь слове, поэтому
+        // доступна всегда — ради этого и заведена, см. renderWordBuilder.
+        // Слова короче трёх букв пропускаем: складывать «Ei» нечего
+        if ((!hasRequested || requested.includes('word_builder'))
+            && germanUtils.stripArticle(word).replace(/\s/g, '').length > 2) {
+            validModes.push('word_builder');
+        }
+
         // Аудирование только если есть чем читать: без немецкого голоса
         // задание превращается в «запишите тишину»
         if ((!hasRequested || requested.includes('listening')) && word.word && await speech.isAvailable()) {
@@ -258,6 +287,7 @@ export const exercises = {
         else if (exType === 'verb_form') block = exercises.renderVerbQuiz(word);
         else if (exType === 'fill_blanks') block = await exercises.renderFillBlanksQuiz(word);
         else if (exType === 'sentence_builder') block = exercises.renderSentenceBuilder(word);
+        else if (exType === 'word_builder') block = exercises.renderWordBuilder(word);
         else if (exType === 'listening') block = exercises.renderListeningQuiz(word);
         else if (exType === 'rektion') block = exercises.renderRektionQuiz(word);
         else if (exType === 'adjective_ending') block = exercises.renderAdjectiveEnding(word);
@@ -674,12 +704,19 @@ export const exercises = {
         `;
     },
 
-    renderSentenceBuilder: (word) => {
-        const cleanSentence = word.example_de.replace(/[.,!?]/g, '');
-        const words = cleanSentence.split(' ').filter(w => w.length > 0);
-        
-        exercises.builderState.correct = [...words];
-        exercises.builderState.words = quiz.shuffle(words);
+    /**
+     * Общий сборщик: выложить целое из перемешанных кусков.
+     *
+     * Один движок на два задания. Предложение собирается из слов,
+     * слово — из букв; разница только в том, чем куски склеиваются
+     * обратно, и в подписях. Заводить для букв отдельную копию с теми
+     * же пересборками, штрафами и пропуском было бы вернейшим способом
+     * получить два расходящихся задания.
+     */
+    _renderBuilder: ({ pieces, separator, title, prompt, hint, tile }) => {
+        exercises.builderState.correct = [...pieces];
+        exercises.builderState.words = quiz.shuffle(pieces);
+        exercises.builderState.separator = separator;
         exercises.builderState.selected = [];
         exercises.builderState.answered = false;
         exercises.builderState.attempts = 0;
@@ -687,26 +724,60 @@ export const exercises = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6">
-                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${t('exercises.buildSentence')}</h3>
-                <p class="text-slate-400 text-sm mb-4 text-center border-b border-slate-700 pb-4">${word.example_ru || word.translation}</p>
-                
+                <h3 class="text-sm font-bold text-slate-400 mb-6 text-center">${title}</h3>
+                <p class="text-slate-400 text-sm mb-4 text-center border-b border-slate-700 pb-4">${prompt}</p>
+
                 <div id="sb-target" class="min-h-[60px] bg-slate-900/50 rounded-xl border border-slate-600 p-3 mb-2 flex flex-wrap gap-2 content-start"></div>
-                <p class="text-[11px] text-slate-500 text-center mb-5">${t('exercises.builderHint')}</p>
+                <p class="text-[11px] text-slate-500 text-center mb-5">${hint}</p>
 
                 <div id="sb-source" class="flex flex-wrap gap-2 justify-center mb-6">
                     ${exercises.builderState.words.map((w, i) => `
-                        <button id="sb-word-${i}" onclick="exercises.builderAdd(${i})" class="px-4 py-2 bg-slate-800 border border-slate-600 text-slate-200 rounded-lg shadow font-medium active:scale-95 transition-transform hover:bg-slate-700">${w}</button>
+                        <button id="sb-word-${i}" onclick="exercises.builderAdd(${i})" class="${tile} bg-slate-800 border border-slate-600 text-slate-200 rounded-lg shadow active:scale-95 transition-transform hover:bg-slate-700">${exercises.escAttr(w)}</button>
                     `).join('')}
                 </div>
-                
+
                 <button onclick="exercises.skipBuilder()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 font-bold rounded-xl active:scale-95 transition-all text-sm mb-2" id="sb-skip-btn">
                     ${t('exercises.tooHardSkip')}
                 </button>
-                
+
                 <div id="ex-feedback" class="mt-2 hidden font-bold text-lg p-3 rounded-xl text-center transition-all"></div>
             </div>
         `;
     },
+
+    renderSentenceBuilder: (word) => exercises._renderBuilder({
+        pieces: word.example_de.replace(/[.,!?]/g, '').split(' ').filter(w => w.length > 0),
+        separator: ' ',
+        title: t('exercises.buildSentence'),
+        prompt: word.example_ru || word.translation,
+        hint: t('exercises.builderHint'),
+        tile: 'px-4 py-2 font-medium'
+    }),
+
+    /**
+     * Собрать слово из букв.
+     *
+     * Заведено потому, что новому слову без рода и примера доступны
+     * ровно три задания, и два из них — выбор перевода в обе стороны —
+     * для глаза одно и то же. Человек видел «пары и выбор из четырёх» и
+     * решил, что заданий в приложении два.
+     *
+     * Этому от карточки не нужно ничего, кроме самого слова, поэтому оно
+     * есть всегда. И оно про то, чего остальные задания на этом этапе не
+     * касаются вовсе, — про написание: где удвоенная согласная, где
+     * умляут, где ß.
+     *
+     * Артикль в набор букв не попадает: складывать «d-i-e» бессмысленно,
+     * на артикль есть своё задание.
+     */
+    renderWordBuilder: (word) => exercises._renderBuilder({
+        pieces: germanUtils.stripArticle(word).split(''),
+        separator: '',
+        title: t('exercises.buildWord'),
+        prompt: word.translation,
+        hint: t('exercises.wordBuilderHint'),
+        tile: 'w-11 h-11 flex items-center justify-center text-lg font-bold'
+    }),
 
     /**
      * В selected хранятся индексы слов из набора, а не сами слова.
@@ -740,10 +811,14 @@ export const exercises = {
         exercises.updateBuilderUI();
     },
 
-    /** Собранное предложение словами. */
+    /** Собранное из кусков — слова через пробел, буквы без него. */
     builderSentence: () => exercises.builderState.selected
         .map(i => exercises.builderState.words[i])
-        .join(' '),
+        .join(exercises.builderState.separator ?? ' '),
+
+    /** Правильный ответ, склеенный тем же способом. */
+    builderAnswer: () => exercises.builderState.correct
+        .join(exercises.builderState.separator ?? ' '),
 
 
     updateBuilderUI: () => {
@@ -793,7 +868,7 @@ export const exercises = {
         if (exercises.builderState.answered) return;
 
         const feedback = document.getElementById('ex-feedback');
-        const isCorrect = exercises.builderSentence() === exercises.builderState.correct.join(' ');
+        const isCorrect = exercises.builderSentence() === exercises.builderAnswer();
 
         if (!isCorrect) return exercises._builderRetry(feedback);
 
@@ -866,7 +941,7 @@ export const exercises = {
 
         document.querySelectorAll('#sb-source button, #sb-target button').forEach(b => b.disabled = true);
 
-        const correctSentence = exercises.builderState.correct.join(' ');
+        const correctSentence = exercises.builderAnswer();
 
         // Пропуск — это неответ, и в истории слова он стоит наравне с
         // неверным ответом: слово вернётся раньше. Раньше пропуск не
@@ -915,17 +990,21 @@ export const exercises = {
     },
 
     /**
-     * Строка ответа на кнопке: текст на месте, значок справа.
+     * Строка ответа на кнопке: текст ровно там, где был.
      *
-     * Значок стоял слева, а строка равнялась по центру — и в момент
-     * ответа весь текст прыгал с левого края на середину. Ответ и так
-     * заметен цветом; двигать ради него текст незачем.
+     * Прошло две попытки. Сперва значок стоял слева, а строка равнялась
+     * по центру — и текст прыгал с левого края на середину. Потом стал
+     * справа при `justify-between` — на широких кнопках выбора перевода
+     * это сработало, а на узких кнопках артикля нет: там всего три
+     * буквы, выровненные по центру, и значок с отступом сдвигал их.
+     *
+     * Теперь значок вынут из потока совсем. Текст занимает всю ширину и
+     * сохраняет то выравнивание, которое было у кнопки, — по левому краю
+     * у перевода, по центру у артикля. Двигать его нечему.
      */
     _answerRow: (text, icon = null, textClass = '') => `
-        <span class="flex items-center justify-between gap-3 w-full">
-            <span class="${textClass}">${text}</span>
-            ${icon ? `<i class="fa-solid ${icon} text-xl shrink-0"></i>` : ''}
-        </span>`,
+        <span class="block w-full ${textClass}">${text}</span>
+        ${icon ? `<i class="fa-solid ${icon} absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-80 pointer-events-none"></i>` : ''}`,
 
     checkChoice: (btn) => {
         const selected = btn.dataset.value ?? '';
@@ -939,6 +1018,9 @@ export const exercises = {
             const btnValue = b.dataset.value ?? null;
             const originalText = b.innerText.trim();
             exercises._stripColours(b);
+
+            // Значок ставится absolute — кнопке нужна точка отсчёта
+            b.classList.add('relative');
 
             if (btnValue === correct) {
                 // Без scale-105: увеличение раздвигает кнопку от середины,

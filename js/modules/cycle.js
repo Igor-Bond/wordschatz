@@ -31,6 +31,27 @@ export const cycle = {
         'microelectronics', 'electronics'
     ],
 
+    /**
+     * Интересы пользователя как темы для набора слов.
+     *
+     * Интересы спрашивают при первом запуске, а пользовались ими только
+     * примеры в карточках и рассказы в чате. В выборе темы висел
+     * неизменный список из десяти пунктов — «ремонт двигателя»,
+     * «микроэлектроника», «баскетбол», — написанный когда-то в ТЗ и не
+     * имеющий отношения к тому, что человек про себя рассказал. Он и
+     * читался как набор непонятных вкладок.
+     *
+     * Разделитель любой разумный: запятая, точка с запятой, перевод
+     * строки. Люди пишут интересы как придётся.
+     */
+    interestTopics: (interests) => [...new Set(
+        String(interests ?? '')
+            .split(/[,;\n]/)
+            .map(s => s.trim())
+            .filter(s => s.length > 1 && s.length <= 40)
+            .map(s => s[0].toUpperCase() + s.slice(1))
+    )].slice(0, 8),
+
     DURATIONS: [5, 7, 10, 14],
 
     /** Экранирование: слова приходят от ИИ и из фото, в разметку их нельзя вставлять сырыми. */
@@ -50,6 +71,7 @@ export const cycle = {
         const main = document.getElementById('main-content');
         const profile = config.getProfile();
         const wordsCount = cycle.state.days * profile.dailyGoal;
+        const свои = cycle.interestTopics(profile.interests);
 
         main.innerHTML = `
             <div class="fade-in max-w-lg mx-auto mt-2 pb-10">
@@ -67,7 +89,24 @@ export const cycle = {
                         class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 transition-colors"
                         placeholder="${cycle.esc(t('cycle.topicPlaceholder'))}" value="${cycle.esc(cycle.state.topic)}">
 
-                    <div class="flex flex-wrap gap-2 mt-3">
+                    <!--
+                        Сначала интересы человека, потом общий список.
+                        Порядок не косметический: своё узнаётся мгновенно,
+                        а чужое приходится читать.
+                    -->
+                    ${свои.length ? `
+                        <p class="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider mt-4 mb-2">${t('cycle.fromInterests')}</p>
+                        <div class="flex flex-wrap gap-2">
+                            ${свои.map(label => `
+                                <button data-action="cycle.pickTopic" data-topic="${actions.attr(label)}"
+                                    class="px-3 py-1.5 bg-amber-500/10 border border-amber-500/40 text-amber-400 text-xs font-bold rounded-lg hover:bg-amber-500/20 active:scale-95 transition-all">
+                                    ${cycle.esc(label)}
+                                </button>`).join('')}
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-4 mb-2">${t('cycle.orAnother')}</p>
+                    ` : ''}
+
+                    <div class="flex flex-wrap gap-2 ${свои.length ? '' : 'mt-3'}">
                         ${cycle.SUGGESTED_TOPIC_KEYS.map(key => {
                             const label = t('cycle.topics.' + key);
                             return `
