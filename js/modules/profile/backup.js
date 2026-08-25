@@ -84,7 +84,7 @@ export const backup = {
             // Профиль из копии поднимаем в localStorage, ключ остаётся местный
             if (data.profile) {
                 const map = { name: 'name', level: 'level', dailyGoal: 'daily_goal',
-                              interests: 'interests', model: 'model', uiLang: 'ui_lang' };
+                              interests: 'interests', model: 'model' };
                 for (const [field, key] of Object.entries(map)) {
                     if (data.profile[field] !== undefined && data.profile[field] !== null) {
                         localStorage.setItem(`ws_${key}`, data.profile[field]);

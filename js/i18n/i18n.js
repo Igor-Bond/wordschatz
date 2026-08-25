@@ -1,43 +1,36 @@
 /**
- * Локализация интерфейса (§33 ТЗ).
+ * Строки интерфейса (§33 ТЗ).
  *
- * Переключатель языка в настройках существовал с самого начала, но ничего
- * не делал: строки были вшиты в разметку по-русски.
+ * Приложение русскоязычное, и выбор языка из него убран. Раньше здесь
+ * жили три словаря, переключатель в настройках и шаг в первом запуске —
+ * а пользовался всем этим один человек, для которого русский и был
+ * родным. Английский с украинским существовали как обещание, которое
+ * никто не собирался востребовать, и стоили полутора тысяч строк
+ * перевода, требующих сопровождения при каждой новой надписи.
  *
- * Как устроено:
- *   - t('ключ') возвращает строку текущего языка, синхронно — иначе её
- *     нельзя подставить в шаблонную строку при сборке разметки;
- *   - t('ключ', { count: 5 }) подставляет параметры вида {count};
- *   - plural('ключ', 5) выбирает форму по правилам языка через Intl.PluralRules:
- *     «1 день / 2 дня / 5 дней» в русском, «1 day / 2 days» в английском;
- *   - неизвестный ключ не роняет экран: берётся русский вариант, а если нет
- *     и его — сам ключ, и в консоль уходит предупреждение.
+ * Хуже того, переключение было ловушкой: интерфейс менял язык, а уже
+ * сохранённые переводы слов оставались на прежнем. Словарь после
+ * переключения оказывался смешанным, и починить это можно было только
+ * перезаписью всех карточек. Предупреждение об этом висело в настройках
+ * рядом с самим переключателем.
  *
- * Смена языка требует перезагрузки страницы: разметка собирается строками
- * при рендере, живой перерисовки всех экранов нет.
+ * Что осталось:
+ *   - t('ключ') — строка, синхронно: её подставляют в шаблонные строки
+ *     при сборке разметки, поэтому обещание тут не годится;
+ *   - t('ключ', { count: 5 }) — подстановка параметров вида {count};
+ *   - plural('ключ', 5) — форма числа по правилам русского через
+ *     Intl.PluralRules: «1 день / 2 дня / 5 дней»;
+ *   - неизвестный ключ не роняет экран: возвращается сам ключ, а в
+ *     консоль уходит предупреждение.
  */
 
 import { ru } from './ru.js';
-import { uk } from './uk.js';
-import { en } from './en.js';
 
-const LOCALES = { ru, uk, en };
-const FALLBACK = 'ru';
+const LANGUAGE = 'ru';
 
-export const LANGUAGES = [
-    { code: 'ru', label: 'Русский' },
-    { code: 'uk', label: 'Українська' },
-    { code: 'en', label: 'English' }
-];
+/** Как называть язык пользователя в промптах к ИИ. */
+const AI_LANGUAGE = { target: 'русский', targetAcc: 'русский язык', name: 'Russian' };
 
-/** Язык, на который ИИ переводит слова и на котором обращается к пользователю. */
-const AI_LANGUAGE_NAMES = {
-    ru: { target: 'русский', targetAcc: 'русский язык', name: 'Russian' },
-    uk: { target: 'українську', targetAcc: 'українську мову', name: 'Ukrainian' },
-    en: { target: 'English', targetAcc: 'English', name: 'English' }
-};
-
-let currentLanguage = FALLBACK;
 const missingKeys = new Set();
 
 /** Достаёт значение по пути вида 'dashboard.hello'. */
@@ -54,33 +47,22 @@ function substitute(template, params) {
 
 export const i18n = {
 
+    /** Код языка — нужен Intl для дат и разбору статей Wiktionary. */
     get language() {
-        return currentLanguage;
+        return LANGUAGE;
     },
 
-    setLanguage(code) {
-        currentLanguage = LOCALES[code] ? code : FALLBACK;
-        document.documentElement.lang = currentLanguage;
-        return currentLanguage;
-    },
-
-    isSupported: (code) => !!LOCALES[code],
-
-    /** Как называть язык пользователя в промптах к ИИ. */
-    aiLanguage: () => AI_LANGUAGE_NAMES[currentLanguage] || AI_LANGUAGE_NAMES[FALLBACK],
+    aiLanguage: () => AI_LANGUAGE,
 
     t(key, params) {
-        let value = lookup(LOCALES[currentLanguage], key);
+        const value = lookup(ru, key);
 
         if (value === undefined) {
-            value = lookup(LOCALES[FALLBACK], key);
-            if (value === undefined) {
-                if (!missingKeys.has(key)) {
-                    missingKeys.add(key);
-                    console.warn(`[i18n] Нет перевода для ключа: ${key}`);
-                }
-                return key;
+            if (!missingKeys.has(key)) {
+                missingKeys.add(key);
+                console.warn(`[i18n] Нет строки для ключа: ${key}`);
             }
+            return key;
         }
 
         // Для ключей с формами множественного числа нужен plural(), а не t()
@@ -94,20 +76,20 @@ export const i18n = {
      * В словаре ключ хранится объектом: { one, few, many, other }.
      */
     plural(key, count, params) {
-        const forms = lookup(LOCALES[currentLanguage], key) || lookup(LOCALES[FALLBACK], key);
+        const forms = lookup(ru, key);
 
         if (!forms || typeof forms !== 'object') {
             return i18n.t(key, { count, ...params });
         }
 
-        const rule = new Intl.PluralRules(currentLanguage).select(count);
+        const rule = new Intl.PluralRules(LANGUAGE).select(count);
         const template = forms[rule] ?? forms.other ?? forms.many ?? forms.one;
 
         return substitute(template, { count, ...params });
     },
 
     /**
-     * Подставляет переводы в статическую разметку index.html.
+     * Подставляет строки в статическую разметку index.html.
      *   data-i18n            → текст элемента
      *   data-i18n-html       → разметка элемента
      *   data-i18n-placeholder → атрибут placeholder
@@ -134,7 +116,7 @@ export const i18n = {
         });
     },
 
-    /** Список ключей, которых не нашлось — удобно для проверки полноты перевода. */
+    /** Ключи, которых не нашлось — удобно для проверки полноты словаря. */
     getMissingKeys: () => [...missingKeys]
 };
 

@@ -13,7 +13,7 @@
  */
 
 import { config } from './config.js';
-import { i18n, t, plural, LANGUAGES } from './i18n/i18n.js';
+import { i18n, t, plural } from './i18n/i18n.js';
 import { db, dbService } from './services/db.js';
 import { aiService } from './services/ai.js';
 import { auth } from './services/auth.js';
@@ -119,10 +119,6 @@ install.onChange(() => {
     const stats = document.getElementById('prof-mode-stats');
     if (stats && !stats.classList.contains('hidden')) profile.renderStats();
 });
-
-// Язык выставляем до первого рендера: разметка собирается строками,
-// живой перерисовки при смене языка нет
-i18n.setLanguage(config.get('ui_lang') || 'ru');
 
 // Модульные скрипты выполняются до DOMContentLoaded, так что подписка успевает
 document.addEventListener('DOMContentLoaded', () => {

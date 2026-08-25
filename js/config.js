@@ -40,8 +40,7 @@ export const config = {
             dailyGoal: parseInt(config.get('daily_goal') || '10'),
             interests: config.get('interests') || '',
             apiKey: config.get('api_key') || '',
-            model: currentModel,
-            uiLang: config.get('ui_lang') || 'ru' // По умолчанию русский
+            model: currentModel
         };
     },
 
@@ -91,8 +90,7 @@ export const config = {
                 level: 'level',
                 dailyGoal: 'daily_goal',
                 interests: 'interests',
-                model: 'model',
-                uiLang: 'ui_lang'
+                model: 'model'
             };
 
             let restored = false;

@@ -2,19 +2,24 @@ import { auth } from '../services/auth.js';
 import { sync } from '../services/sync.js';
 import { dialog } from '../core/dialog.js';
 import { config } from '../config.js';
-import { i18n, t, plural, LANGUAGES } from '../i18n/i18n.js';
+import { t, plural } from '../i18n/i18n.js';
 import { app } from '../app.js';
 
 /**
  * Первый запуск (§33 ТЗ).
  *
- * Шаг выбора языка стоит вторым, сразу после имени: дальше интерфейс
- * перерисовывается уже на выбранном языке, поэтому уровень, темп и инструкцию
- * по API-ключу пользователь читает на своём.
+ * Пять шагов: имя, уровень с интересами, дневная норма, ключ ИИ и
+ * рассказ про облако. Обязателен из них один — ключ, без него приложению
+ * нечем работать; остальные имеют разумные значения по умолчанию.
+ *
+ * Шага выбора языка здесь больше нет: приложение русскоязычное. Он
+ * стоял вторым и стоил трёх словарей в сопровождении ради возможности,
+ * которой никто не пользовался, — а переключение вдобавок оставляло уже
+ * сохранённые переводы слов на прежнем языке.
  */
 export const onboarding = {
     step: 1,
-    data: { name: '', uiLang: 'ru', level: 'B1', dailyGoal: 10, interests: '', apiKey: '' },
+    data: { name: '', level: 'B1', dailyGoal: 10, interests: '', apiKey: '' },
 
     LEVELS: ['A1', 'A2', 'B1', 'B2'],
     GOALS: [5, 10, 15, 20],
@@ -22,11 +27,10 @@ export const onboarding = {
     /**
      * Черновик первого запуска в localStorage.
      *
-     * Нужен из-за входа переходом по адресу: страница уходит на Google и
-     * возвращается заново запущенной. Без черновика пользователь, нажавший
-     * «Войти» на шестом шаге, возвращался на первый — с пустым именем и без
-     * ключа, а вход при этом уже состоялся. Выглядело это как «кнопка входа
-     * не работает», и именно так о ней и сообщили.
+     * Заводился под вход переходом по адресу: страница уходила на Google
+     * и возвращалась заново запущенной, а введённое пропадало. Вход из
+     * первого запуска убран, но черновик остался при деле — он спасает
+     * набранное, если приложение закрыли или обновили на середине.
      */
     DRAFT_KEY: 'ws_onboarding_draft',
 
@@ -59,25 +63,12 @@ export const onboarding = {
 
     clearDraft: () => localStorage.removeItem(onboarding.DRAFT_KEY),
 
-    /*
-     * Первый запуск больше не уходит из приложения.
-     *
-     * Здесь был разбор возврата с входа переходом по адресу: черновик,
-     * пометка о переходе, сообщение о неудаче. Всё это существовало
-     * только потому, что вход стоял шестым шагом мастера и уводил на
-     * чужой домен посреди настройки. Вход переехал в профиль, уходить
-     * стало некуда — и разбирать нечего.
-     *
-     * Черновик оставлен: он спасает введённое, если приложение закрыли
-     * или обновили на середине.
-     */
     start: async () => {
         const view = document.getElementById('onboarding-view');
         view.classList.remove('hidden');
         view.classList.add('flex', 'flex-col');
 
-        const восстановлен = onboarding.loadDraft();
-        if (!восстановлен) onboarding.data.uiLang = i18n.language;
+        onboarding.loadDraft();
 
         onboarding.renderStep();
     },
@@ -86,20 +77,19 @@ export const onboarding = {
         const view = document.getElementById('onboarding-view');
         const steps = {
             1: onboarding.renderName,
-            2: onboarding.renderLanguage,
-            3: onboarding.renderLevel,
-            4: onboarding.renderPace,
-            5: onboarding.renderApiKey,
-            6: onboarding.renderCloudInfo
+            2: onboarding.renderLevel,
+            3: onboarding.renderPace,
+            4: onboarding.renderApiKey,
+            5: onboarding.renderCloudInfo
         };
 
         view.innerHTML = (steps[onboarding.step] || onboarding.renderName)();
 
-        if (onboarding.step === 4) onboarding.bindGoalHighlight();
+        if (onboarding.step === 3) onboarding.bindGoalHighlight();
     },
 
     /**
-     * Шаг 6. Рассказ про облако — без входа.
+     * Шаг 5. Рассказ про облако — без входа.
      *
      * Вход отсюда убран. На iPhone во встроенном приложении всплывающее
      * окно не открывается вовсе, остаётся переход по адресу, а он уводит
@@ -158,35 +148,7 @@ export const onboarding = {
             </button>
         </div>`,
 
-    // --- Шаг 2. Язык интерфейса (§33.2) ---
-    renderLanguage: () => `
-        <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-language text-5xl text-amber-500 mb-4"></i>
-                <h2 class="text-2xl font-bold text-slate-100">${t('onboarding.languageTitle')}</h2>
-                <p class="text-sm text-slate-400 mt-2">${t('onboarding.languageHint')}</p>
-            </div>
-
-            <div class="space-y-3 mb-8">
-                ${LANGUAGES.map(lang => `
-                    <button onclick="onboarding.pickLanguage('${lang.code}')"
-                        class="w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all active:scale-[0.99] ${
-                            lang.code === onboarding.data.uiLang
-                                ? 'bg-slate-800 border-amber-500 text-slate-100'
-                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'
-                        }">
-                        <span class="font-bold text-lg">${lang.label}</span>
-                        ${lang.code === onboarding.data.uiLang ? '<i class="fa-solid fa-check text-amber-500"></i>' : ''}
-                    </button>
-                `).join('')}
-            </div>
-
-            <button onclick="onboarding.nextStep()" class="w-full py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg transition-transform active:scale-95">
-                ${t('common.next')}
-            </button>
-        </div>`,
-
-    // --- Шаг 3. Уровень и интересы ---
+    // --- Шаг 2. Уровень и интересы ---
     renderLevel: () => `
         <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
             <h2 class="text-2xl font-bold text-slate-100 mb-6">${t('onboarding.levelTitle')}</h2>
@@ -208,7 +170,7 @@ export const onboarding = {
             </button>
         </div>`,
 
-    // --- Шаг 4. Дневная норма ---
+    // --- Шаг 3. Дневная норма ---
     renderPace: () => `
         <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
             <h2 class="text-2xl font-bold text-slate-100 mb-2">${t('onboarding.paceTitle')}</h2>
@@ -235,7 +197,7 @@ export const onboarding = {
             </button>
         </div>`,
 
-    // --- Шаг 5. API-ключ (§34) ---
+    // --- Шаг 4. API-ключ (§34) ---
     renderApiKey: () => `
         <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
             <div class="text-center mb-6">
@@ -257,15 +219,6 @@ export const onboarding = {
             </button>
         </div>`,
 
-    /** Выбор языка перерисовывает шаг сразу на новом языке. */
-    pickLanguage: (code) => {
-        onboarding.data.uiLang = code;
-        i18n.setLanguage(code);
-        config.set('ui_lang', code);
-        i18n.applyToDom();          // навигация и настройки в index.html
-        onboarding.renderStep();
-    },
-
     bindGoalHighlight: () => {
         document.querySelectorAll('input[name="ob-goal"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -284,18 +237,18 @@ export const onboarding = {
             const name = document.getElementById('ob-name').value.trim();
             if (!name) return await dialog.alert(t('onboarding.nameRequired'));
             onboarding.data.name = name;
-        } else if (onboarding.step === 3) {
+        } else if (onboarding.step === 2) {
             onboarding.data.level = document.getElementById('ob-level').value;
             onboarding.data.interests = document.getElementById('ob-interests').value.trim();
-        } else if (onboarding.step === 4) {
+        } else if (onboarding.step === 3) {
             const goal = document.querySelector('input[name="ob-goal"]:checked');
             if (goal) onboarding.data.dailyGoal = goal.value;
-        } else if (onboarding.step === 5) {
+        } else if (onboarding.step === 4) {
             const key = document.getElementById('ob-apikey').value.trim();
             if (!key) return await dialog.alert(t('onboarding.apiRequired'));
             onboarding.data.apiKey = key;
 
-            // Шаг входа показываем, только если Firebase настроен
+            // Рассказ про облако показываем, только если Firebase настроен
             if (!auth.isConfigured()) return await onboarding.finish();
         }
 
@@ -304,14 +257,15 @@ export const onboarding = {
     },
 
     finish: async () => {
-        // Ключ вводится на шаге 5, но finish можно вызвать и оттуда, и с шага
-        // входа. Если поле ещё на экране — читаем прямо из него, иначе берём
-        // сохранённое. Без этой подстраховки ключ уходил в настройки пустым.
+        // Ключ вводится на четвёртом шаге, но finish можно вызвать и
+        // оттуда, и с последнего. Если поле ещё на экране — читаем прямо
+        // из него, иначе берём сохранённое: без этой подстраховки ключ
+        // уходил в настройки пустым.
         const field = document.getElementById('ob-apikey');
         if (field) onboarding.data.apiKey = field.value.trim();
 
         if (!onboarding.data.apiKey) {
-            onboarding.step = 5;
+            onboarding.step = 4;
             onboarding.renderStep();
             return await dialog.alert(t('onboarding.apiRequired'));
         }
@@ -319,7 +273,6 @@ export const onboarding = {
         onboarding.clearDraft();
 
         config.set('name', onboarding.data.name);
-        config.set('ui_lang', onboarding.data.uiLang);
         config.set('level', onboarding.data.level);
         config.set('daily_goal', onboarding.data.dailyGoal);
         config.set('interests', onboarding.data.interests);
