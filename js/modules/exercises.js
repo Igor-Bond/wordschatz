@@ -63,8 +63,22 @@ export const exercises = {
          */
         recognition: ['translation_de_ru', 'translation_ru_de', 'match_pairs', 'article', 'sentence_builder', 'adjective_ending'],
 
-        // Выбор потруднее плюс первые задания с вводом
-        consolidation: ['translation_ru_de', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending', 'sentence_builder'],
+        /*
+         * Выбор потруднее плюс первые задания с вводом.
+         *
+         * Семь типов на бумаге, а на деле у одного слова их куда меньше:
+         * артикль, управление, форма глагола и окончание прилагательного
+         * исключают друг друга по части речи, а «вставить слово» и
+         * «собрать предложение» требуют примера в карточке. Существительное
+         * без примера получало ровно два типа, фраза — один, и урок из
+         * такого словаря выглядел однообразным независимо от того, сколько
+         * заданий написано.
+         *
+         * Поэтому здесь есть match_pairs: он не требует от карточки ничего,
+         * кроме соседей по словарю. По сложности это шаг вбок, а не вверх, —
+         * и он честно оплачен тем, что иначе выбирать не из чего.
+         */
+        consolidation: ['translation_ru_de', 'match_pairs', 'article', 'rektion', 'verb_form', 'fill_blanks', 'adjective_ending', 'sentence_builder'],
 
         // Написать самому
         production: ['translation_ru_de_input', 'verb_form', 'fill_blanks', 'listening', 'sentence_builder', 'adjective_ending']
@@ -95,7 +109,22 @@ export const exercises = {
         const stage = exercises.getStage(word);
         const preferred = validModes.filter(m => exercises.STAGES[stage].includes(m));
 
-        const pool = preferred.length ? preferred : validModes;
+        let pool = preferred.length ? preferred : validModes;
+
+        /*
+         * Не тот же тип, что в прошлый раз.
+         *
+         * Выбор случаен, и при пуле из двух-трёх типов он охотно
+         * повторяется: из двух вариантов один и тот же выпадает каждый
+         * второй раз, а подряд — каждый четвёртый. Урок кажется
+         * однообразнее, чем он есть на самом деле.
+         *
+         * Если, исключив прошлый тип, не остаётся ничего — значит выбора
+         * и правда нет, и повтор честен.
+         */
+        const другие = pool.filter(m => m !== word?.lastMode);
+        if (другие.length) pool = другие;
+
         return quiz.shuffle(pool)[0];
     },
 
@@ -1028,7 +1057,10 @@ export const exercises = {
                     recent: stored.recent,
                     attempts: stored.attempts,
                     correct: stored.correct,
-                    mastery: stored.mastery
+                    mastery: stored.mastery,
+
+                    // Чтобы в следующий раз спросить иначе — см. pickByStage
+                    lastMode: exercises._currentMode || stored.lastMode || null
                 };
 
                 if (exercises._movesSchedule(word)) {

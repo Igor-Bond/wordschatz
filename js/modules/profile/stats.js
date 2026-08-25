@@ -87,18 +87,33 @@ export const stats = {
             const validMistakeWords = topMistakeWords.filter(w => w !== undefined);
             
             if (validMistakeWords.length > 0) {
+                /*
+                 * Строка открывает карточку слова.
+                 *
+                 * Список отвечал, где именно человек спотыкается, и на
+                 * этом останавливался: посмотреть само слово можно было
+                 * только уйдя в словарь и найдя его там руками. Теперь —
+                 * нажатием, и это та же карточка, что в словаре: с
+                 * формами, примером и возможностью их поправить. Часто
+                 * оказывается, что слово «трудное» именно потому, что в
+                 * карточке пусто.
+                 */
                 mistakesHtml = validMistakeWords.map(w => {
                     const count = mistakeCounts[w.id];
                     return `
-                        <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2">
-                            <div>
-                                <div class="font-bold text-slate-200">${w.word}</div>
-                                <div class="text-xs text-slate-400">${w.translation}</div>
+                        <button onclick="profile.openEditModal(${w.id})"
+                            class="w-full text-left flex justify-between items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2 hover:border-slate-500 active:scale-[0.99] transition-all">
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-200 truncate" lang="de">${w.word}</div>
+                                <div class="text-xs text-slate-400 truncate">${w.translation}</div>
                             </div>
-                            <div class="text-red-400 text-xs bg-red-400/10 px-2 py-1 rounded font-bold border border-red-500/20">
-                                ${plural('profile.mistakes', count)}
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="text-red-400 text-xs bg-red-400/10 px-2 py-1 rounded font-bold border border-red-500/20">
+                                    ${plural('profile.mistakes', count)}
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-slate-600 text-[10px]"></i>
                             </div>
-                        </div>
+                        </button>
                     `;
                 }).join('');
             } else {
