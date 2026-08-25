@@ -257,33 +257,15 @@ export const training = {
             : '';
     },
 
-    showCard: () => {
-        const main = document.getElementById('main-content');
-        
-        // --- ИНТЕГРАЦИЯ УПРАЖНЕНИЙ (ЭТАП 2.2) ---
-        if (training.state.status === 'practice') {
-            // Слова, для которых упражнение — единственное извлечение за
-            // урок: их расписание двигает именно оно
-            exercises.schedulingIds = new Set(training.state.data.scheduleByExercise || []);
-
-            exercises.start(training.queue, training.currentIndex, async () => {
-                await training.finishLesson();
-                training.state.status = 'completed';
-                training.showCompletedScreen();
-            });
-            return;
-        }
-
-        // Занятие идёт — шапка приложения уступает место карточке
-        document.body.classList.add('lesson-mode');
-
-        training.currentWord = training.queue[training.currentIndex];
-        const progress = ((training.currentIndex) / training.queue.length) * 100;
-        const word = training.currentWord;
-
-        let stepTitle = training.state.status === 'review' ? t('training.review') : t('training.newWords');
-        let stepColor = training.state.status === 'review' ? 'blue-400' : 'green-400';
-
+    /**
+     * Грамматический блок карточки: таблица форм плюс спряжение.
+     *
+     * Вынесен из showCard, чтобы карточку можно было показать не только
+     * на уроке: владелец попросил открывать её из «Топа слабых мест», и
+     * это должна быть та же карточка, что в обучении, а не форма правки
+     * полей.
+     */
+    renderGrammar: (word) => {
         /**
          * Строка таблицы. Раньше эта разметка была выписана вручную
          * четырнадцать раз, и любое поле забыть было проще, чем добавить.
@@ -368,7 +350,73 @@ export const training = {
         const grammarBlock = (tableRows
             ? `<div class="bg-[#1b2234] rounded-xl px-4 py-1 mb-5 border border-slate-700/70 shadow-inner">${tableRows}</div>`
             : '') + conjugationBlock;
+        return grammarBlock;
+    },
 
+    /**
+     * Карточка слова целиком, без урока: обе стороны сразу, без кнопок
+     * оценки и без единой записи в базу.
+     *
+     * Нужна там, где слово надо посмотреть, а не спросить, — например
+     * из «Топа слабых мест». Показывать там форму правки полей неверно:
+     * человек хочет вспомнить слово, а не чинить карточку. Разметка та
+     * же, что на уроке, — иначе это была бы другая карточка, которую
+     * пришлось бы поддерживать отдельно.
+     */
+    renderWordCard: (word) => `
+        <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl">
+            <div class="p-6 flex flex-col items-center justify-center text-center">
+                <span class="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">${t('wordTypes.' + (['noun', 'verb', 'adjective', 'phrase'].includes(word.type) ? word.type : 'phrase'))}</span>
+                <div class="flex items-center justify-center gap-3 mb-2 w-full">
+                    <h2 lang="de" class="text-2xl font-black text-slate-100 break-words">${training.esc(word.word)}</h2>
+                    <button data-action="training.playAudio" data-word="${actions.attr(word.word)}"
+                        class="w-10 h-10 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-amber-500 transition-colors shrink-0 shadow">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                </div>
+                ${word.ipa ? `<span class="text-xs text-slate-500 font-mono">[${training.esc(word.ipa)}]</span>` : ''}
+            </div>
+
+            <div class="flex flex-col p-4 bg-[#171d2b] border-t border-slate-700/50 rounded-b-2xl">
+                <h3 class="text-xl font-bold text-amber-500 text-center mb-3">${training.esc(word.translation)}</h3>
+                ${training.renderTags(word)}
+                ${training.renderGrammar(word)}
+                ${word.example_de ? `
+                    <div class="bg-[#1b2234] p-3 rounded-xl border border-slate-700/70 shadow-inner">
+                        <p lang="de" class="text-slate-200 text-sm font-bold italic mb-1.5">"${training.esc(word.example_de)}"</p>
+                        <p class="text-slate-400 text-xs">${training.esc(word.example_ru || '')}</p>
+                    </div>` : ''}
+            </div>
+        </div>`,
+
+    showCard: () => {
+        const main = document.getElementById('main-content');
+        
+        // --- ИНТЕГРАЦИЯ УПРАЖНЕНИЙ (ЭТАП 2.2) ---
+        if (training.state.status === 'practice') {
+            // Слова, для которых упражнение — единственное извлечение за
+            // урок: их расписание двигает именно оно
+            exercises.schedulingIds = new Set(training.state.data.scheduleByExercise || []);
+
+            exercises.start(training.queue, training.currentIndex, async () => {
+                await training.finishLesson();
+                training.state.status = 'completed';
+                training.showCompletedScreen();
+            });
+            return;
+        }
+
+        // Занятие идёт — шапка приложения уступает место карточке
+        document.body.classList.add('lesson-mode');
+
+        training.currentWord = training.queue[training.currentIndex];
+        const progress = ((training.currentIndex) / training.queue.length) * 100;
+        const word = training.currentWord;
+
+        let stepTitle = training.state.status === 'review' ? t('training.review') : t('training.newWords');
+        let stepColor = training.state.status === 'review' ? 'blue-400' : 'green-400';
+
+        const grammarBlock = training.renderGrammar(word);
         main.innerHTML = `
             <!--
                 Экран урока разбит на три части: шапка с прогрессом, прокручиваемая

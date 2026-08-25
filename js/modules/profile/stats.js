@@ -6,6 +6,7 @@ import { i18n, t, plural } from '../../i18n/i18n.js';
 import { dbService } from '../../services/db.js';
 import { dateUtils } from '../../core/dates.js';
 import { leagueStyle } from '../../core/leagues.js';
+import { training } from '../training.js';
 
 /** Вкладка «Статистика»: лиги, XP, активность, слабые места. */
 
@@ -88,20 +89,18 @@ export const stats = {
             
             if (validMistakeWords.length > 0) {
                 /*
-                 * Строка открывает карточку слова.
+                 * Строка открывает учебную карточку слова.
                  *
                  * Список отвечал, где именно человек спотыкается, и на
                  * этом останавливался: посмотреть само слово можно было
-                 * только уйдя в словарь и найдя его там руками. Теперь —
-                 * нажатием, и это та же карточка, что в словаре: с
-                 * формами, примером и возможностью их поправить. Часто
-                 * оказывается, что слово «трудное» именно потому, что в
-                 * карточке пусто.
+                 * только уйдя в словарь и отыскав его там руками. Теперь
+                 * нажатием — и открывается та же карточка, что на уроке:
+                 * слово, звучание, перевод, формы, пример.
                  */
                 mistakesHtml = validMistakeWords.map(w => {
                     const count = mistakeCounts[w.id];
                     return `
-                        <button onclick="profile.openEditModal(${w.id})"
+                        <button onclick="profile.showWordCard(${w.id})"
                             class="w-full text-left flex justify-between items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2 hover:border-slate-500 active:scale-[0.99] transition-all">
                             <div class="min-w-0">
                                 <div class="font-bold text-slate-200 truncate" lang="de">${w.word}</div>
@@ -300,6 +299,24 @@ export const stats = {
              <p class="text-[10px] text-slate-500 mt-3 pt-3 border-t border-slate-700">${xp} XP</p>`,
             { title: t('profile.leagueLadder') }
         );
+    },
+
+    /**
+     * Карточка слова из «Топа слабых мест».
+     *
+     * Именно учебная карточка, а не форма правки полей: человек, ткнувший
+     * в слово из списка собственных ошибок, хочет его вспомнить, а не
+     * чинить запись. Разметку берём из урока — одна карточка на два
+     * места, иначе они разойдутся уже к следующей правке.
+     */
+    showWordCard: async (id) => {
+        const word = await dbService.getWordById(id);
+        if (!word) return;
+
+        await dialog.custom(training.renderWordCard(word), {
+            title: t('profile.wordCard'),
+            okLabel: t('common.close')
+        });
     },
 
 };
