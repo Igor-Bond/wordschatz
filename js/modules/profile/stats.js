@@ -315,7 +315,8 @@ export const stats = {
 
         await dialog.custom(training.renderWordCard(word), {
             title: t('profile.wordCard'),
-            okLabel: t('common.close')
+            okLabel: t('common.close'),
+            tall: true
         });
     },
 

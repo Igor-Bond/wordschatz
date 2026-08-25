@@ -63,10 +63,11 @@ export const dialog = {
     custom: (html, options = {}) => dialog._show({
         html,
         title: options.title,
+        tall: options.tall,
         buttons: [{ value: true, label: options.okLabel || t('common.close'), primary: true }]
     }),
 
-    _show: ({ message, html, title, buttons, danger, stacked }) => new Promise(resolve => {
+    _show: ({ message, html, title, buttons, danger, stacked, tall }) => new Promise(resolve => {
         // Второй диалог поверх первого — закрываем предыдущий без ответа
         if (активный) активный.close(null);
 
@@ -79,11 +80,23 @@ export const dialog = {
             return 'bg-slate-900 border border-slate-600 text-slate-300 hover:border-slate-500';
         };
 
+        /*
+         * Высокое окно — для карточки слова.
+         *
+         * Обычный потолок в 55vh рассчитан на сообщение в три строки, и
+         * карточка в нём выглядела огрызком: сама она занимает больше,
+         * начиналась на четверти экрана, а внутри ещё и прокручивалась.
+         * Содержимому, которое человек пришёл рассматривать, отдаём почти
+         * весь экран.
+         */
+        const потолок = tall ? 'max-h-[78vh]' : 'max-h-[55vh]';
+        const ширина = tall ? 'max-w-md' : 'max-w-sm';
+
         overlay.innerHTML = `
-            <div class="bg-slate-800 rounded-2xl border ${danger ? 'border-red-500/40' : 'border-slate-700'} shadow-2xl w-full max-w-sm overflow-hidden translate-y-4 sm:translate-y-0 scale-100 sm:scale-95 transition-transform duration-150"
+            <div class="bg-slate-800 rounded-2xl border ${danger ? 'border-red-500/40' : 'border-slate-700'} shadow-2xl w-full ${ширина} overflow-hidden translate-y-4 sm:translate-y-0 scale-100 sm:scale-95 transition-transform duration-150"
                  role="dialog" aria-modal="true">
                 ${title ? `<div class="px-5 pt-5 pb-1"><h3 class="text-lg font-bold text-slate-100">${dialog._esc(title)}</h3></div>` : ''}
-                <div class="px-5 ${title ? 'pt-1' : 'pt-5'} pb-5 max-h-[55vh] overflow-y-auto">
+                <div class="px-5 ${title ? 'pt-1' : 'pt-5'} pb-5 ${потолок} overflow-y-auto">
                     ${html
                         ? `<div class="text-sm text-slate-300">${html}</div>`
                         : `<p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">${dialog._esc(message)}</p>`}
