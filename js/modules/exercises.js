@@ -1004,21 +1004,25 @@ export const exercises = {
     },
 
     /**
-     * Строка ответа на кнопке: текст ровно там, где был.
+     * Текст ответа на кнопке — и больше ничего.
      *
-     * Прошло две попытки. Сперва значок стоял слева, а строка равнялась
-     * по центру — и текст прыгал с левого края на середину. Потом стал
-     * справа при `justify-between` — на широких кнопках выбора перевода
-     * это сработало, а на узких кнопках артикля нет: там всего три
-     * буквы, выровненные по центру, и значок с отступом сдвигал их.
+     * Значка здесь был. Он пережил три попытки поставить его так, чтобы
+     * не двигал текст: слева — текст прыгал к середине; справа в потоке —
+     * сдвигал трёхбуквенное «DER»; вне потока — встал намертво, но
+     * длинный ответ поехал прямо под него. Четвёртой попыткой было бы
+     * поле под значок, разное для выключки по левому краю и по центру.
      *
-     * Теперь значок вынут из потока совсем. Текст занимает всю ширину и
-     * сохраняет то выравнивание, которое было у кнопки, — по левому краю
-     * у перевода, по центру у артикля. Двигать его нечему.
+     * Значок убран вовсе. Он ничего не добавлял: верный ответ и так
+     * зелёный, неверный красный и перечёркнутый, остальные погашены до
+     * сорока процентов. Признак не через цвет тоже остаётся — верный
+     * отличается от неверного зачёркиванием, а от прочих яркостью, — так
+     * что и без цвета картина читается.
+     *
+     * Функция при этом нужна: у неверного ответа текст перечёркнут, а
+     * вешать класс на саму кнопку нельзя, иначе перечёркивание получит и
+     * то, что добавится к ней позже.
      */
-    _answerRow: (text, icon = null, textClass = '') => `
-        <span class="block w-full ${textClass}">${text}</span>
-        ${icon ? `<i class="fa-solid ${icon} absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-80 pointer-events-none"></i>` : ''}`,
+    _answerRow: (text, textClass = '') => `<span class="block w-full ${textClass}">${text}</span>`,
 
     checkChoice: (btn) => {
         const selected = btn.dataset.value ?? '';
@@ -1033,8 +1037,6 @@ export const exercises = {
             const originalText = b.innerText.trim();
             exercises._stripColours(b);
 
-            // Значок ставится absolute — кнопке нужна точка отсчёта
-            b.classList.add('relative');
 
             if (btnValue === correct) {
                 // Без scale-105: увеличение раздвигает кнопку от середины,
@@ -1042,7 +1044,7 @@ export const exercises = {
                 // Зелёный фон со свечением и так виден, а читать ответ
                 // удобнее с неподвижного места
                 b.classList.add('bg-green-600', 'border-green-400', 'text-white', 'shadow-[0_0_15px_rgba(22,163,74,0.5)]', 'z-10');
-                b.innerHTML = exercises._answerRow(originalText, 'fa-check');
+                b.innerHTML = exercises._answerRow(originalText);
             } else if (btnValue === selected && selected !== correct) {
                 // ЛОГИРОВАНИЕ ОШИБКИ
                 const currentWord = exercises.queue[exercises.currentIndex];
@@ -1051,7 +1053,7 @@ export const exercises = {
                 }
 
                 b.classList.add('bg-red-600', 'border-red-400', 'text-white');
-                b.innerHTML = exercises._answerRow(originalText, 'fa-xmark', 'line-through opacity-80');
+                b.innerHTML = exercises._answerRow(originalText, 'line-through opacity-80');
             } else {
                 b.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-500', 'opacity-40', 'scale-95');
                 b.innerHTML = exercises._answerRow(originalText);
