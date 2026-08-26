@@ -292,6 +292,7 @@ export const ru = {
 
     declension: {
         label: 'Склонение',
+        ending: 'окончание',
         weak: 'После der / die / das',
         mixed: 'После ein / kein / mein',
         strong: 'Без артикля',

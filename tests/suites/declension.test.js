@@ -138,3 +138,61 @@ import { declension } from '../../js/core/declension.js';
         проверить.равно(declension.phrase('hell', 'mixed', 'pl', 'dativ', 'Leute'), 'keinen hellen Leuten');
     });
 });
+
+группа('Таблица склонения: только окончания', () => {
+
+    /*
+     * Полные формы длинного прилагательного в пять колонок на телефоне
+     * не помещаются: «interessante» требует 63 точки при клетке в 57, и
+     * обрезается ровно окончание — то единственное, ради чего таблицу и
+     * открывают. Обрезаны были все тридцать шесть клеток.
+     *
+     * Поэтому в клетках окончание, а основа стоит строкой сверху.
+     */
+
+    тест('окончание отрезается от основы, а не от общей части форм', () => {
+        /*
+         * Первая попытка брала общую часть всех тридцати шести форм. Для
+         * «interessant» ею оказалась «interessante» — все формы с неё
+         * начинаются, — и окончания выходили «-», «-n», «-r», «-s»
+         * вместо настоящих.
+         */
+        проверить.равно(declension.ending('interessant', 'interessante'), 'e');
+        проверить.равно(declension.ending('interessant', 'interessanten'), 'en');
+        проверить.равно(declension.ending('interessant', 'interessanter'), 'er');
+        проверить.равно(declension.ending('interessant', 'interessantes'), 'es');
+    });
+
+    тест('выпадение «e» учтено', () => {
+        // teuer → teur, dunkel → dunkl. Основа короче словарной формы,
+        // и окончание считается именно от неё
+        проверить.равно(declension.ending('teuer', 'teure'), 'e');
+        проверить.равно(declension.ending('teuer', 'teuren'), 'en');
+        проверить.равно(declension.ending('dunkel', 'dunkle'), 'e');
+        проверить.равно(declension.ending('hoch', 'hohes'), 'es');
+    });
+
+    тест('каждая клетка таблицы даёт настоящее окончание', () => {
+        // Ни одно окончание не должно оказаться пустым или чужим
+        const допустимые = ['e', 'en', 'er', 'es', 'em'];
+        const t = declension.table('interessant');
+        const чужие = [];
+
+        for (const type of declension.TYPES) {
+            for (const kase of declension.CASES) {
+                for (const g of declension.GENDERS) {
+                    const конец = declension.ending('interessant', t[type][kase][g]);
+                    if (!допустимые.includes(конец)) чужие.push(`${type}.${kase}.${g}: «${конец}»`);
+                }
+            }
+        }
+
+        проверить.совпадает(чужие, []);
+    });
+
+    тест('чужая форма возвращается целиком', () => {
+        // Если форма почему-то не начинается с основы, лучше показать её
+        // как есть, чем отрезать наугад
+        проверить.равно(declension.ending('hell', 'ganz andere'), 'ganz andere');
+    });
+});

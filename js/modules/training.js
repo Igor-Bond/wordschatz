@@ -186,13 +186,39 @@ export const training = {
      * Тридцать шесть клеток в карточку не влезают и на телефоне читаются
      * кашей, поэтому они живут в отдельном окне: три блока по типу артикля,
      * в каждом четыре рода на три падежа.
+     *
+     * Слово приходит из разметки, а не берётся из текущего состояния
+     * урока. Так было раньше, и это сломалось, когда та же карточка
+     * появилась в «Топе слабых мест»: на экране «hell», а таблица
+     * открывалась для «teuer» — слова, на котором стоял урок. Пока
+     * карточка была только в уроке, разницы не существовало.
      */
-    showDeclension: async () => {
-        const word = training.currentWord;
-        if (!word) return;
+    showDeclension: async (источник) => {
+        const слово = (источник && источник.dataset ? источник.dataset.word : источник)
+            || training.currentWord?.word;
 
-        const t2 = declension.table(word.word);
+        if (!слово) return;
+
+        const t2 = declension.table(слово);
         const подписи = { m: t('declension.m'), f: t('declension.f'), n: t('declension.n'), pl: t('declension.pl') };
+
+        /*
+         * В клетках только окончания, основа — строкой сверху.
+         *
+         * Полные формы в пять колонок на телефоне не помещались:
+         * «interessante» требует 63 точки при клетке в 57, и обрезалось
+         * ровно окончание — то единственное, ради чего таблицу и
+         * открывают. Обрезаны были все тридцать шесть клеток.
+         *
+         * Основа короче трёх букв ничего не сэкономит — там показываем
+         * формы целиком, разрешив им переноситься.
+         */
+        const основа = declension.stem(слово);
+        const покороче = основа.length >= 3;
+
+        const клетка = (форма) => покороче
+            ? `-${declension.ending(слово, форма)}`
+            : форма;
 
         const блок = (type) => `
             <div class="mb-3 last:mb-0">
@@ -202,14 +228,20 @@ export const training = {
                     ${declension.GENDERS.map(g => `<span class="text-slate-500">${подписи[g]}</span>`).join('')}
                     ${declension.CASES.map(kase => `
                         <span class="text-slate-500">${t('declension.' + kase)}</span>
-                        ${declension.GENDERS.map(g => `<span class="text-slate-200 font-bold truncate">${training.esc(t2[type][kase][g])}</span>`).join('')}
+                        ${declension.GENDERS.map(g => `<span class="text-slate-200 font-bold break-words">${training.esc(клетка(t2[type][kase][g]))}</span>`).join('')}
                     `).join('')}
                 </div>
             </div>`;
 
+        const шапка = покороче
+            ? `<p class="text-center text-sm text-slate-300 mb-3 pb-3 border-b border-slate-700">
+                   <span lang="de" class="font-black text-slate-100">${training.esc(основа)}</span><span class="text-amber-500 font-bold"> + ${t('declension.ending')}</span>
+               </p>`
+            : '';
+
         await dialog.custom(
-            declension.TYPES.map(блок).join(''),
-            { title: `${word.word} — ${t('declension.label')}` }
+            шапка + declension.TYPES.map(блок).join(''),
+            { title: `${слово} — ${t('declension.label')}`, tall: true }
         );
     },
 
@@ -338,7 +370,7 @@ export const training = {
             tableRows += `
                 <div class="flex justify-between items-center py-2 border-b border-slate-700/50 gap-3">
                     <span class="text-slate-400 text-sm shrink-0">${t('declension.label')}</span>
-                    <button onclick="training.showDeclension()" class="text-sm text-right text-slate-300 hover:text-amber-500 transition-colors">
+                    <button data-action="training.showDeclension" data-word="${actions.attr(word.word)}" class="text-sm text-right text-slate-300 hover:text-amber-500 transition-colors">
                         ${краткое} <i class="fa-solid fa-table-cells text-[10px] ml-1 opacity-60"></i>
                     </button>
                 </div>`;
