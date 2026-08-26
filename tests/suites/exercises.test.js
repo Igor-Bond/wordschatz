@@ -77,6 +77,35 @@ const { exercises } = await import('../../js/modules/exercises.js');
         проверить.ложь(el.classList.contains('hover:border-amber-500'), 'подсветка при наведении снята');
     });
 
+    тест('цвет с прозрачностью тоже снимается', () => {
+        /*
+         * Кнопки артикля цветные каждая по-своему, и цвет у них записан
+         * с прозрачностью: bg-red-900/30. Образец таких не ловил, класс
+         * оставался — и перебивал добавленный поверх зелёный, потому что
+         * утилиты с прозрачностью Tailwind кладёт в CSS позже обычных.
+         *
+         * На «DIE» это выглядело так: ответ верный, а кнопка красная.
+         */
+        const el = кнопка('py-4 bg-red-900/30 border-2 border-red-900/50 text-red-400 hover:bg-red-900/50 rounded-xl text-xl');
+        exercises._stripColours(el);
+
+        проверить.ложь(el.classList.contains('bg-red-900/30'), 'фон с прозрачностью снят');
+        проверить.ложь(el.classList.contains('border-red-900/50'), 'рамка с прозрачностью снята');
+        проверить.ложь(el.classList.contains('hover:bg-red-900/50'), 'цвет под приставкой снят');
+        проверить.истина(el.classList.contains('text-xl'), 'размер уцелел');
+        проверить.истина(el.classList.contains('rounded-xl'), 'скругление уцелело');
+    });
+
+    тест('ни одного цветного класса не остаётся', () => {
+        // Любой уцелевший цвет — это возможная победа старого над новым,
+        // и какая именно, зависит от порядка правил в собранном CSS
+        const el = кнопка('bg-blue-900/30 border-blue-900/50 text-blue-400 hover:bg-blue-900/50 bg-slate-900 text-slate-300 py-4 px-5 text-left');
+        exercises._stripColours(el);
+
+        const цветные = [...el.classList].filter(c => /-(?:slate|blue|red|green|amber|purple|teal|pink)-\d/.test(c));
+        проверить.совпадает(цветные, [], 'цвета должны сниматься все');
+    });
+
     тест('выравнивание и размер остаются', () => {
         // Прежний вариант сносил классы по образцу (bg|border|text)-…
         // и заодно уносил text-left и text-xl: после ответа текст терял
