@@ -824,11 +824,13 @@ export const exercises = {
     updateBuilderUI: () => {
         const target = document.getElementById('sb-target');
 
-        // Каждое слово — отдельная кнопка: нажатие возвращает его в набор
+        // Каждый кусок — отдельная кнопка: нажатие возвращает его в набор.
+        // Экранирование обязательно: примеры приходят от ИИ, а буквы —
+        // из самого слова, и «<» в любом из них порвал бы разметку
         target.innerHTML = exercises.builderState.selected.map((index, position) => `
             <button onclick="exercises.builderRemoveAt(${position})"
                 class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded shadow font-bold active:scale-95 transition-transform">
-                ${exercises.builderState.words[index]}
+                ${exercises.escAttr(exercises.builderState.words[index])}
             </button>
         `).join('');
 
@@ -889,9 +891,8 @@ export const exercises = {
 
         // Первую неудачную сборку кладём в разбор ошибок: она показывает,
         // где именно человек путается в порядке слов
-        if (попыток > 0 && exercises.builderState.firstWrong && dbService?.logMistake) {
-            const currentWord = exercises.queue[exercises.currentIndex];
-            dbService.logMistake(currentWord.id, 'sentence_builder', exercises.builderState.firstWrong);
+        if (попыток > 0 && exercises.builderState.firstWrong) {
+            exercises._logMistake('sentence_builder', exercises.builderState.firstWrong);
         }
 
         feedback.classList.remove('hidden');
@@ -948,11 +949,7 @@ export const exercises = {
         // записывался вовсе, и пропустить было выгоднее, чем ошибиться
         exercises.awardXP(false);
 
-        const currentWord = exercises.queue[exercises.currentIndex];
-        if (dbService?.logMistake) {
-            dbService.logMistake(currentWord.id, 'sentence_builder',
-                exercises.builderState.firstWrong || 'SKIPPED');
-        }
+        exercises._logMistake('sentence_builder', exercises.builderState.firstWrong || 'SKIPPED');
 
         feedback.classList.remove('hidden');
         feedback.className = "mt-2 font-bold text-lg p-3 rounded-xl text-center bg-slate-900/80 border border-slate-600/50 text-slate-300";
@@ -1024,6 +1021,26 @@ export const exercises = {
      */
     _answerRow: (text, textClass = '') => `<span class="block w-full ${textClass}">${text}</span>`,
 
+    /**
+     * Запись ошибки в разбор — по текущему слову очереди.
+     *
+     * Было выписано четырьмя одинаковыми кусками, и в двух из них слово
+     * бралось без проверки: `exercises.queue[exercises.currentIndex].id`.
+     * Пустая очередь роняла задание целиком. В обычном ходе урока она не
+     * пустеет, но задание уходит дальше по таймеру, а его никто не
+     * отменяет — отложенный вызов вполне может застать очередь уже
+     * пройденной.
+     *
+     * Разбор ошибок вещь полезная, но не настолько, чтобы падать из-за
+     * неё посреди урока.
+     */
+    _logMistake: (mode, value) => {
+        const word = exercises.queue?.[exercises.currentIndex];
+        if (!word?.id || !dbService?.logMistake) return;
+
+        dbService.logMistake(word.id, mode, value);
+    },
+
     checkChoice: (btn) => {
         const selected = btn.dataset.value ?? '';
         const correct = btn.dataset.correct ?? '';
@@ -1047,10 +1064,7 @@ export const exercises = {
                 b.innerHTML = exercises._answerRow(originalText);
             } else if (btnValue === selected && selected !== correct) {
                 // ЛОГИРОВАНИЕ ОШИБКИ
-                const currentWord = exercises.queue[exercises.currentIndex];
-                if (typeof dbService !== 'undefined' && dbService.logMistake) {
-                    dbService.logMistake(currentWord.id, exType, selected);
-                }
+                exercises._logMistake(exType, selected);
 
                 b.classList.add('bg-red-600', 'border-red-400', 'text-white');
                 b.innerHTML = exercises._answerRow(originalText, 'line-through opacity-80');
@@ -1221,10 +1235,7 @@ export const exercises = {
             setTimeout(exercises.next, 1500);
         } else {
             // ЛОГИРОВАНИЕ ОШИБКИ
-            const currentWord = exercises.queue[exercises.currentIndex];
-            if (typeof dbService !== 'undefined' && dbService.logMistake) {
-                dbService.logMistake(currentWord.id, exType, selected);
-            }
+            exercises._logMistake(exType, selected);
 
             input.classList.remove('bg-slate-900', 'border-slate-600');
             input.classList.add('bg-red-900/40', 'border-red-500', 'text-red-400', 'line-through');

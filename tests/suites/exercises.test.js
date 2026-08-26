@@ -220,3 +220,142 @@ const { exercises } = await import('../../js/modules/exercises.js');
         проверить.ложь(пул(короткое).includes('word_builder'), 'из двух букв складывать нечего');
     });
 });
+
+группа('Сборка предложения: разбор случаев', () => {
+
+    /*
+     * Проверено было руками по просьбе владельца, и одна настоящая
+     * поломка нашлась: запись ошибки брала слово очереди без проверки и
+     * роняла задание, когда очередь пуста. Раз уж случаи разобраны —
+     * пусть их держит набор, а не память.
+     */
+
+    const собрать = (пример, порядок) => {
+        const слово = { id: 1, example_de: пример, translation: 'перевод' };
+        exercises.exam = null;
+        exercises.isRoomMode = true;
+        exercises.schedulingIds = null;
+        exercises.queue = [слово];
+        exercises.currentIndex = 0;
+
+        const box = document.createElement('div');
+        box.innerHTML = exercises.renderSentenceBuilder(слово);
+        document.body.appendChild(box);
+
+        const st = exercises.builderState;
+        const куски = порядок || st.correct.slice();
+        const занято = new Set();
+
+        for (const кусок of куски) {
+            const i = st.words.findIndex((x, idx) => x === кусок && !занято.has(idx));
+            занято.add(i);
+            exercises.builderAdd(i);
+        }
+
+        const итог = {
+            эталон: exercises.builderAnswer(),
+            собрано: exercises.builderSentence(),
+            завершено: st.answered,
+            попыток: st.attempts,
+            кусков: st.words.length
+        };
+        box.remove();
+        return итог;
+    };
+
+    тест('обычное предложение собирается', () => {
+        const r = собрать('Das Haus ist gross.');
+        проверить.равно(r.собрано, 'Das Haus ist gross');
+        проверить.истина(r.завершено);
+        проверить.равно(r.попыток, 0);
+    });
+
+    тест('точка и запятая в куски не попадают', () => {
+        const r = собрать('Das Haus, das ich sehe, ist gross.');
+        проверить.равно(r.эталон, 'Das Haus das ich sehe ist gross');
+        проверить.истина(r.завершено);
+    });
+
+    тест('апостроф внутри слова не режет его надвое', () => {
+        // «geht's» — одно слово. На апострофе этот проект уже обжигался
+        const r = собрать("Wie geht's dir?");
+        проверить.равно(r.кусков, 3);
+        проверить.истина(r.завершено);
+    });
+
+    тест('двойные пробелы не дают пустых плиток', () => {
+        const r = собрать('Das  Haus   ist gross.');
+        проверить.равно(r.кусков, 4);
+        проверить.истина(r.завершено);
+    });
+
+    тест('предложение из одного слова тоже задание', () => {
+        const r = собрать('Hallo!');
+        проверить.равно(r.кусков, 1);
+        проверить.истина(r.завершено);
+    });
+
+    тест('повторяющееся слово не путает плитки', () => {
+        // В selected лежат индексы, а не слова: иначе «der» второй раз
+        // вернул бы в набор чужую плитку
+        const r = собрать('Der Mann und der Hund.');
+        проверить.равно(r.собрано, 'Der Mann und der Hund');
+        проверить.истина(r.завершено);
+    });
+
+    тест('неверный порядок не заканчивает задание', () => {
+        const слово = { id: 1, example_de: 'Das Haus ist gross.', translation: 'дом' };
+        exercises.exam = null;
+        exercises.isRoomMode = true;
+        exercises.queue = [слово];
+        exercises.currentIndex = 0;
+
+        const box = document.createElement('div');
+        box.innerHTML = exercises.renderSentenceBuilder(слово);
+        document.body.appendChild(box);
+
+        const st = exercises.builderState;
+        const наоборот = st.correct.slice().reverse();
+        const занято = new Set();
+        for (const кусок of наоборот) {
+            const i = st.words.findIndex((x, idx) => x === кусок && !занято.has(idx));
+            занято.add(i);
+            exercises.builderAdd(i);
+        }
+
+        проверить.равно(st.attempts, 1, 'попытка засчитана');
+        проверить.ложь(st.answered, 'задание продолжается');
+
+        const живы = [...box.querySelectorAll('#sb-source button')].every(b => !b.disabled);
+        проверить.истина(живы, 'кнопки не заблокированы — пересобрать можно');
+
+        box.remove();
+    });
+
+    тест('пустая очередь не роняет задание', () => {
+        /*
+         * Настоящая поломка, найденная прогоном. Запись ошибки брала
+         * exercises.queue[currentIndex].id без проверки. В обычном ходе
+         * урока очередь не пустеет, но задание уходит дальше по таймеру,
+         * и отложенный вызов вполне может застать её пройденной.
+         */
+        exercises.queue = [];
+        exercises.currentIndex = 0;
+        exercises._logMistake('sentence_builder', 'что угодно');
+        проверить.истина(true, 'дошли сюда — значит не упало');
+    });
+
+    тест('куски экранируются', () => {
+        // Примеры приходят от ИИ; «<» в них порвал бы разметку
+        const слово = { id: 1, example_de: 'Das <b> ist gross.', translation: 'дом' };
+        exercises.queue = [слово];
+        exercises.currentIndex = 0;
+
+        const box = document.createElement('div');
+        box.innerHTML = exercises.renderSentenceBuilder(слово);
+        document.body.appendChild(box);
+
+        проверить.равно(box.querySelectorAll('#sb-source button').length, 4, 'четыре плитки, а не разметка');
+        box.remove();
+    });
+});
