@@ -3,6 +3,7 @@ import { dialog } from '../core/dialog.js';
 import { speech } from '../core/speech.js';
 import { masteryUtils } from '../core/mastery.js';
 import { quiz } from '../core/quiz.js';
+import { germanUtils } from '../core/german.js';
 import { dbService } from '../services/db.js';
 import { i18n, t } from '../i18n/i18n.js';
 import { aiService } from '../services/ai.js';
@@ -70,11 +71,28 @@ export const room = {
                         <i class="fa-solid fa-puzzle-piece text-green-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeBuilder')}</span>
                     </button>
+                    <!--
+                        Сборка слова из букв. В уроке она появилась потому,
+                        что новому слову без рода и примера доступны всего
+                        три задания; здесь — потому, что это единственный
+                        тренажёр написания, который не требует ничего, кроме
+                        самого слова: удвоенные согласные, умляуты, ß.
+                    -->
+                    <button onclick="room.startExerciseMode(['word_builder'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-green-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-shapes text-green-500 text-2xl"></i>
+                        <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeWordBuilder')}</span>
+                    </button>
                     <button onclick="room.startExerciseMode(['rektion'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-green-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
                         <i class="fa-solid fa-link text-green-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeRektion')}</span>
                     </button>
-                    <button onclick="room.startExerciseMode(['listening'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-col items-center gap-2 active:scale-95">
+                    <!--
+                        Аудирование тоже во всю ширину. Плиток в один
+                        столбец стало одиннадцать — нечётно, и последняя
+                        оставалась в строке одна, с дырой рядом. Двух
+                        широких внизу хватает, чтобы сетка сошлась.
+                    -->
+                    <button onclick="room.startExerciseMode(['listening'])" class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors flex flex-row items-center justify-center gap-3 col-span-2 active:scale-95">
                         <i class="fa-solid fa-headphones text-teal-500 text-2xl"></i>
                         <span class="text-xs font-bold text-slate-300 text-center">${t('room.modeListening')}</span>
                     </button>
@@ -237,6 +255,12 @@ export const room = {
             if (allowedModes.includes('verb_form') && w.type === 'verb' && (w.preterite || w.participle_ii)) isValid = true;
             if (allowedModes.includes('fill_blanks') && w.example_de && w.example_de.length > 2) isValid = true;
             if (allowedModes.includes('sentence_builder') && w.example_de && w.example_de.length > 2) isValid = true;
+
+            // Сборке слова хватает самого слова — лишь бы букв было больше
+            // двух: складывать «Ei» нечего
+            if (allowedModes.includes('word_builder')
+                && germanUtils.stripArticle(w).replace(/\s/g, '').length > 2) isValid = true;
+
             if (allowedModes.includes('rektion') && w.type === 'verb' && w.rektion) isValid = true;
             if (allowedModes.includes('adjective_ending') && w.type === 'adjective') isValid = true;
             

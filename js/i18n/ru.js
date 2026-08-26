@@ -447,6 +447,7 @@ export const ru = {
         modeVerbForms: 'Формы<br>глаголов',
         modeContext: 'Слова<br>в контексте',
         modeBuilder: 'Сборка<br>предложений',
+        modeWordBuilder: 'Сборка<br>слов',
         modeRektion: 'Rektion<br>(Управление)',
         modeListening: 'Аудирование<br>на слух',
         modeDeclension: 'Склонение прилагательных',

@@ -1,6 +1,7 @@
 import { группа, тест, проверить } from '../runner.js';
 
 const { exercises } = await import('../../js/modules/exercises.js');
+const { germanUtils } = await import('../../js/core/german.js');
 
 /*
  * Начисление и оформление ответа в заданиях.
@@ -357,5 +358,35 @@ const { exercises } = await import('../../js/modules/exercises.js');
 
         проверить.равно(box.querySelectorAll('#sb-source button').length, 4, 'четыре плитки, а не разметка');
         box.remove();
+    });
+});
+
+группа('Пропущенное слово: подсказки не выдают ответ', () => {
+
+    /*
+     * Подсказки той же части речи заводились, чтобы был выбор. Но брались
+     * они как есть, вместе с артиклем — «die Tür», «der Tisch», — а
+     * пропущенное слово подставляется в предложение без него. Из трёх
+     * плашек одна всегда оказывалась без «der/die/das», и она же была
+     * ответом: выбрать можно было вообще не зная немецкого.
+     */
+
+    const артикль = /^(der|die|das)\s/i;
+
+    тест('артикль снимается со всех подсказок одинаково', () => {
+        const слова = [
+            { word: 'die Tür' }, { word: 'der Tisch' },
+            { word: 'das Fenster' }, { word: 'laufen' }
+        ];
+        const голые = слова.map(w => germanUtils.stripArticle(w));
+
+        проверить.совпадает(голые.filter(g => артикль.test(g)), [], 'ни одной с артиклем');
+        проверить.совпадает(голые, ['Tür', 'Tisch', 'Fenster', 'laufen']);
+    });
+
+    тест('слово без артикля не портится', () => {
+        // Глаголы и прилагательные артикля не имеют, и трогать их нельзя
+        проверить.равно(germanUtils.stripArticle({ word: 'laufen' }), 'laufen');
+        проверить.равно(germanUtils.stripArticle({ word: 'sehr gut' }), 'sehr gut');
     });
 });

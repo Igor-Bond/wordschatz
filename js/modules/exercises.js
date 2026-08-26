@@ -553,8 +553,20 @@ export const exercises = {
         if (!found) masked = `_____ ${word.example_de}`;
 
         const allWords = await dbService.getAllWords();
-        // Подсказки той же части речи — случайные слова не создавали выбора
-        const distractors = quiz.pickDistractors(word, allWords, 2).map(w => w.word);
+
+        /*
+         * Подсказки без артиклей — иначе ответ виден, не читая.
+         *
+         * Подсказки той же части речи заводились, чтобы был выбор:
+         * случайные слова его не создавали. Но брались они как есть,
+         * вместе с артиклем — «die Tür», «der Tisch», — а пропущенное
+         * слово подставляется в предложение без него. Из трёх плашек
+         * одна всегда оказывалась без «der/die/das», и она же была
+         * ответом. Выбирать можно было вообще не зная немецкого.
+         */
+        const distractors = quiz.pickDistractors(word, allWords, 2)
+            .map(w => germanUtils.stripArticle(w));
+
         const hints = quiz.shuffle([...distractors, targetMatch]);
 
         return `
