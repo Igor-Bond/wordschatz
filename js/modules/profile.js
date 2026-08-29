@@ -39,6 +39,19 @@ const shell = {
                     </button>
                 </div>
                 
+                <!--
+                    Справка стоит первой строкой профиля и выделена цветом.
+                    Ищут её именно здесь и именно тогда, когда не нашли
+                    ничего другого, — а бледной строкой среди настроек она
+                    читалась бы как ещё один переключатель, мимо которого
+                    скользит взгляд. Тому, кто открыл приложение впервые,
+                    это самая нужная кнопка на экране.
+                -->
+                <button data-action="guide.open" class="w-full mb-5 py-3 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-400 font-bold text-sm hover:bg-amber-500/20 active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-question"></i>
+                    ${t('profile.guide')}
+                </button>
+
                 <div class="flex bg-slate-800 rounded-xl p-1 mb-6 border border-slate-700">
                     <button onclick="profile.switchTab('stats')" id="tab-prof-stats" class="flex-1 py-2 text-sm font-bold rounded-lg bg-amber-500 text-slate-900 shadow transition-all">${t('profile.tabStats')}</button>
                     <button onclick="profile.switchTab('dict')" id="tab-prof-dict" class="flex-1 py-2 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all">${t('profile.tabDict')}</button>

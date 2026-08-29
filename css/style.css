@@ -157,3 +157,47 @@ body.lesson-mode #app-header {
     white-space: nowrap;
     border: 0;
 }
+
+/*
+ * Гармошка в справке.
+ *
+ * Свёрнутые разделы — это оглавление: развёрнутые целиком, они дают
+ * полотно в несколько экранов, по которому нельзя понять, где искать
+ * нужное. Сделано на <details>, а не на своём переключателе: состояние
+ * живёт в самом элементе и переживает любую перерисовку.
+ *
+ * Штатный треугольник убран и заменён своей галочкой: у браузеров он
+ * выглядит по-разному, а в Safari ещё и не поддаётся выравниванию по
+ * правому краю. Тайлвиндом это не сделать — нужны ::marker и ::after,
+ * то есть псевдоэлементы, к которым утилитами не подступиться.
+ */
+.guide-part > summary {
+    list-style: none;
+}
+
+.guide-part > summary::-webkit-details-marker {
+    display: none;
+}
+
+.guide-part > summary::after {
+    content: '';
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-right: 3px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-2px);
+    opacity: 0.45;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.guide-part[open] > summary::after {
+    transform: rotate(-135deg) translateY(-2px);
+    opacity: 0.9;
+}
+
+/* Открытый раздел назван цветом: так видно, где ты, не читая текста */
+.guide-part[open] > summary {
+    color: #f59e0b;
+}

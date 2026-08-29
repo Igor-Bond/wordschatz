@@ -18,6 +18,7 @@ import { scanner } from './modules/scanner.js';
 import { exercises } from './modules/exercises.js';
 import { training } from './modules/training.js';
 import { profile } from './modules/profile.js';
+import { guide } from './modules/guide.js';
 import { room } from './modules/room.js';
 import { chat } from './modules/chat.js';
 
@@ -110,7 +111,13 @@ export const app = {
         const main = document.getElementById('main-content');
         
         // Экранный чтец не заметит подмену содержимого — говорим сами
-        announce.say(t('nav.' + (viewId === 'cycle' || viewId === 'training' ? 'plan' : viewId)) || viewId);
+        /*
+         * У части экранов своей кнопки в меню нет. Чтец должен назвать
+         * не «guide», а тот раздел, куда человек попал: иначе объявление
+         * читается как код, а не как место.
+         */
+        const РАЗДЕЛ = { cycle: 'plan', training: 'plan', guide: 'profile' };
+        announce.say(t('nav.' + (РАЗДЕЛ[viewId] || viewId)) || viewId);
 
         // Маршрутизация по модулям приложения
         if (viewId === 'plan') { dashboard.render(); return; }
@@ -120,6 +127,7 @@ export const app = {
         if (viewId === 'room') { room.render(); return; }
         if (viewId === 'chat') { chat.render(); return; }
         if (viewId === 'profile') { profile.render(); return; }
+        if (viewId === 'guide') { guide.render(); return; }
         
         // Заглушка на случай неизвестного роута
         main.innerHTML = `

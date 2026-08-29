@@ -94,6 +94,8 @@
     await import('./suites/exercises.test.js');
     await import('./suites/pacing.test.js');
     await import('./suites/scenario.test.js');
+    await import('./suites/guide.test.js');
+    await import('./suites/offline.test.js');
 
     const экран = (текст) => document.getElementById('подпись').textContent = текст;
     const { results, passed, failed, total } = await запустить(n => экран(`Проверено ${n}`));

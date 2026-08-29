@@ -119,6 +119,16 @@ export const onboarding = {
                     <i class="fa-solid fa-hard-drive text-slate-500 mt-0.5 w-4 text-center"></i>
                     <p class="text-[13px] text-slate-400 leading-relaxed">${t('auth.worksOffline')}</p>
                 </div>
+                <!--
+                    Мастер настраивает приложение, но не объясняет его. Тому,
+                    кто дошёл до последнего шага, полезнее всего знать, что
+                    объяснение вообще существует и где лежит, — сам разбор
+                    читать сейчас незачем, до приложения он ещё не дошёл.
+                -->
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-circle-question text-slate-500 mt-0.5 w-4 text-center"></i>
+                    <p class="text-[13px] text-slate-400 leading-relaxed">${t('onboarding.guideHint')}</p>
+                </div>
             </div>
 
             <button onclick="onboarding.finish()"

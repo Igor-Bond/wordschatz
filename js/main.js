@@ -38,6 +38,7 @@ import { scanner } from './modules/scanner.js';
 import { exercises } from './modules/exercises.js';
 import { training } from './modules/training.js';
 import { profile } from './modules/profile.js';
+import { guide } from './modules/guide.js';
 import { room } from './modules/room.js';
 import { chat } from './modules/chat.js';
 import { control } from './modules/control.js';
@@ -56,7 +57,7 @@ Object.assign(window, {
     i18n, t, plural,
     config, db, dbService, aiService, auth, sync, dateUtils, srs, germanUtils, quiz, dialog, lessonStateManager, scheduler,
     install, masteryUtils, wiktionary, speech, viewport, actions,
-    onboarding, dashboard, cycle, scanner, exercises, training, profile, room, chat, control, app
+    onboarding, dashboard, cycle, scanner, exercises, training, profile, guide, room, chat, control, app
 });
 
 // --- Service Worker: офлайн-режим и установка PWA ---
