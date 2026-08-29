@@ -153,10 +153,13 @@ export const render = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.writeInGerman')}</h3>
+                <h3 id="ex-prompt" class="text-sm font-bold text-slate-400 mb-6">${t('exercises.writeInGerman')}</h3>
                 <h2 class="text-3xl font-black text-amber-500 mb-8">${word.translation}</h2>
 
-                <input type="text" id="ex-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+                <!-- Подпись берём из видимого вопроса над полем: дублировать её
+                     в aria-label значило бы завести второй текст, который
+                     разойдётся с первым при первой же правке -->
+                <input type="text" id="ex-input" aria-labelledby="ex-prompt" autocomplete="off" autocapitalize="off" spellcheck="false"
                     class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-4 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors"
                     placeholder="${exercises.escAttr(t("exercises.wordPlaceholder"))}">
 
@@ -214,7 +217,7 @@ export const render = {
                 <h2 class="text-3xl font-black text-slate-100 mb-2">${word.word}</h2>
                 <p class="text-slate-500 mb-8 font-bold">${word.translation}</p>
                 <div class="mb-6 text-left">
-                    <label class="block text-xs font-bold text-amber-500 mb-2">${label}</label>
+                    <label for="ex-input" class="block text-xs font-bold text-amber-500 mb-2">${label}</label>
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold transition-colors" autocomplete="off">
                 </div>
                 <button data-action="exercises.checkInput" data-correct="${actions.attr(targetForm)}" data-mode="verb_form" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
@@ -278,7 +281,7 @@ export const render = {
 
         return `
             <div class="w-full flex flex-col bg-[#21293c] rounded-2xl border border-slate-700 shadow-xl relative mb-6 p-6 text-center">
-                <h3 class="text-sm font-bold text-slate-400 mb-6">${t('exercises.fillBlank')}</h3>
+                <h3 id="ex-prompt" class="text-sm font-bold text-slate-400 mb-6">${t('exercises.fillBlank')}</h3>
                 <p class="text-slate-400 text-xs mb-4">${t('exercises.translationLabel')}: ${word.example_ru || word.translation}</p>
                 <h2 class="text-2xl font-black text-slate-100 mb-8 leading-relaxed">${masked}</h2>
                 
@@ -287,7 +290,7 @@ export const render = {
                 </div>
 
                 <div class="mb-6">
-                    <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" placeholder="${t('exercises.wordPlaceholder')}">
+                    <input type="text" id="ex-input" aria-labelledby="ex-prompt" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" placeholder="${t('exercises.wordPlaceholder')}">
                 </div>
                 <button data-action="exercises.checkInput" data-correct="${actions.attr(targetMatch)}" data-mode="fill_blanks" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>
                 <div id="ex-feedback" class="mt-4 hidden font-bold text-lg p-3 rounded-xl transition-all"></div>
@@ -413,7 +416,7 @@ export const render = {
                 </button>
 
                 <div class="mb-6 text-left">
-                    <label class="block text-xs font-bold text-amber-500 mb-2">${t('exercises.writeWhatYouHear')}</label>
+                    <label for="ex-input" class="block text-xs font-bold text-amber-500 mb-2">${t('exercises.writeWhatYouHear')}</label>
                     <input type="text" id="ex-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-center text-xl font-bold shadow-inner transition-colors" autocomplete="off">
                 </div>
                 <button data-action="exercises.checkInput" data-correct="${actions.attr(word.word)}" data-mode="listening" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl active:scale-95 transition-all" id="ex-submit">${t('exercises.check')}</button>

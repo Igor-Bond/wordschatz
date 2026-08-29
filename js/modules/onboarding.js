@@ -147,7 +147,7 @@ export const onboarding = {
             <p class="text-slate-400 mb-8">${t('onboarding.intro')}</p>
 
             <div class="w-full max-w-sm text-left">
-                <label class="block text-sm font-bold text-slate-400 mb-2">${t('onboarding.nameLabel')}</label>
+                <label for="ob-name" class="block text-sm font-bold text-slate-400 mb-2">${t('onboarding.nameLabel')}</label>
                 <input type="text" id="ob-name" value="${onboarding.data.name}"
                     class="w-full bg-slate-800 border-2 border-slate-700 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 text-lg transition-colors"
                     placeholder="${t('onboarding.namePlaceholder')}">
@@ -163,14 +163,14 @@ export const onboarding = {
         <div class="fade-in flex flex-col justify-center h-full p-6 max-w-sm mx-auto w-full">
             <h2 class="text-2xl font-bold text-slate-100 mb-6">${t('onboarding.levelTitle')}</h2>
 
-            <label class="block text-sm font-bold text-slate-400 mb-2">${t('onboarding.levelLabel')}</label>
+            <label for="ob-level" class="block text-sm font-bold text-slate-400 mb-2">${t('onboarding.levelLabel')}</label>
             <select id="ob-level" class="w-full bg-slate-800 border-2 border-slate-700 text-slate-100 rounded-xl px-4 py-3 mb-6 outline-none focus:border-amber-500">
                 ${onboarding.LEVELS.map(code => `
                     <option value="${code}" ${code === onboarding.data.level ? 'selected' : ''}>${t('levels.' + code)}</option>
                 `).join('')}
             </select>
 
-            <label class="block text-sm font-bold text-slate-400 mb-2">${t('onboarding.interestsLabel')}</label>
+            <label for="ob-interests" class="block text-sm font-bold text-slate-400 mb-2">${t('onboarding.interestsLabel')}</label>
             <p class="text-xs text-slate-500 mb-2">${t('onboarding.interestsHint')}</p>
             <textarea id="ob-interests" class="w-full bg-slate-800 border-2 border-slate-700 text-slate-100 rounded-xl px-4 py-3 mb-6 outline-none focus:border-amber-500 h-24"
                 placeholder="${t('onboarding.interestsPlaceholder')}">${onboarding.data.interests}</textarea>

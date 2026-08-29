@@ -47,9 +47,11 @@ export const scheduler = {
         const user = await dbService.getUser();
         const value = scheduler.getStreakValue(user);
 
-        // Прерванную серию фиксируем в базе, иначе она «воскреснет»
+        // Прерванную серию фиксируем в базе, иначе она «воскреснет».
+        // Через updateUser, а не saveUser: запись общая с опытом, и целый
+        // put затёр бы очки, начисленные между чтением и записью
         if (value === 0 && (user.currentStreak || 0) > 0) {
-            await dbService.saveUser({ ...user, currentStreak: 0 });
+            await dbService.updateUser({ currentStreak: 0 });
         }
 
         scheduler._paintStreak(value);
@@ -104,17 +106,30 @@ export const scheduler = {
      * пройденный дневной урок или сданный контроль темы.
      */
     registerLessonCompleted: async () => {
-        const user = await dbService.getUser();
         const today = dateUtils.today();
-        const last = scheduler._normalizeDate(user.lastActiveDate);
 
-        if (last === today) return user.currentStreak || 1; // сегодня уже засчитан
+        /*
+         * Решение принимается внутри транзакции, а не до неё.
+         *
+         * Раньше здесь читали запись пользователя, считали новую серию и
+         * клали запись целиком обратно. В конце урока это столкнулось с
+         * начислением опыта, которое пишет в ту же запись: оно успевало
+         * прочитать её до нас, а записать — после, и серия исчезала.
+         * Опыт при этом оставался, потому что его правка ложилась
+         * последней, — отсюда и жалоба «серия пропала, а очки на месте».
+         */
+        const итог = await dbService.updateUser((user) => {
+            const last = scheduler._normalizeDate(user.lastActiveDate);
+            if (last === today) return null;   // сегодня уже засчитан
 
-        const diff = last ? dateUtils.diffDays(last, today) : null;
-        const streak = (diff === 1) ? (user.currentStreak || 0) + 1 : 1;
+            const diff = last ? dateUtils.diffDays(last, today) : null;
+            return {
+                currentStreak: (diff === 1) ? (user.currentStreak || 0) + 1 : 1,
+                lastActiveDate: today
+            };
+        });
 
-        await dbService.saveUser({ ...user, currentStreak: streak, lastActiveDate: today });
-
+        const streak = итог.currentStreak || 1;
         scheduler._paintStreak(streak);
         return streak;
     },

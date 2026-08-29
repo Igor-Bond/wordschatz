@@ -96,6 +96,8 @@
     await import('./suites/scenario.test.js');
     await import('./suites/guide.test.js');
     await import('./suites/offline.test.js');
+    await import('./suites/a11y.test.js');
+    await import('./suites/numbers.test.js');
 
     const экран = (текст) => document.getElementById('подпись').textContent = текст;
     const { results, passed, failed, total } = await запустить(n => экран(`Проверено ${n}`));

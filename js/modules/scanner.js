@@ -28,7 +28,7 @@ export const scanner = {
                 <!-- Режим: Одно слово -->
                 <div id="mode-single" class="space-y-4">
                     <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
-                        <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.wordLabel')}</label>
+                        <label for="scan-word-input" class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.wordLabel')}</label>
                         <!--
                             Кнопка под полем и с подписью, а не лупа сбоку:
                             значок рядом с полем читался как «поиск по уже
@@ -46,10 +46,10 @@ export const scanner = {
                 <!-- Режим: Тема (Генерация ИИ) -->
                 <div id="mode-topic" class="space-y-4 hidden">
                     <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
-                        <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.topicLabel')}</label>
+                        <label for="scan-topic-input" class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.topicLabel')}</label>
                         <input type="text" id="scan-topic-input" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-4 outline-none focus:border-amber-500 transition-colors" placeholder="${t('scanner.topicPlaceholder')}">
                         
-                        <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.countLabel')}</label>
+                        <label for="scan-count-input" class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.countLabel')}</label>
                         <input type="number" id="scan-count-input" value="15" min="5" max="30" class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-6 outline-none focus:border-amber-500">
                         
                         <button onclick="scanner.generateTopic()" class="w-full py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg hover:bg-amber-400 transition-transform active:scale-95 flex items-center justify-center gap-2">
@@ -61,7 +61,7 @@ export const scanner = {
                 <!-- Режим: Текст (Умный сканер) -->
                 <div id="mode-text" class="space-y-4 hidden">
                     <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
-                        <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.textLabel')}</label>
+                        <label for="scan-text-input" class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.textLabel')}</label>
                         <textarea id="scan-text-input" class="w-full h-32 bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 mb-6 outline-none focus:border-amber-500 transition-colors resize-none" placeholder="${t('scanner.textPlaceholder')}"></textarea>
                         
                         <button onclick="scanner.analyzeText()" class="w-full py-4 bg-amber-500 text-slate-900 text-lg font-black rounded-xl shadow-lg hover:bg-amber-400 transition-transform active:scale-95 flex items-center justify-center gap-2">
@@ -77,7 +77,7 @@ export const scanner = {
                 -->
                 <div id="mode-photo" class="space-y-4 hidden">
                     <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
-                        <label class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.photoLabel')}</label>
+                        <label for="scan-photo-input" class="block text-sm font-bold text-slate-400 mb-2">${t('scanner.photoLabel')}</label>
 
                         <input type="file" id="scan-photo-input" accept="image/*" capture="environment"
                             class="hidden" onchange="scanner.photoPicked(this)">

@@ -36,7 +36,7 @@ export const chat = {
                             </p>
                         </div>
                     </div>
-                    <button onclick="chat.clearHistory()" class="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-900/50 transition-colors flex items-center justify-center">
+                    <button onclick="chat.clearHistory()" aria-label="${t('chat.clear')}" class="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-900/50 transition-colors flex items-center justify-center">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
@@ -49,8 +49,8 @@ export const chat = {
                 <!-- Поле ввода -->
                 <div class="p-2 shrink-0 mb-4 mx-2">
                     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-2 flex items-end gap-2 shadow-xl focus-within:border-amber-500 transition-colors">
-                        <textarea id="chat-input" rows="1" class="flex-1 bg-transparent text-slate-100 px-3 py-2 outline-none resize-none hide-scrollbar placeholder-slate-500 min-h-[44px] max-h-32" placeholder="Schreibe eine Nachricht..." oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                        <button onclick="chat.sendMessage()" id="chat-send-btn" class="w-11 h-11 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center hover:bg-amber-400 transition-transform active:scale-95 shrink-0 shadow">
+                        <textarea id="chat-input" rows="1" class="flex-1 bg-transparent text-slate-100 px-3 py-2 outline-none resize-none hide-scrollbar placeholder-slate-500 min-h-[44px] max-h-32" aria-label="${t('chat.inputLabel')}" placeholder="${t('chat.inputPlaceholder')}" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                        <button onclick="chat.sendMessage()" id="chat-send-btn" aria-label="${t('chat.send')}" class="w-11 h-11 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center hover:bg-amber-400 transition-transform active:scale-95 shrink-0 shadow">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
                     </div>

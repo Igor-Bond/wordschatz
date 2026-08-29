@@ -110,7 +110,11 @@ export const sync = {
             const local = await dbService.getUser();
 
             if ((remote.updatedAt || 0) > (local.updatedAt || 0)) {
-                await dbService.saveUser({ ...local, ...remote, id: 1 });
+                // updateUser, а не saveUser: обмен с облаком идёт в фоне и
+                // может совпасть с начислением опыта или записью серии.
+                // Слияние под транзакцией оставляет облаку победу в его
+                // полях, не теряя того, что записалось за это время
+                await dbService.updateUser({ ...remote, id: 1 });
                 if (remote.profile) await sync._applyProfile(remote.profile);
                 counts.user = 1;
             }

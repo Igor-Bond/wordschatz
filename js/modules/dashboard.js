@@ -99,7 +99,13 @@ export const dashboard = {
                         по нему видно ступень, не читая подписи, и в
                         лестнице лиг стоят те же значки.
                     -->
-                    <button onclick="profile.showLeagues()" title="${t('profile.allLeagues')}"
+                    <!--
+                        aria-label, а не только title: подсказка по наведению
+                        на телефоне не показывается вовсе, и чтецы берут её
+                        лишь на крайний случай. Внутри кнопки один значок,
+                        текста для имени нет.
+                    -->
+                    <button onclick="profile.showLeagues()" aria-label="${t('profile.allLeagues')}" title="${t('profile.allLeagues')}"
                         class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center border-2 ${вид.ring} shadow-inner shrink-0 active:scale-95 transition-transform">
                         <i class="fa-solid ${вид.icon} text-2xl ${вид.color}"></i>
                     </button>

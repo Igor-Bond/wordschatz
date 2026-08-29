@@ -84,7 +84,7 @@ export const cycle = {
                 </div>
 
                 <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-4">
-                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">${t('cycle.topicLabel')}</label>
+                    <label for="cycle-topic-input" class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">${t('cycle.topicLabel')}</label>
                     <input type="text" id="cycle-topic-input"
                         class="w-full bg-slate-900 border-2 border-slate-600 text-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500 transition-colors"
                         placeholder="${cycle.esc(t('cycle.topicPlaceholder'))}" value="${cycle.esc(cycle.state.topic)}">
@@ -119,8 +119,15 @@ export const cycle = {
                 </div>
 
                 <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg mb-6">
-                    <label class="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">${t('cycle.durationLabel')}</label>
-                    <div class="grid grid-cols-4 gap-2">
+                    <!--
+                        Не <label>, а заголовок группы: подпись стоит над
+                        четырьмя кнопками, а не над полем. Экранный чтец на
+                        <label> без поля спотыкается — объявляет подпись и
+                        не говорит, к чему она. role="group" с
+                        aria-labelledby связывает её со всеми кнопками сразу.
+                    -->
+                    <div id="cycle-duration-label" class="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">${t('cycle.durationLabel')}</div>
+                    <div role="group" aria-labelledby="cycle-duration-label" class="grid grid-cols-4 gap-2">
                         ${cycle.DURATIONS.map(d => `
                             <button onclick="cycle.pickDuration(${d})"
                                 class="py-3 rounded-xl border-2 font-bold transition-all active:scale-95 ${

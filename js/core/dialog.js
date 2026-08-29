@@ -67,6 +67,86 @@ export const dialog = {
         buttons: [{ value: true, label: options.okLabel || t('common.close'), primary: true }]
     }),
 
+    /**
+     * Запереть фокус внутри окна и вернуть его на место при закрытии.
+     *
+     * Без этого Tab из окна уходит на страницу за ним: с клавиатуры
+     * человек «проваливается» сквозь диалог и жмёт кнопки, которых не
+     * видит, а экранный чтец зачитывает содержимое, закрытое затемнением.
+     * Само окно при этом честно помечено role="dialog" aria-modal="true"
+     * — но эта метка ничего не запирает, она только объявляет намерение.
+     *
+     * Два действия. Остальной странице ставится `inert`: браузер убирает
+     * её и из обхода по Tab, и из дерева доступности разом. И Tab на
+     * последнем элементе заворачивается на первый — своими руками, потому
+     * что inert закрывает выход наружу, но кольца внутри не делает.
+     *
+     * Возвращает функцию, снимающую и то и другое.
+     *
+     * @param {HTMLElement} окно контейнер диалога
+     * @returns {() => void} освободить
+     */
+    trapFocus: (окно) => {
+        const былоВФокусе = document.activeElement;
+
+        /*
+         * Гасим соседей на каждом уровне вверх до <body>, а не только
+         * детей <body>.
+         *
+         * Разница существенная: диалоги из этого файла добавляются прямо
+         * в <body>, а окна настроек и правки слова лежат внутри разметки
+         * экрана. Погасив для них «всё, кроме окна» на верхнем уровне, мы
+         * погасили бы и предка окна — а `inert` наследуется, и окно
+         * заодно погасло бы само.
+         *
+         * Поэтому на каждом уровне гасим только братьев самого окна и его
+         * предков: путь от <body> до окна остаётся живым, всё вокруг —
+         * нет.
+         */
+        const соседи = [];
+        for (let узел = окно; узел && узел !== document.body; узел = узел.parentElement) {
+            for (const брат of узел.parentElement?.children || []) {
+                if (брат !== узел && !брат.hasAttribute('inert')) соседи.push(брат);
+            }
+        }
+        соседи.forEach(el => el.setAttribute('inert', ''));
+
+        const ФОКУСИРУЕМЫЕ = 'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
+
+        const поTab = (e) => {
+            if (e.key !== 'Tab') return;
+
+            const список = [...окно.querySelectorAll(ФОКУСИРУЕМЫЕ)].filter(el => el.offsetParent !== null && !el.disabled);
+            if (!список.length) return;
+
+            const первый = список[0];
+            const последний = список[список.length - 1];
+
+            // Фокус мог оказаться вне списка — например, на самом окне
+            if (e.shiftKey && (document.activeElement === первый || !окно.contains(document.activeElement))) {
+                e.preventDefault();
+                последний.focus();
+            } else if (!e.shiftKey && document.activeElement === последний) {
+                e.preventDefault();
+                первый.focus();
+            }
+        };
+
+        document.addEventListener('keydown', поTab, true);
+
+        return () => {
+            document.removeEventListener('keydown', поTab, true);
+            соседи.forEach(el => el.removeAttribute('inert'));
+
+            // Вернуть фокус туда, откуда окно открыли: иначе после
+            // закрытия он падает на <body>, и следующий Tab начинает
+            // обход страницы с начала
+            if (былоВФокусе && document.contains(былоВФокусе)) {
+                try { былоВФокусе.focus(); } catch { /* элемент мог исчезнуть */ }
+            }
+        };
+    },
+
     _show: ({ message, html, title, buttons, danger, stacked, tall }) => new Promise(resolve => {
         // Второй диалог поверх первого — закрываем предыдущий без ответа
         if (активный) активный.close(null);
@@ -126,10 +206,13 @@ export const dialog = {
             overlay.firstElementChild.classList.remove('translate-y-4', 'sm:scale-95');
         });
 
+        const освободить = dialog.trapFocus(overlay);
+
         const close = (value) => {
             if (активный !== state) return;
             активный = null;
             document.removeEventListener('keydown', onKey);
+            освободить();
 
             overlay.classList.add('opacity-0');
             setTimeout(() => overlay.remove(), 150);

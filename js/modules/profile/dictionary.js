@@ -376,23 +376,31 @@ export const dictionary = {
         const word = await dbService.getWordById(id);
         if (!word) return;
 
+        /*
+         * У каждого поля свой id, чтобы подпись могла на него сослаться.
+         * Раньше подписи стояли рядом, но ни с чем не связанные, и чтец
+         * объявлял двенадцать полей подряд как «текстовое поле» — какое
+         * из них Präteritum, а какое Perfekt, узнать было неоткуда.
+         * Сами значения по-прежнему читаются по data-edit, id тут ровно
+         * для связи с подписью.
+         */
         const поле = (name, label, value, extra = '') => `
             <div>
-                <label class="block text-[10px] font-bold text-slate-400 mb-1">${profile.escapeAttr(label)}</label>
-                <input type="text" data-edit="${name}" value="${profile.escapeAttr(value ?? '')}" ${extra}
+                <label for="edit-f-${name}" class="block text-[10px] font-bold text-slate-400 mb-1">${profile.escapeAttr(label)}</label>
+                <input type="text" id="edit-f-${name}" data-edit="${name}" value="${profile.escapeAttr(value ?? '')}" ${extra}
                     class="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm transition-colors">
             </div>`;
 
         const область = (name, label, value, css) => `
             <div>
-                <label class="block text-[10px] font-bold text-slate-400 mb-1">${profile.escapeAttr(label)}</label>
-                <textarea data-edit="${name}" class="w-full bg-slate-900 border border-slate-600 ${css} rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-16 transition-colors">${profile.escapeAttr(value ?? '')}</textarea>
+                <label for="edit-f-${name}" class="block text-[10px] font-bold text-slate-400 mb-1">${profile.escapeAttr(label)}</label>
+                <textarea id="edit-f-${name}" data-edit="${name}" class="w-full bg-slate-900 border border-slate-600 ${css} rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm h-16 transition-colors">${profile.escapeAttr(value ?? '')}</textarea>
             </div>`;
 
         let html = `<input type="hidden" id="edit-id" value="${word.id}">
             <div>
-                <label class="block text-[10px] font-bold text-slate-400 mb-1">${t('profile.germanWord')}</label>
-                <input type="text" data-edit="word" value="${profile.escapeAttr(word.word || '')}"
+                <label for="edit-f-word" class="block text-[10px] font-bold text-slate-400 mb-1">${t('profile.germanWord')}</label>
+                <input type="text" id="edit-f-word" data-edit="word" value="${profile.escapeAttr(word.word || '')}"
                     class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 font-bold text-lg transition-colors">
             </div>`;
 
@@ -406,11 +414,20 @@ export const dictionary = {
             const conjugation = germanUtils.getConjugation(word) || {};
             html += `
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Präsens</label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <!--
+                        Здесь подписи нет ни у одного поля: местоимение
+                        стоит в placeholder и пропадает, едва начнёшь
+                        печатать. Глазами это работает — рядом пять
+                        соседей, — а чтецу подсказать нечем. Поэтому
+                        aria-label с тем же местоимением и заголовок
+                        группы для всей шестёрки.
+                    -->
+                    <div id="edit-praesens-label" class="block text-[10px] font-bold text-slate-400 mb-1">Präsens</div>
+                    <div role="group" aria-labelledby="edit-praesens-label" class="grid grid-cols-2 gap-2">
                         ${germanUtils.PERSONS.map(p => `
                             <input type="text" data-conj="${p}" value="${profile.escapeAttr(conjugation[p] || '')}"
                                 placeholder="${germanUtils.PERSON_LABELS[p]}"
+                                aria-label="Präsens ${germanUtils.PERSON_LABELS[p]}"
                                 class="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-amber-500 text-sm transition-colors">
                         `).join('')}
                     </div>
@@ -424,8 +441,11 @@ export const dictionary = {
 
         const modal = document.getElementById('edit-word-modal');
         const content = document.getElementById('edit-modal-content');
-        
+
         modal.classList.remove('hidden');
+        // Тот же запор фокуса, что и в диалогах: Tab не должен уходить из
+        // окна правки на список словаря за ним
+        profile._освободитьПравку = dialog.trapFocus(modal);
         setTimeout(() => {
             modal.classList.remove('opacity-0');
             content.classList.remove('scale-95');
@@ -435,7 +455,10 @@ export const dictionary = {
     closeEditModal: () => {
         const modal = document.getElementById('edit-word-modal');
         const content = document.getElementById('edit-modal-content');
-        
+
+        profile._освободитьПравку?.();
+        profile._освободитьПравку = null;
+
         modal.classList.add('opacity-0');
         content.classList.add('scale-95');
         setTimeout(() => { modal.classList.add('hidden'); }, 200);

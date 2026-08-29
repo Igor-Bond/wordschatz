@@ -142,13 +142,13 @@
                     и приложение здоровалось неправильно каждый день.
                 -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.name">Имя</label>
+                    <label for="settings-name" class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.name">Имя</label>
                     <input type="text" id="settings-name" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.level">Уровень</label>
+                        <label for="settings-level" class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.level">Уровень</label>
                         <select id="settings-level" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                             <option value="A1">A1</option>
                             <option value="A2">A2</option>
@@ -157,7 +157,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-1.5"  data-i18n="settings.dailyGoal">Норма / день</label>
+                        <label for="settings-goal" class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.dailyGoal">Норма / день</label>
                         <select id="settings-goal" class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm">
                             <option value="5">5 слов</option>
                             <option value="10">10 слов</option>
@@ -169,7 +169,7 @@
 
                 <!-- §22 ТЗ: интересы задаются при первом запуске, но меняться они могут -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.interests">Интересы</label>
+                    <label for="settings-interests" class="block text-xs font-bold text-slate-400 mb-1.5" data-i18n="settings.interests">Интересы</label>
                     <textarea id="settings-interests" rows="2" placeholder="музыка, походы, автомобили"
                         class="w-full bg-slate-900 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-sm resize-none"></textarea>
                     <p class="text-[10px] text-slate-500 mt-1" data-i18n="settings.interestsHint">По ним ИИ подбирает примеры в карточках</p>
@@ -177,7 +177,7 @@
 
                 <div>
                     <div class="flex items-baseline justify-between mb-1.5 gap-2">
-                        <label class="block text-xs font-bold text-slate-400" data-i18n="settings.apiKey">API Ключ (Gemini)</label>
+                        <label for="settings-api-key" class="block text-xs font-bold text-slate-400" data-i18n="settings.apiKey">API Ключ (Gemini)</label>
                         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
                            class="text-[10px] font-bold text-amber-500 hover:text-amber-400 shrink-0">
                             <span data-i18n="settings.getKey">получить ключ</span> <i class="fa-solid fa-arrow-up-right-from-square ml-0.5"></i>

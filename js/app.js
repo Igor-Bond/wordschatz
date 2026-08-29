@@ -174,6 +174,9 @@ export const app = {
         const content = document.getElementById('settings-modal-content');
         
         modal.classList.remove('hidden');
+        // Запор фокуса: без него Tab уходит из окна на страницу за ним,
+        // а чтец зачитывает то, что закрыто затемнением
+        app._освободитьНастройки = dialog.trapFocus(modal);
         setTimeout(() => {
             modal.classList.remove('opacity-0');
             content.classList.remove('scale-95');
@@ -248,7 +251,10 @@ export const app = {
     closeSettings: () => {
         const modal = document.getElementById('settings-modal');
         const content = document.getElementById('settings-modal-content');
-        
+
+        app._освободитьНастройки?.();
+        app._освободитьНастройки = null;
+
         modal.classList.add('opacity-0');
         content.classList.add('scale-95');
         setTimeout(() => { modal.classList.add('hidden'); }, 200);

@@ -529,7 +529,11 @@ export const ru = {
         roleTutor: 'Репетитор',
         roleStudent: 'Студент',
         networkError: 'Извините, произошла ошибка сети. Попробуйте ещё раз.',
-        clearConfirm: 'Вы уверены, что хотите очистить историю чата?'
+        clearConfirm: 'Вы уверены, что хотите очистить историю чата?',
+        clear: 'Очистить историю',
+        send: 'Отправить сообщение',
+        inputLabel: 'Сообщение по-немецки',
+        inputPlaceholder: 'Schreibe eine Nachricht...'
     },
 
     profile: {
