@@ -452,7 +452,7 @@ export const ru = {
         modeWordBuilder: 'Сборка<br>слов',
         modeRektion: 'Rektion<br>(Управление)',
         modeListening: 'Аудирование<br>на слух',
-        modeDeclension: 'Склонение прилагательных',
+        modeDeclension: 'Склонение<br>прилагательных',
         notEnoughAdjectives: 'Добавьте в словарь прилагательные — склонение спрашивается только у них.',
         immersive: 'Иммерсивные режимы',
         storyTitle: 'Интерактивный ИИ-рассказ',
