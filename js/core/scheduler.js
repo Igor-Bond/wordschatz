@@ -98,7 +98,39 @@ export const scheduler = {
             value > 0 ? t('streak.keepHint') : t('streak.startHint')
         ];
 
+        /*
+         * Сброс счётчика — единственный способ исправить цифру, которая
+         * врёт. До сих пор такого способа не было вовсе: неверную серию
+         * можно было убрать только сбросом всего приложения вместе со
+         * словарём.
+         *
+         * Обратной кнопки — «поставить N дней» — здесь сознательно нет.
+         * Сброс умеет только уменьшать, а значит не может подарить день,
+         * которого не было. Восстановление по журналу такое умело, и
+         * ровно поэтому снято.
+         */
+        if (value > 0) {
+            const выбор = await dialog.choose(строки.join('\n'), [
+                { value: 'reset', label: t('streak.reset'), hint: t('streak.resetHint'), danger: true }
+            ], { title: t('streak.title'), cancelLabel: t('common.close') });
+
+            if (выбор === 'reset') await scheduler.resetStreak();
+            return;
+        }
+
         await dialog.alert(строки.join('\n'), { title: t('streak.title') });
+    },
+
+    /**
+     * Обнулить счётчик серии.
+     *
+     * Через updateUser: запись общая с опытом и лигой, и целая перезапись
+     * снесла бы очки, начисленные между чтением и записью.
+     */
+    resetStreak: async () => {
+        await dbService.updateUser({ currentStreak: 0, lastActiveDate: null });
+        scheduler._paintStreak(0);
+        return 0;
     },
 
     /**

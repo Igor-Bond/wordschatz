@@ -334,3 +334,43 @@ const НАБОР = [
     });
 });
 
+
+/*
+ * Сброс счётчика серии.
+ *
+ * Понадобился, когда цифра оказалась завышенной: до этого исправить
+ * неверную серию можно было только сбросом всего приложения вместе со
+ * словарём.
+ *
+ * Сброс умеет только уменьшать — подарить несуществующий день он не
+ * может. Этим он и отличается от снятого восстановления по журналу.
+ */
+группа('Сброс счётчика серии', () => {
+
+    тест('обнуляет счётчик и дату, не трогая остальное', async () => {
+        const { scheduler } = await import('../../js/core/scheduler.js');
+
+        await db.user.clear();
+        await dbService.saveUser({ totalXP: 640, league: 'stone', currentStreak: 9, lastActiveDate: '2026-08-30' });
+
+        await scheduler.resetStreak();
+        const запись = await dbService.getUser();
+
+        проверить.равно(запись.currentStreak, 0, 'счётчик не обнулён');
+        проверить.равно(запись.lastActiveDate, null, 'дата последнего занятия осталась');
+        проверить.равно(запись.totalXP, 640, 'сброс серии снёс опыт');
+        проверить.равно(запись.league, 'stone', 'сброс серии снёс лигу');
+    });
+
+    тест('после сброса серия начинается заново с единицы', async () => {
+        const { scheduler } = await import('../../js/core/scheduler.js');
+
+        await db.user.clear();
+        await dbService.saveUser({ totalXP: 0, currentStreak: 9, lastActiveDate: '2026-08-30' });
+
+        await scheduler.resetStreak();
+        const после = await scheduler.registerLessonCompleted();
+
+        проверить.равно(после, 1, 'первый урок после сброса должен дать единицу');
+    });
+});
