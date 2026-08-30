@@ -7,6 +7,7 @@ import { germanUtils } from '../core/german.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { scheduler } from '../core/scheduler.js';
+import { srs } from '../core/srs.js';
 import { dashboard } from './dashboard.js';
 
 export const control = {
@@ -140,6 +141,44 @@ export const control = {
         // Сданный контроль — тоже день занятий
         await scheduler.registerLessonCompleted();
 
+        /*
+         * Слова, на которых ошиблись, возвращаются в повторение завтра.
+         *
+         * Раньше контроль только измерял: освоенность по каждому ответу
+         * обновлялась, а срок повторения оставался прежним. Проваленное
+         * слово с интервалом в три недели так и ждало три недели — при
+         * том что приложение уже знало, что оно забыто.
+         *
+         * Слово читается из базы, а не берётся из очереди: на контроле
+         * одно слово спрашивают двумя заданиями, и копия в очереди помнит
+         * состояние на момент сборки. Список ошибок тоже сводится по id —
+         * ошибиться можно в обоих заданиях, вернуть слово нужно один раз.
+         */
+        const ошибочные = [...new Map(
+            control.state.mistakes.map(item => [item.word.id, item.word])
+        ).values()];
+
+        let возвращено = 0;
+        for (const слово of ошибочные) {
+            if (!слово?.id) continue;
+            try {
+                const stored = await dbService.getWordById(слово.id);
+                if (!stored) continue;
+
+                srs.applyExamLapse(stored);
+                await dbService.updateWord(stored.id, {
+                    interval: stored.interval,
+                    ease: stored.ease,
+                    phase: stored.phase,
+                    stepIndex: stored.stepIndex,
+                    nextReview: stored.nextReview
+                });
+                возвращено++;
+            } catch (e) {
+                console.error('[Контроль] Не удалось вернуть слово в повторение:', e);
+            }
+        }
+
         // 4. РЕНДЕР РЕЗУЛЬТАТОВ
         let gradeColor = 'text-green-500';
         let gradeText = t('control.gradeGreat');
@@ -161,6 +200,12 @@ export const control = {
             mistakesHtml = `
                 <div class="mt-6 w-full text-left">
                     <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-700 pb-2">${t('control.wordsToReview')}</h3>
+                    <!--
+                        Без этой строки возврат в повторение остаётся
+                        невидимым: слова просто появятся завтра в плане, и
+                        связь с контролем придётся угадывать.
+                    -->
+                    <p class="text-xs text-slate-400 leading-relaxed mb-3">${t('control.returnedToReview', { words: plural('common.word', возвращено) })}</p>
                     <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                         ${uniqueMistakes.map(m => `
                             <div class="bg-slate-800 p-3 rounded-xl border border-red-900/30 flex justify-between items-center">
