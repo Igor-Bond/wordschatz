@@ -9,6 +9,7 @@ import { frequency } from '../core/frequency.js';
 import { speech } from '../core/speech.js';
 import { dialog } from '../core/dialog.js';
 import { masteryUtils } from '../core/mastery.js';
+import { pace } from '../core/pace.js';
 import { srs } from '../core/srs.js';
 import { lessonStateManager } from '../core/lessonState.js';
 import { scheduler } from '../core/scheduler.js';
@@ -98,6 +99,16 @@ export const training = {
              */
             training.state.data.scheduleByExercise =
                 [...поЗаданию, ...plan.newWords].map(w => w.id);
+
+            /*
+             * Время начала — чтобы после урока узнать свою скорость.
+             *
+             * Оценка «≈ 16 мин» на плане считается по прошлым урокам, а
+             * не по среднему человеку: скорость зависит и от устройства,
+             * и от того, печатает человек ответ или выбирает.
+             */
+            training.state.data.startedAt = Date.now();
+            training.state.data.plannedItems = pace.itemsInLesson(plan);
             // Запоминаем день учебного цикла, чтобы отметить его выполненным в конце
             training.state.data.dayPlanId = plan.dayPlan ? plan.dayPlan.id : null;
 
@@ -147,6 +158,13 @@ export const training = {
 
         // Серия дней растёт по факту пройденного урока, а не от захода в приложение
         await scheduler.registerLessonCompleted();
+
+        // Своя скорость — из этого урока. Замер вне правдоподобных границ
+        // отбрасывается внутри pace.record: урок можно свернуть на середине
+        // и вернуться к нему через сутки
+        const начало = training.state?.data?.startedAt;
+        const заданий = training.state?.data?.plannedItems;
+        if (начало && заданий) pace.record(заданий, Date.now() - начало);
 
         // Результаты урока — самое ценное, что стоит отдать в облако сразу
         if (auth.isSignedIn) sync.run({ silent: true }).catch(() => {});

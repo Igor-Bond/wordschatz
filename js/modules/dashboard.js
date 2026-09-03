@@ -2,6 +2,7 @@ import { config } from '../config.js';
 import { t, plural } from '../i18n/i18n.js';
 import { dbService } from '../services/db.js';
 import { dateUtils } from '../core/dates.js';
+import { pace } from '../core/pace.js';
 import { leagueStyle } from '../core/leagues.js';
 import { frequency } from '../core/frequency.js';
 import { scheduler } from '../core/scheduler.js';
@@ -240,6 +241,20 @@ export const dashboard = {
                 <button id="start-daily-btn" class="w-full py-4 text-lg font-black rounded-xl transition-all ${btnClass}" ${done ? 'disabled' : ''}>
                     ${btnText}
                 </button>
+                <!--
+                    Оценка времени под кнопкой.
+                    Одно число «88» не говорит, десять это минут или сорок,
+                    — а решение садиться или нет принимают именно здесь. В
+                    настройках норма подписана временем, и тут обещание
+                    наконец сходится с делом. Считается по прошлым урокам
+                    этого человека, см. core/pace.js.
+                -->
+                ${done ? '' : `
+                    <p class="text-[11px] text-slate-500 text-center mt-2">
+                        ${t(pace.measured() ? 'dashboard.estimate' : 'dashboard.estimateRough',
+                            { minutes: plural('common.minute', pace.estimateMinutes(pace.itemsInLesson(plan))) })}
+                    </p>
+                `}
                 ${nextTopicHtml}
             </div>
         `;
