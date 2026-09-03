@@ -4,6 +4,7 @@ const { scheduler } = await import('../../js/core/scheduler.js');
 const { srs } = await import('../../js/core/srs.js');
 const { exercises } = await import('../../js/modules/exercises.js');
 const { masteryUtils } = await import('../../js/core/mastery.js');
+const { config } = await import('../../js/config.js');
 
 /*
  * Нагрузка и темп: сколько человек в состоянии унести за день.
@@ -332,5 +333,115 @@ const { masteryUtils } = await import('../../js/core/mastery.js');
         const трудных = слова.filter(w => masteryUtils.isWeak(w)).length / слова.length;
 
         проверить.истина(трудных < 0.25, `трудных ${Math.round(трудных * 100)} %`);
+    });
+});
+
+/*
+ * Потолок повторений не падает вместе с автоснижением нормы.
+ *
+ * Защита от завала работала наоборот задуманного. Потолок считался от
+ * действующей нормы, автоснижение опускало её с 10 до 5 — и потолок
+ * падал со 140 до 70 ровно тогда, когда очередь и без того не
+ * помещалась. Приложение сужало трубу, которую надо было расширить.
+ *
+ * Замер до правки: при точности 90 % очередь росла с двух слов до сорока
+ * девяти, а при 88 % — до четырёхсот с лишним и дальше. После правки при
+ * тех же 88 % очередь ноль.
+ */
+группа('Автоснижение нормы не режет потолок', () => {
+
+    /** Выполнить с подменёнными настройками и вернуть как было. */
+    const сНастройками = (пары, тело) => {
+        const было = {};
+        for (const ключ of Object.keys(пары)) было[ключ] = localStorage.getItem(`ws_${ключ}`);
+        for (const [ключ, значение] of Object.entries(пары)) localStorage.setItem(`ws_${ключ}`, значение);
+        try { return тело(); } finally {
+            for (const [ключ, значение] of Object.entries(было)) {
+                if (значение === null) localStorage.removeItem(`ws_${ключ}`);
+                else localStorage.setItem(`ws_${ключ}`, значение);
+            }
+        }
+    };
+
+    тест('выбранная норма живёт отдельно от действующей', () => {
+        сНастройками({ daily_goal: '5', chosen_goal: '10' }, () => {
+            const профиль = config.getProfile();
+            проверить.равно(профиль.dailyGoal, 5, 'действующая норма');
+            проверить.равно(профиль.chosenGoal, 10, 'выбранная норма');
+        });
+    });
+
+    тест('без выбранной нормы берётся действующая', () => {
+        // Старые установки ключа не имеют — они не должны остаться без потолка
+        сНастройками({ daily_goal: '15', chosen_goal: null }, () => {
+            localStorage.removeItem('ws_chosen_goal');
+            проверить.равно(config.getProfile().chosenGoal, 15);
+        });
+    });
+
+    тест('потолок считается от выбранной, а не от урезанной', () => {
+        сНастройками({ daily_goal: '5', chosen_goal: '10' }, () => {
+            const профиль = config.getProfile();
+
+            проверить.равно(scheduler.getReviewLimit(профиль.chosenGoal), 140, 'потолок должен остаться прежним');
+            проверить.равно(scheduler.getReviewLimit(профиль.dailyGoal), 70, 'а от урезанной он был бы вдвое меньше');
+        });
+    });
+
+    тест('при точности 85 % очередь не растёт без предела', () => {
+        /*
+         * Раньше этот случай расходился: спрос семьсот с лишним слов в
+         * день при потолке семьдесят. Теперь новые слова приходят реже
+         * (норма снижена), а разбирать по-прежнему дают сто сорок.
+         */
+        const ДЕНЬ = 86400000;
+        const настоящее = Date.now;
+        const начало = настоящее.call(Date);
+        let часы = начало;
+        Date.now = () => часы;
+
+        try {
+            const слова = [];
+            let seed = 7;
+            const рнд = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+
+            const выбранная = 10;
+            const потолок = scheduler.getReviewLimit(выбранная);   // от выбранной, не от текущей
+            let норма = выбранная, серия = 0;
+            let последняяОчередь = 0;
+
+            for (let d = 0; d < 365; d++) {
+                часы = начало + d * ДЕНЬ + 12 * 3600000;
+                const конецДня = начало + d * ДЕНЬ + 23 * 3600000;
+
+                const готовы = слова.filter(w => w.nextReview <= конецДня);
+                const вУрок = готовы.slice(0, потолок);
+                последняяОчередь = готовы.length - вУрок.length;
+
+                const решение = scheduler.overloadDecision({ postponed: последняяОчередь, goal: норма, streak: серия });
+                серия = решение.streak;
+                норма = решение.goal;
+
+                вУрок.forEach(w => {
+                    const верно = рнд() < 0.85;
+                    srs.applyTo(w, верно ? 3 : 1);
+                    masteryUtils.registerAnswer(w, верно);
+                });
+
+                for (let k = 0; k < норма; k++) {
+                    const w = {
+                        interval: 0, ease: srs.DEFAULT_EASE, phase: 'learning',
+                        stepIndex: 0, repetitions: 0, recent: [], attempts: 0, correct: 0, mastery: 0
+                    };
+                    srs.applyTo(w, 3);
+                    masteryUtils.registerAnswer(w, true);
+                    слова.push(w);
+                }
+            }
+
+            проверить.истина(последняяОчередь < 20, `к концу года очередь ${последняяОчередь} — расходится`);
+        } finally {
+            Date.now = настоящее;
+        }
     });
 });

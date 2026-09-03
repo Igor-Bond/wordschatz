@@ -34,10 +34,33 @@ export const config = {
             config.set('model', currentModel);
         }
 
+        const норма = parseInt(config.get('daily_goal') || '10');
+
         return {
             name: config.get('name') || 'Ученик',
             level: config.get('level') || 'B1',
-            dailyGoal: parseInt(config.get('daily_goal') || '10'),
+            dailyGoal: норма,
+
+            /*
+             * Норма, выбранная человеком, — отдельно от действующей.
+             *
+             * Они расходятся, когда приложение снижает норму само из-за
+             * трёх дней переносов. Действующая падает, а эта остаётся:
+             * от неё считается потолок повторений.
+             *
+             * Иначе выходило наоборот задуманному. Потолок считается от
+             * нормы, и снижение резало его вместе с ней — 140 в день
+             * превращались в 70 ровно тогда, когда очередь и без того не
+             * помещалась. Приложение сужало трубу, которую надо было
+             * расширить: замер показал, что при точности 90 % очередь
+             * росла с двух слов до сорока девяти именно из-за этого.
+             *
+             * Смысл разделения простой. Норму снизили вы — значит у вас
+             * меньше времени, и потолок справедливо падает. Снизило
+             * приложение — ваше время не изменилось, душить нечего.
+             */
+            chosenGoal: parseInt(config.get('chosen_goal') || String(норма)),
+
             interests: config.get('interests') || '',
             apiKey: config.get('api_key') || '',
             model: currentModel
@@ -89,6 +112,7 @@ export const config = {
                 name: 'name',
                 level: 'level',
                 dailyGoal: 'daily_goal',
+                chosenGoal: 'chosen_goal',
                 interests: 'interests',
                 model: 'model'
             };

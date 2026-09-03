@@ -278,6 +278,17 @@ export const app = {
 
         // §3 ТЗ: при смене дневной нормы оставшиеся дни темы пересчитываются
         if (goal !== previousGoal) {
+            /*
+             * Выбранная норма записывается только при настоящей смене.
+             *
+             * От неё считается потолок повторений, и автоснижение его не
+             * трогает. Но в списке стоит действующая норма — если её уже
+             * понизило приложение, человек, зашедший поправить имя,
+             * сохранил бы заодно и пониженный потолок. Молча и не поняв,
+             * что сделал.
+             */
+            config.set('chosen_goal', goal);
+
             try {
                 const activeCycle = await dbService.getActiveCycle();
                 if (activeCycle) await scheduler.recalculateFuturePlans(activeCycle.id, goal);

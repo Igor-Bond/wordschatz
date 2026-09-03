@@ -285,6 +285,7 @@ export const onboarding = {
         config.set('name', onboarding.data.name);
         config.set('level', onboarding.data.level);
         config.set('daily_goal', onboarding.data.dailyGoal);
+        config.set('chosen_goal', onboarding.data.dailyGoal);
         config.set('interests', onboarding.data.interests);
         config.set('api_key', onboarding.data.apiKey);
         config.set('model', 'gemini-flash-latest');

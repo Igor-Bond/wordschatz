@@ -368,7 +368,18 @@ export const scheduler = {
 
     getDailyPlan: async () => {
         const allDue = await dbService.getWordsToReview();
-        const reviewLimit = scheduler.getReviewLimit(config.getProfile().dailyGoal);
+
+        /*
+         * Потолок считается от выбранной нормы, а не от действующей.
+         *
+         * Они расходятся только в одном случае — когда приложение само
+         * снизило норму из-за трёх дней переносов. Раньше потолок падал
+         * вместе с ней, и защита от завала работала наоборот: очередь
+         * уже не помещалась, а пропускную способность резали вдвое.
+         * Замером это видно как переход сходящегося режима в
+         * расходящийся — см. config.getProfile, chosenGoal.
+         */
+        const reviewLimit = scheduler.getReviewLimit(config.getProfile().chosenGoal);
         const review = allDue
             .sort((a, b) => a.nextReview - b.nextReview)
             .slice(0, reviewLimit);
