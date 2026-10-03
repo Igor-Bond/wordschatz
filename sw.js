@@ -11,7 +11,7 @@
  * иначе у пользователей останется старый кэш.
  */
 
-const APP_VERSION = 'v118';
+const APP_VERSION = 'v119';
 const CACHE_NAME = `wortschatz-${APP_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -117,6 +117,13 @@ self.addEventListener('install', (event) => {
 });
 
 // --- Активация: удаляем кэши прошлых версий ---
+/*
+ * Только свои, по префиксу wortschatz-. Хранилище кэшей браузер ведёт по
+ * источнику, а не по каталогу: на igor-bond.github.io в нём же лежат кэши
+ * трекера тренировок (workout-*), «Нот» (notes-*) и шахмат (chess-*).
+ * Удалив «всё, кроме своего», воркер оставил бы соседей без офлайна — так
+ * и делал трекер, пока его не поправили. Сторожит offline.test.js.
+ */
 self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         const names = await caches.keys();
@@ -133,14 +140,20 @@ self.addEventListener('activate', (event) => {
 });
 
 // --- Сообщения от страницы ---
+/*
+ * Сообщение одно: SKIP_WAITING от кнопки «Обновить».
+ *
+ * Был ещё CLEAR_CACHES — он стирал все кэши источника подряд. Отправителя
+ * у него не было ни в одной версии приложения, обработчик просто пришёл
+ * вместе с первым воркером. Вреден он был не тем, что лишний: написать
+ * воркеру может любая страница источника, включая соседскую, а «все
+ * кэши» здесь — это и трекер, и «Ноты», и шахматы (см. активацию).
+ * Понадобится сбросить офлайн — удалять только свои, по префиксу
+ * wortschatz-.
+ */
 self.addEventListener('message', (event) => {
     if (event.data === 'SKIP_WAITING') {
         self.skipWaiting();
-    }
-    if (event.data === 'CLEAR_CACHES') {
-        event.waitUntil(
-            caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n))))
-        );
     }
 });
 
